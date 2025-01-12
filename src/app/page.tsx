@@ -3,9 +3,10 @@
 import { APIProvider, Map, useMap, useMapsLibrary, MapCameraChangedEvent } from '@vis.gl/react-google-maps';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Paper, InputBase, IconButton, Box, Drawer, Divider } from '@mui/material';
+import { Paper, InputBase, IconButton, Box, Divider, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 
 const defaultCenter = {
   lat: 35.7,
@@ -27,6 +28,7 @@ function MapContent() {
   const [markers, setMarkers] = useState<google.maps.marker.AdvancedMarkerElement[]>([]);
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
+  const [ratingsData, setRatingsData] = useState<number[]>([]);
 
   // Load initial position from geolocation
   useEffect(() => {
@@ -167,6 +169,12 @@ function MapContent() {
             map.setZoom(15);
           }
         }
+
+        // Collect ratings data
+        const ratings = results
+          .map(place => place.rating)
+          .filter((rating): rating is number => rating !== undefined);
+        setRatingsData(ratings);
       } else {
         console.log('No results found or error occurred');
       }
@@ -187,6 +195,18 @@ function MapContent() {
       handleSearch();
     }
   }, [map, placesLib, markerLib]);
+
+  // Add this helper function for the histogram
+  const generateHistogramData = (ratings: number[]) => {
+    const bins = [0, 0, 0, 0, 0]; // For ratings 1-5
+    ratings.forEach(rating => {
+      const binIndex = Math.floor(rating) - 1;
+      if (binIndex >= 0 && binIndex < 5) {
+        bins[binIndex]++;
+      }
+    });
+    return bins;
+  };
 
   return (
     <>
@@ -257,21 +277,68 @@ function MapContent() {
         </Paper>
       </Box>
 
-      <Drawer
-        anchor="bottom"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      >
+      {drawerOpen && (
         <Box
           sx={{
-            width: 'auto',
+            position: 'fixed',
+            bottom: 80, // Position above the search box
+            right: 16,
+            backgroundColor: 'white',
+            borderRadius: 2,
+            boxShadow: 3,
             p: 2,
-            height: '50vh',
+            width: 300, // Smaller width
+            zIndex: 1000,
           }}
         >
-          {/* Add drawer content here */}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+              Ratings Distribution
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setDrawerOpen(false)}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Box
+            sx={{
+              width: '100%',
+              height: 150, // Smaller height
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-around',
+            }}
+          >
+            {generateHistogramData(ratingsData).map((count, index) => (
+              <Box
+                key={index}
+                sx={{
+                  width: '18%',
+                  height: `${(count / Math.max(...generateHistogramData(ratingsData))) * 100}%`,
+                  backgroundColor: getRatingColor((index + 1) * 1.0),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  minHeight: 20,
+                }}
+              >
+                <Typography sx={{ color: 'white', mb: 1, fontSize: '0.75rem' }}>{count}</Typography>
+                <Typography sx={{ mt: 1, fontSize: '0.75rem' }}>{index + 1}★</Typography>
+              </Box>
+            ))}
+          </Box>
         </Box>
-      </Drawer>
+      )}
     </>
   );
 }
