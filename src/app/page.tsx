@@ -1,12 +1,26 @@
 'use client'
 
 import { APIProvider, Map, useMap, useMapsLibrary, MapCameraChangedEvent } from '@vis.gl/react-google-maps';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Paper, InputBase, IconButton, Box, Divider, Typography } from '@mui/material';
+import { Paper, InputBase, IconButton, Box, Divider, Typography, CircularProgress } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+
+type SearchResult = {
+  place_id: string;
+  name: string;
+  address: string;
+  rating?: number;
+  reviews?: google.maps.places.PlaceReview[];
+  analysis?: string;
+  location: google.maps.LatLng;
+  analysisStatus: {
+    isAnalyzing: boolean;
+    isQueued: boolean;
+  };
+};
 
 const defaultCenter = {
   lat: 35.7,
@@ -14,6 +28,55 @@ const defaultCenter = {
 };
 
 const defaultZoom = 10;
+
+type InfoWindowContentProps = {
+  result: SearchResult;
+};
+
+const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
+  return (
+    <Box sx={{ p: 2, maxWidth: 300 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+        {result.name}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        {result.address}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        評価: {result.rating ? `${result.rating}/5` : 'N/A'}
+      </Typography>
+      {result.reviews?.length ? (
+        <>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            レビュー傾向:
+          </Typography>
+          {result.analysisStatus.isAnalyzing ? (
+            <Box sx={{ textAlign: 'center', my: 2 }}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                分析中...
+              </Typography>
+            </Box>
+          ) : result.analysisStatus.isQueued ? (
+            <Box sx={{ textAlign: 'center', my: 2 }}>
+              <Typography variant="body2">
+                分析待機中...
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2">
+              {result.analysis || '分析待ち...'}
+            </Typography>
+          )}
+        </>
+      ) : (
+        <Typography variant="body2">
+          レビューはありません。
+        </Typography>
+      )}
+    </Box>
+  );
+};
 
 function MapContent() {
   const router = useRouter();
@@ -29,6 +92,10 @@ function MapContent() {
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
   const [ratingsData, setRatingsData] = useState<number[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
+  const analysisQueue = useRef<SearchResult[]>([]);
+  const isProcessingQueue = useRef(false);
+  const [searchResults, setSearchResults] = useState<{ [key: string]: SearchResult }>({});
 
   // Load initial position from geolocation
   useEffect(() => {
@@ -105,6 +172,83 @@ function MapContent() {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   };
 
+  // Add this new function to process the queue
+  const processAnalysisQueue = async () => {
+    if (isProcessingQueue.current || analysisQueue.current.length === 0) return;
+
+    isProcessingQueue.current = true;
+    
+    while (analysisQueue.current.length > 0) {
+      const result = analysisQueue.current[0];
+      const placeId = result.place_id;
+
+      console.log(result);
+      
+      if (result?.reviews && !result.analysis) {
+        try {
+          setSearchResults(prev => ({
+            ...prev,
+            [placeId]: {
+              ...prev[placeId],
+              analysisStatus: { isAnalyzing: true, isQueued: false }
+            }
+          }));
+
+          const reviewTexts = result.reviews.slice(0, 5).map(r => r.text).join('\n');
+          const response = await fetch('/api/analyze-reviews', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reviews: reviewTexts }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to analyze reviews');
+          }
+
+          const data = await response.json();
+          setSearchResults(prev => ({
+            ...prev,
+            [placeId]: {
+              ...prev[placeId],
+              analysis: data.analysis,
+              analysisStatus: { isAnalyzing: false, isQueued: false }
+            }
+          }));
+        } catch (error) {
+          setSearchResults(prev => ({
+            ...prev,
+            [placeId]: {
+              ...prev[placeId],
+              analysis: 'レビューの分析中にエラーが発生しました。',
+              analysisStatus: { isAnalyzing: false, isQueued: false }
+            }
+          }));
+        }
+      }
+      
+      analysisQueue.current.shift();
+    }
+    
+    isProcessingQueue.current = false;
+  };
+
+  // Replace analyzeReviews with queueAnalysis
+  const queueAnalysis = (placeId: string, result: SearchResult) => {
+    if (!searchResults[placeId]?.analysisStatus?.isAnalyzing && !searchResults[placeId]?.analysisStatus?.isQueued) {
+      analysisQueue.current.push(result);
+      setSearchResults(prev => ({
+        ...prev,
+        [placeId]: {
+          ...prev[placeId],
+          analysisStatus: { isAnalyzing: false, isQueued: true }
+        }
+      }));
+      processAnalysisQueue();
+    }
+  };
+
   const handleSearch = () => {
     if (!map || !placesLib || !markerLib) return;
     
@@ -138,35 +282,35 @@ function MapContent() {
             });
 
             if (map) {
-              // Get place details including reviews
               service.getDetails(
                 {
-                  placeId: place.place_id,
+                  placeId: place.place_id!,
                   fields: ['name', 'formatted_address', 'rating', 'reviews']
                 },
-                (placeDetails, detailStatus) => {
-                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails) {
-                    const review = placeDetails.reviews?.[0];
-                    const reviewText = review 
-                      ? `<p><em>"${review.text.substring(0, 150)}${review.text.length > 150 ? '...' : ''}"</em></p>`
-                      : '<p>No reviews available</p>';
+                async (placeDetails, detailStatus) => {
+                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails && place.geometry?.location) {
+                    const newResult: SearchResult = {
+                      place_id: place.place_id!,
+                      name: place.name ?? '',
+                      address: place.formatted_address ?? '',
+                      rating: place.rating,
+                      reviews: placeDetails.reviews || [],
+                      location: place.geometry.location,
+                      analysisStatus: { isAnalyzing: false, isQueued: false }
+                    };
+                    
+                    setSearchResults(prev => ({
+                      ...prev,
+                      [place.place_id!]: newResult
+                    }));
 
-                    const infoWindow = new google.maps.InfoWindow({
-                      content: `
-                        <div>
-                          <h3 style="font-weight: bold;">${place.name || ''}</h3>
-                          <p>${place.formatted_address || ''}</p>
-                          <p>Rating: ${place.rating ? `${place.rating}/5` : 'N/A'}</p>
-                          ${reviewText}
-                        </div>
-                      `
-                    });
+                    if (placeDetails.reviews && placeDetails.reviews.length > 0) {
+                      queueAnalysis(place.place_id!, newResult);
+                    }
 
+                    // Add click listener to marker that uses the CustomOverlay
                     marker.addListener('click', () => {
-                      infoWindow.open({
-                        map,
-                        anchor: marker
-                      });
+                      handleMarkerClick(place.place_id!);
                     });
                   }
                 }
@@ -225,6 +369,76 @@ function MapContent() {
     return bins;
   };
 
+  // Create a custom overlay for the info window
+  const CustomOverlay = ({ position, content }: { 
+    position: google.maps.LatLng;
+    content: React.ReactNode;
+  }) => {
+    const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      if (!containerRef || !map) return;
+
+      const overlay = new google.maps.OverlayView();
+      overlay.onAdd = () => {
+        containerRef.style.position = 'absolute';
+      };
+      
+      overlay.draw = () => {
+        if (!containerRef) return;
+        const projection = overlay.getProjection();
+        const point = projection.fromLatLngToDivPixel(position);
+        if (point) {
+          containerRef.style.left = `${point.x}px`;
+          containerRef.style.top = `${point.y}px`;
+        }
+      };
+
+      overlay.onRemove = () => {
+        if (containerRef && containerRef.parentNode) {
+          containerRef.parentNode.removeChild(containerRef);
+        }
+      };
+
+      overlay.setMap(map);
+      return () => overlay.setMap(null);
+    }, [containerRef, map, position]);
+
+    return (
+      <Box sx={{ position: 'absolute', left: "50%", top: "50%" }}>
+        <Paper 
+          ref={setContainerRef}
+          elevation={3} 
+          sx={{ 
+            position: 'absolute',
+            transform: 'translate(-50%, calc(-100% - 40px))',
+            zIndex: 1000,
+          }}
+        >
+          {content}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: -10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '10px solid transparent',
+              borderRight: '10px solid transparent',
+              borderTop: '10px solid white',
+            }}
+          />
+        </Paper>
+      </Box>
+    );
+  };
+
+  // Update the marker click handler in handleSearch
+  const handleMarkerClick = (placeId: string) => {
+    setSelectedPlace(placeId);
+  };
+
   return (
     <>
       <Map
@@ -248,7 +462,18 @@ function MapContent() {
         gestureHandling={'greedy'}
         disableDefaultUI={true}
         style={{ width: '100%', height: '100vh' }}
-      />
+      >
+        {selectedPlace && searchResults[selectedPlace] && (
+          <CustomOverlay
+            position={searchResults[selectedPlace].location}
+            content={
+              <InfoWindowContent
+                result={searchResults[selectedPlace]}
+              />
+            }
+          />
+        )}
+      </Map>
       <Box
         sx={{
           position: 'fixed',
