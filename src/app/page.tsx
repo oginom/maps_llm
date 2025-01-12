@@ -138,22 +138,39 @@ function MapContent() {
             });
 
             if (map) {
-              const infoWindow = new google.maps.InfoWindow({
-                content: `
-                  <div>
-                    <h3 style="font-weight: bold;">${place.name || ''}</h3>
-                    <p>${place.formatted_address || ''}</p>
-                    <p>Rating: ${place.rating ? `${place.rating}/5` : 'N/A'}</p>
-                  </div>
-                `
-              });
+              // Get place details including reviews
+              service.getDetails(
+                {
+                  placeId: place.place_id,
+                  fields: ['name', 'formatted_address', 'rating', 'reviews']
+                },
+                (placeDetails, detailStatus) => {
+                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails) {
+                    const review = placeDetails.reviews?.[0];
+                    const reviewText = review 
+                      ? `<p><em>"${review.text.substring(0, 150)}${review.text.length > 150 ? '...' : ''}"</em></p>`
+                      : '<p>No reviews available</p>';
 
-              marker.addListener('click', () => {
-                infoWindow.open({
-                  map,
-                  anchor: marker
-                });
-              });
+                    const infoWindow = new google.maps.InfoWindow({
+                      content: `
+                        <div>
+                          <h3 style="font-weight: bold;">${place.name || ''}</h3>
+                          <p>${place.formatted_address || ''}</p>
+                          <p>Rating: ${place.rating ? `${place.rating}/5` : 'N/A'}</p>
+                          ${reviewText}
+                        </div>
+                      `
+                    });
+
+                    marker.addListener('click', () => {
+                      infoWindow.open({
+                        map,
+                        anchor: marker
+                      });
+                    });
+                  }
+                }
+              );
             }
 
             newMarkers.push(marker);
