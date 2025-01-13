@@ -7,18 +7,20 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { reviews } = await request.json();
+    const { reviews, metric, scale, examples } = await request.json();
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `以下のレビューから混雑度を1から5の数字で評価してください（1: 常に混雑している、5: 常に空いている）
+          content: `以下のレビューから${metric}を1から${scale}の数字で評価してください (${examples})
+また、評価結果に最も関係するレビューの抜粋を抽出してください。
 
 必ず以下のJSON形式で返答してください。他の文章は含めないでください：
 {
-  "crowdedness": 数字(1-5)
+  "value": 数字(1-${scale}),
+  "related_review": "レビューの文"
 }`
         },
         {
@@ -33,9 +35,9 @@ export async function POST(request: Request) {
     const result = JSON.parse(completion.choices[0].message.content);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error analyzing crowdedness:', error);
+    console.error(`Error analyzing ${metric}:`, error);
     return NextResponse.json(
-      { error: 'Failed to analyze crowdedness' },
+      { error: `Failed to analyze ${metric}` },
       { status: 500 }
     );
   }

@@ -13,7 +13,7 @@ type SearchResult = {
   name: string;
   address: string;
   rating?: number;
-  crowdedness?: number;
+  value?: number;
   reviews?: google.maps.places.PlaceReview[];
   analysis?: string;
   location: google.maps.LatLng;
@@ -21,6 +21,7 @@ type SearchResult = {
     isAnalyzing: boolean;
     isQueued: boolean;
   };
+  examples: string;
 };
 
 const defaultCenter = {
@@ -36,7 +37,7 @@ type InfoWindowContentProps = {
 
 const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
   return (
-    <Box sx={{ p: 2, maxWidth: 300 }}>
+    <Box sx={{ p: 2, minWidth: 200, maxWidth: 300 }}>
       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
         {result.name}
       </Typography>
@@ -49,7 +50,7 @@ const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
       {result.reviews?.length ? (
         <>
           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            レビュー傾向:
+            レビュー例:
           </Typography>
           {result.analysisStatus.isAnalyzing ? (
             <Box sx={{ textAlign: 'center', my: 2 }}>
@@ -95,7 +96,7 @@ function MapContent() {
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('カフェ');
-  const [location, setLocation] = useState('電源がある');
+  const [evaluation, setEvaluation] = useState('電源がある');
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
@@ -159,15 +160,15 @@ function MapContent() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const getRatingColor = (rating: number = 3, isCrowdedness: boolean = false) => {
+  const getRatingColor = (rating: number = 3, isValue: boolean = false) => {
     
     // Normalize rating between 0 and 1
     const normalizedRating = Math.min(Math.max(rating, 0), 5) / 5;
     
-    // For crowdedness, invert the color scale (5 should be blue, 1 should be red)
-    const value = isCrowdedness ? 1 - normalizedRating : normalizedRating;
+    // For value, invert the color scale (5 should be blue, 1 should be red)
+    const value = isValue ? 1 - normalizedRating : normalizedRating;
     
-    // RGB values for blue (low rating/high crowdedness) and red (high rating/low crowdedness)
+    // RGB values for blue (low rating/high value) and red (high rating/low value)
     const startColor = { r: 66, g: 133, b: 244 };  // #4285F4 (blue)
     const endColor = { r: 219, g: 68, b: 55 };     // #DB4437 (red)
     
@@ -201,13 +202,18 @@ function MapContent() {
             }
           }));
 
-          const reviewTexts = result.reviews.slice(0, 5).map(r => r.text).join('\n');
+          const reviewTexts = result.reviews.slice(0, 20).map(r => r.text).join('\n');
           const response = await fetch('/api/analyze-reviews', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ reviews: reviewTexts }),
+            body: JSON.stringify({
+              reviews: reviewTexts,
+              metric: evaluation,
+              examples: result.examples,
+              scale: "5",
+            }),
           });
 
           if (!response.ok) {
@@ -216,14 +222,14 @@ function MapContent() {
 
           const data = await response.json();
           
-          // Update marker color with new crowdedness data
+          // Update marker color with new value data
           //console.log("markers", markers);
           //if (markers[placeId]) {
           //  console.log("markers[placeId]", markers[placeId]);
           //  const marker = markers[placeId];
           //  marker.content = new markerLib.PinElement({
           //    glyph: result.name[0] || '•',
-          //    background: getRatingColor(data.crowdedness, true)
+          //    background: getRatingColor(data.value, true)
           //  }).element;
           //}
           setMarkers((prev) => prev.map((marker) => {
@@ -232,7 +238,7 @@ function MapContent() {
             }
             return {
               ...marker,
-              color: getRatingColor(data.crowdedness, true)
+              color: getRatingColor(data.value, true)
             }
           }))
 
@@ -240,8 +246,8 @@ function MapContent() {
             ...prev,
             [placeId]: {
               ...prev[placeId],
-              analysis: "test",
-              crowdedness: data.crowdedness,
+              analysis: data.related_review,
+              value: data.value,
               analysisStatus: { isAnalyzing: false, isQueued: false }
             }
           }));
@@ -264,9 +270,9 @@ function MapContent() {
   };
 
   // Replace analyzeReviews with queueAnalysis
-  const queueAnalysis = (placeId: string, result: SearchResult) => {
+  const queueAnalysis = (placeId: string, result: SearchResult, examples: string) => {
     if (!searchResults[placeId]?.analysisStatus?.isAnalyzing && !searchResults[placeId]?.analysisStatus?.isQueued) {
-      analysisQueue.current.push(result);
+      analysisQueue.current.push({ ...result, examples });
       setSearchResults(prev => ({
         ...prev,
         [placeId]: {
@@ -278,97 +284,119 @@ function MapContent() {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!map || !placesLib) return;
     
     setMarkers([]);
+    setSearchResults({});
+    setSelectedPlace(null);
 
-    const service = new placesLib.PlacesService(map);
-    const combinedQuery = `${searchTerm} ${location}`.trim();
-    
-    if (!combinedQuery) return;
+    // Generate examples before search
+    try {
+      const response = await fetch('/api/generate-examples', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          searchTerm,
+          evaluation,
+        }),
+      });
 
-    const bounds = map.getBounds();
-    const request: google.maps.places.TextSearchRequest = {
-      query: combinedQuery,
-      bounds: bounds || undefined,
-    };
+      if (!response.ok) {
+        throw new Error('Failed to generate examples');
+      }
 
-    service.textSearch(request, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const bounds = new google.maps.LatLngBounds();
-        const newMarkers: MarkerData[] = [];
+      const { examples, searchQuery } = await response.json();
 
-        results.forEach(place => {
-          if (place.geometry?.location) {
-            const markerData: MarkerData = {
-              id: place.place_id!,
-              position: place.geometry.location,
-              label: place.name?.[0] || '•',
-              color: "#ffffff"
-            };
-            
-            newMarkers.push(markerData);
-            bounds.extend(place.geometry.location);
+      const service = new placesLib.PlacesService(map);
 
-            if (map) {
-              service.getDetails(
-                {
-                  placeId: place.place_id!,
-                  fields: ['name', 'formatted_address', 'rating', 'reviews']
-                },
-                async (placeDetails, detailStatus) => {
-                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails && place.geometry?.location) {
-                    const newResult: SearchResult = {
-                      place_id: place.place_id!,
-                      name: place.name ?? '',
-                      address: place.formatted_address ?? '',
-                      rating: place.rating,
-                      crowdedness: searchResults[place.place_id!]?.crowdedness || 3,
-                      reviews: placeDetails.reviews || [],
-                      location: place.geometry.location,
-                      analysisStatus: { isAnalyzing: false, isQueued: false }
-                    };
-                    
-                    setSearchResults(prev => ({
-                      ...prev,
-                      [place.place_id!]: newResult
-                    }));
+      const bounds = map.getBounds();
+      const request: google.maps.places.TextSearchRequest = {
+        query: searchQuery,
+        bounds: bounds || undefined,
+      };
 
-                    if (placeDetails.reviews && placeDetails.reviews.length > 0) {
-                      queueAnalysis(place.place_id!, newResult);
+      service.textSearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          const bounds = new google.maps.LatLngBounds();
+          const newMarkers: MarkerData[] = [];
+
+          results.forEach(place => {
+            if (place.geometry?.location) {
+              const markerData: MarkerData = {
+                id: place.place_id!,
+                position: place.geometry.location,
+                label: place.name?.[0] || '•',
+                color: "#ffffff"
+              };
+              
+              newMarkers.push(markerData);
+              bounds.extend(place.geometry.location);
+
+              if (map) {
+                service.getDetails(
+                  {
+                    placeId: place.place_id!,
+                    fields: ['name', 'formatted_address', 'rating', 'reviews']
+                  },
+                  async (placeDetails, detailStatus) => {
+                    if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails && place.geometry?.location) {
+                      const newResult: SearchResult = {
+                        place_id: place.place_id!,
+                        name: place.name ?? '',
+                        address: place.formatted_address ?? '',
+                        rating: place.rating,
+                        value: searchResults[place.place_id!]?.value || undefined,
+                        reviews: placeDetails.reviews || [],
+                        location: place.geometry.location,
+                        analysisStatus: { isAnalyzing: false, isQueued: false },
+                        examples: examples
+                      };
+                      
+                      setSearchResults(prev => ({
+                        ...prev,
+                        [place.place_id!]: newResult
+                      }));
+
+                      if (placeDetails.reviews && placeDetails.reviews.length > 0) {
+                        queueAnalysis(place.place_id!, newResult, examples);
+                      }
                     }
                   }
-                }
-              );
+                );
+              }
+            }
+          });
+
+          setMarkers(newMarkers);
+
+          if (!bounds.isEmpty()) {
+            map.fitBounds(bounds);
+            if (results.length === 1 && map.getZoom() > 15) {
+              map.setZoom(15);
             }
           }
-        });
 
-        setMarkers(newMarkers);
-
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds);
-          if (results.length === 1 && map.getZoom() > 15) {
-            map.setZoom(15);
-          }
+          const ratings = results
+            .map(place => place.rating)
+            .filter((rating): rating is number => rating !== undefined);
+          setRatingsData(ratings);
         }
-
-        const ratings = results
-          .map(place => place.rating)
-          .filter((rating): rating is number => rating !== undefined);
-        setRatingsData(ratings);
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error in search:', error);
+    }
   };
 
-  // Update marker color when crowdedness data is received
+  // Update marker color when value data is received
   useEffect(() => {
     setMarkers(prev => prev.map(marker => {
       const result = searchResults[marker.id];
       return {
         ...marker,
-        color: result?.crowdedness ? getRatingColor(result.crowdedness, true) : marker.color
+        color: result?.value ? getRatingColor(result.value, true) : marker.color
       };
     }));
   }, [searchResults]);
@@ -383,10 +411,10 @@ function MapContent() {
 
   // Add this helper function for the histogram
   const generateHistogramData = (results: { [key: string]: SearchResult }) => {
-    const bins = [0, 0, 0, 0, 0]; // For crowdedness 1-5
+    const bins = [0, 0, 0, 0, 0]; // For value 1-5
     Object.values(results).forEach(result => {
-      if (result.crowdedness) {
-        const binIndex = Math.floor(result.crowdedness) - 1;
+      if (result.value) {
+        const binIndex = Math.floor(result.value) - 1;
         if (binIndex >= 0 && binIndex < 5) {
           bins[binIndex]++;
         }
@@ -546,9 +574,9 @@ function MapContent() {
           <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
           <InputBase
             sx={{ ml: 1, flex: 1 }}
-            placeholder="Enter location" 
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Enter evaluation" 
+            value={evaluation}
+            onChange={(e) => setEvaluation(e.target.value)}
           />
           <IconButton type="button" sx={{ p: '10px' }} aria-label="search" onClick={handleSearch}>
             <SearchIcon />
@@ -586,7 +614,7 @@ function MapContent() {
             }}
           >
             <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-              Ratings Distribution
+              分布
             </Typography>
             <IconButton
               size="small"
