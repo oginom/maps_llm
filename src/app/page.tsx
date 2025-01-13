@@ -48,12 +48,24 @@ const defaultZoom = 10;
 
 type InfoWindowContentProps = {
   result: SearchResult;
+  onClose: () => void;
 };
 
-const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
+const InfoWindowContent = ({ result, onClose }: InfoWindowContentProps) => {
   return (
-    <Box sx={{ p: 2, minWidth: 200, maxWidth: 300 }}>
-      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+    <Box sx={{ p: 2, minWidth: 200, maxWidth: 300, position: "relative" }}>
+      <IconButton
+        size="small"
+        sx={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+        }}
+        onClick={onClose}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
+      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, pr: 4 }}>
         {result.name}
       </Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
@@ -61,6 +73,16 @@ const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
       </Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
         評価: {result.rating ? `${result.rating}/5` : "N/A"}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        <a
+          href={`https://www.google.com/maps/place/?q=place_id:${result.place_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#1976d2", textDecoration: "none" }}
+        >
+          Google マップで開く
+        </a>
       </Typography>
       {result.reviews?.length ? (
         <>
@@ -204,8 +226,6 @@ function MapContent() {
       const result = analysisQueue.current[0];
       const placeId = result.place_id;
 
-      console.log(result);
-
       if (result?.reviews && !result.analysis) {
         try {
           setSearchResults((prev) => ({
@@ -219,7 +239,7 @@ function MapContent() {
           const reviewTexts = result.reviews
             .slice(0, 20)
             .map((r) => r.text)
-            .join("\n");
+            .join("\n\n---\n\n");
           const response = await fetch("/api/analyze-reviews", {
             method: "POST",
             headers: {
@@ -239,16 +259,6 @@ function MapContent() {
 
           const data = await response.json();
 
-          // Update marker color with new value data
-          //console.log("markers", markers);
-          //if (markers[placeId]) {
-          //  console.log("markers[placeId]", markers[placeId]);
-          //  const marker = markers[placeId];
-          //  marker.content = new markerLib.PinElement({
-          //    glyph: result.name[0] || '•',
-          //    background: getRatingColor(data.value, true)
-          //  }).element;
-          //}
           setMarkers((prev) =>
             prev.map((marker) => {
               if (marker.id != placeId) {
@@ -336,6 +346,8 @@ function MapContent() {
       }
 
       const { examples, searchQuery } = await response.json();
+
+      console.log(`searchQuery: ${searchQuery}`);
 
       const service = new placesLib.PlacesService(map);
 
@@ -580,7 +592,12 @@ function MapContent() {
           <CustomOverlay
             position={searchResults[selectedPlace].location}
             content={
-              <InfoWindowContent result={searchResults[selectedPlace]} />
+              <InfoWindowContent
+                result={searchResults[selectedPlace]}
+                onClose={() => {
+                  setSelectedPlace(null);
+                }}
+              />
             }
           />
         )}
