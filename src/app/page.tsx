@@ -37,6 +37,7 @@ type SearchResult = {
     isQueued: boolean;
   };
   examples: string;
+  url?: string;
 };
 
 const defaultCenter = {
@@ -76,7 +77,10 @@ const InfoWindowContent = ({ result, onClose }: InfoWindowContentProps) => {
       </Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
         <a
-          href={`https://www.google.com/maps/place/?q=place_id:${result.place_id}`}
+          href={
+            result.url ||
+            `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
+          }
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#1976d2", textDecoration: "none" }}
@@ -390,7 +394,13 @@ function MapContent() {
                 service.getDetails(
                   {
                     placeId: place.place_id!,
-                    fields: ["name", "formatted_address", "rating", "reviews"],
+                    fields: [
+                      "name",
+                      "formatted_address",
+                      "rating",
+                      "reviews",
+                      "url",
+                    ],
                   },
                   async (placeDetails, detailStatus) => {
                     if (
@@ -410,6 +420,7 @@ function MapContent() {
                         location: place.geometry.location,
                         analysisStatus: { isAnalyzing: false, isQueued: false },
                         examples: examples,
+                        url: placeDetails.url,
                       };
 
                       setSearchResults((prev) => ({
