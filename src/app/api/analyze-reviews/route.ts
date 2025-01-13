@@ -6,9 +6,8 @@ const openai = new OpenAI({
 });
 
 export async function POST(request: Request) {
+  const { reviews, metric, scale, examples } = await request.json();
   try {
-    const { reviews, metric, scale, examples } = await request.json();
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
       max_tokens: 100,
     });
 
-    const result = JSON.parse(completion.choices[0].message.content);
+    const result = JSON.parse(completion.choices[0].message.content ?? "{}");
     return NextResponse.json(result);
   } catch (error) {
     console.error(`Error analyzing ${metric}:`, error);

@@ -8,7 +8,7 @@ import {
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Paper,
@@ -765,8 +765,10 @@ function MapContent() {
 
 export default function Home() {
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
-      <MapContent />
-    </APIProvider>
+    <Suspense>
+      <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
+        <MapContent />
+      </APIProvider>
+    </Suspense>
   );
 }
