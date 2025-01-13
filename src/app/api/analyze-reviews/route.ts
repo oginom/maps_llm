@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         },
       ],
       temperature: 0.7,
-      max_tokens: 100,
+      max_tokens: 10000,
     });
 
     const result = JSON.parse(completion.choices[0].message.content ?? "{}");

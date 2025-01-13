@@ -256,7 +256,7 @@ function MapContent() {
                 }));
 
                 const reviewTexts = result.reviews
-                  .slice(0, 20)
+                  .slice(0, 50)
                   .map((r) => r.text)
                   .join("\n\n---\n\n");
                 const response = await fetch("/api/analyze-reviews", {
