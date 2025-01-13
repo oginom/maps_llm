@@ -18,20 +18,14 @@ export async function POST(request: Request) {
 
 出力形式:
 {
-  "examples": {
-    "1": "[最低評価の例]",
-    "5": "[最高評価の例]"
-  },
+  "examples": "1 ... [最低評価の例], 5 ... [最高評価の例]",
   "searchQuery": "[評価の高いものを見つけるためのシンプルな検索クエリ]"
 }
 
 例:
 入力: searchTerm="カフェ", evaluation="電源がある"
 出力: {
-  "examples": {
-    "1": "電源は一切ない",
-    "5": "全席に電源完備"
-  },
+  "examples": "1 ... 電源は一切ない, 5 ... 全席に電源完備",
   "searchQuery": "電源 カフェ"
 }`,
         },
