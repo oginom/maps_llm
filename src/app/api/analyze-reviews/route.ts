@@ -21,12 +21,12 @@ export async function POST(request: Request) {
 {
   "value": 数字(1-${scale}),
   "related_review": "レビューの文"
-}`
+}`,
         },
         {
           role: "user",
-          content: reviews
-        }
+          content: reviews,
+        },
       ],
       temperature: 0.7,
       max_tokens: 100,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     console.error(`Error analyzing ${metric}:`, error);
     return NextResponse.json(
       { error: `Failed to analyze ${metric}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
-} 
+}

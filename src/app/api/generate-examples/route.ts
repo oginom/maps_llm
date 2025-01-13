@@ -33,12 +33,12 @@ export async function POST(request: Request) {
     "5": "全席に電源完備"
   },
   "searchQuery": "電源 カフェ"
-}`
+}`,
         },
         {
           role: "user",
-          content: `searchTerm="${searchTerm}", evaluation="${evaluation}"`
-        }
+          content: `searchTerm="${searchTerm}", evaluation="${evaluation}"`,
+        },
       ],
       temperature: 0.7,
       max_tokens: 100,
@@ -47,10 +47,10 @@ export async function POST(request: Request) {
     const response = JSON.parse(completion.choices[0].message.content || "{}");
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error generating examples:', error);
+    console.error("Error generating examples:", error);
     return NextResponse.json(
-      { error: 'Failed to generate examples' },
-      { status: 500 }
+      { error: "Failed to generate examples" },
+      { status: 500 },
     );
   }
-} 
+}

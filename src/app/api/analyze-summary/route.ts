@@ -19,12 +19,12 @@ export async function POST(request: Request) {
 必ず以下のJSON形式で返答してください。他の文章は含めないでください：
 {
   "analysis": "・箇条書き1\\n・箇条書き2\\n・箇条書き3"
-}`
+}`,
         },
         {
           role: "user",
-          content: reviews
-        }
+          content: reviews,
+        },
       ],
       temperature: 0.7,
       max_tokens: 300,
@@ -33,10 +33,10 @@ export async function POST(request: Request) {
     const result = JSON.parse(completion.choices[0].message.content);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error analyzing summary:', error);
+    console.error("Error analyzing summary:", error);
     return NextResponse.json(
-      { error: 'Failed to analyze summary' },
-      { status: 500 }
+      { error: "Failed to analyze summary" },
+      { status: 500 },
     );
   }
-} 
+}

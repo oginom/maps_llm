@@ -1,12 +1,27 @@
-'use client'
+"use client";
 
-import { AdvancedMarker, APIProvider, Map, MapCameraChangedEvent, Marker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Paper, InputBase, IconButton, Box, Divider, Typography, CircularProgress } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
+import {
+  APIProvider,
+  Map,
+  MapCameraChangedEvent,
+  Marker,
+  useMap,
+  useMapsLibrary,
+} from "@vis.gl/react-google-maps";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Paper,
+  InputBase,
+  IconButton,
+  Box,
+  Divider,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 
 type SearchResult = {
   place_id: string;
@@ -38,43 +53,39 @@ type InfoWindowContentProps = {
 const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
   return (
     <Box sx={{ p: 2, minWidth: 200, maxWidth: 300 }}>
-      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
         {result.name}
       </Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
         {result.address}
       </Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
-        評価: {result.rating ? `${result.rating}/5` : 'N/A'}
+        評価: {result.rating ? `${result.rating}/5` : "N/A"}
       </Typography>
       {result.reviews?.length ? (
         <>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="body2" sx={{ fontWeight: "bold" }}>
             レビュー例:
           </Typography>
           {result.analysisStatus.isAnalyzing ? (
-            <Box sx={{ textAlign: 'center', my: 2 }}>
+            <Box sx={{ textAlign: "center", my: 2 }}>
               <CircularProgress size={20} />
               <Typography variant="body2" sx={{ mt: 1 }}>
                 分析中...
               </Typography>
             </Box>
           ) : result.analysisStatus.isQueued ? (
-            <Box sx={{ textAlign: 'center', my: 2 }}>
-              <Typography variant="body2">
-                分析待機中...
-              </Typography>
+            <Box sx={{ textAlign: "center", my: 2 }}>
+              <Typography variant="body2">分析待機中...</Typography>
             </Box>
           ) : (
             <Typography variant="body2">
-              {result.analysis || '分析待ち...'}
+              {result.analysis || "分析待ち..."}
             </Typography>
           )}
         </>
       ) : (
-        <Typography variant="body2">
-          レビューはありません。
-        </Typography>
+        <Typography variant="body2">レビューはありません。</Typography>
       )}
     </Box>
   );
@@ -91,50 +102,51 @@ function MapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const map = useMap();
-  const placesLib = useMapsLibrary('places');
-  const markerLib = useMapsLibrary('marker');
-  
+  const placesLib = useMapsLibrary("places");
+  const markerLib = useMapsLibrary("marker");
+
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('カフェ');
-  const [evaluation, setEvaluation] = useState('電源がある');
+  const [searchTerm, setSearchTerm] = useState("カフェ");
+  const [evaluation, setEvaluation] = useState("電源がある");
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
-  const [ratingsData, setRatingsData] = useState<number[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const analysisQueue = useRef<SearchResult[]>([]);
   const isProcessingQueue = useRef(false);
-  const [searchResults, setSearchResults] = useState<{ [key: string]: SearchResult }>({});
+  const [searchResults, setSearchResults] = useState<{
+    [key: string]: SearchResult;
+  }>({});
 
   // Load initial position from geolocation
   useEffect(() => {
-    if (!searchParams.get('lat') && navigator.geolocation) {
+    if (!searchParams.get("lat") && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newCenter = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           };
           setCenter(newCenter);
           updateUrl(newCenter, zoom);
         },
         (error) => {
-          console.error('Error getting location:', error);
-        }
+          console.error("Error getting location:", error);
+        },
       );
     }
   }, []);
 
   // Load initial state from URL params
   useEffect(() => {
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
-    const zoomParam = searchParams.get('zoom');
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
+    const zoomParam = searchParams.get("zoom");
 
     if (lat && lng) {
       setCenter({
         lat: parseFloat(lat),
-        lng: parseFloat(lng)
+        lng: parseFloat(lng),
       });
     }
     if (zoomParam) {
@@ -142,42 +154,44 @@ function MapContent() {
     }
   }, [searchParams]);
 
-  const updateUrl = (newCenter: { lat: number; lng: number }, newZoom: number) => {
+  const updateUrl = (
+    newCenter: { lat: number; lng: number },
+    newZoom: number,
+  ) => {
     const params = new URLSearchParams();
-    params.set('lat', newCenter.lat.toString());
-    params.set('lng', newCenter.lng.toString());
-    params.set('zoom', newZoom.toString());
-    
+    params.set("lat", newCenter.lat.toString());
+    params.set("lng", newCenter.lng.toString());
+    params.set("zoom", newZoom.toString());
+
     const currentParams = new URLSearchParams(window.location.search);
     if (
-      currentParams.get('lat') === params.get('lat') &&
-      currentParams.get('lng') === params.get('lng') &&
-      currentParams.get('zoom') === params.get('zoom')
+      currentParams.get("lat") === params.get("lat") &&
+      currentParams.get("lng") === params.get("lng") &&
+      currentParams.get("zoom") === params.get("zoom")
     ) {
       return;
     }
-    
+
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const getRatingColor = (rating: number = 3, isValue: boolean = false) => {
-    
     // Normalize rating between 0 and 1
     const normalizedRating = Math.min(Math.max(rating, 0), 5) / 5;
-    
+
     // For value, invert the color scale (5 should be blue, 1 should be red)
     const value = isValue ? 1 - normalizedRating : normalizedRating;
-    
+
     // RGB values for blue (low rating/high value) and red (high rating/low value)
-    const startColor = { r: 66, g: 133, b: 244 };  // #4285F4 (blue)
-    const endColor = { r: 219, g: 68, b: 55 };     // #DB4437 (red)
-    
+    const startColor = { r: 66, g: 133, b: 244 }; // #4285F4 (blue)
+    const endColor = { r: 219, g: 68, b: 55 }; // #DB4437 (red)
+
     // Interpolate between the colors
     const r = Math.round(startColor.r + (endColor.r - startColor.r) * value);
     const g = Math.round(startColor.g + (endColor.g - startColor.g) * value);
     const b = Math.round(startColor.b + (endColor.b - startColor.b) * value);
-    
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
   };
 
   // Add this new function to process the queue
@@ -185,28 +199,31 @@ function MapContent() {
     if (isProcessingQueue.current || analysisQueue.current.length === 0) return;
 
     isProcessingQueue.current = true;
-    
+
     while (analysisQueue.current.length > 0) {
       const result = analysisQueue.current[0];
       const placeId = result.place_id;
 
       console.log(result);
-      
+
       if (result?.reviews && !result.analysis) {
         try {
-          setSearchResults(prev => ({
+          setSearchResults((prev) => ({
             ...prev,
             [placeId]: {
               ...prev[placeId],
-              analysisStatus: { isAnalyzing: true, isQueued: false }
-            }
+              analysisStatus: { isAnalyzing: true, isQueued: false },
+            },
           }));
 
-          const reviewTexts = result.reviews.slice(0, 20).map(r => r.text).join('\n');
-          const response = await fetch('/api/analyze-reviews', {
-            method: 'POST',
+          const reviewTexts = result.reviews
+            .slice(0, 20)
+            .map((r) => r.text)
+            .join("\n");
+          const response = await fetch("/api/analyze-reviews", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               reviews: reviewTexts,
@@ -217,11 +234,11 @@ function MapContent() {
           });
 
           if (!response.ok) {
-            throw new Error('Failed to analyze reviews');
+            throw new Error("Failed to analyze reviews");
           }
 
           const data = await response.json();
-          
+
           // Update marker color with new value data
           //console.log("markers", markers);
           //if (markers[placeId]) {
@@ -232,53 +249,63 @@ function MapContent() {
           //    background: getRatingColor(data.value, true)
           //  }).element;
           //}
-          setMarkers((prev) => prev.map((marker) => {
-            if (marker.id != placeId) {
-              return marker
-            }
-            return {
-              ...marker,
-              color: getRatingColor(data.value, true)
-            }
-          }))
+          setMarkers((prev) =>
+            prev.map((marker) => {
+              if (marker.id != placeId) {
+                return marker;
+              }
+              return {
+                ...marker,
+                color: getRatingColor(data.value, true),
+              };
+            }),
+          );
 
-          setSearchResults(prev => ({
+          setSearchResults((prev) => ({
             ...prev,
             [placeId]: {
               ...prev[placeId],
               analysis: data.related_review,
               value: data.value,
-              analysisStatus: { isAnalyzing: false, isQueued: false }
-            }
+              analysisStatus: { isAnalyzing: false, isQueued: false },
+            },
           }));
         } catch (error) {
-          setSearchResults(prev => ({
+          console.error(error);
+          setSearchResults((prev) => ({
             ...prev,
             [placeId]: {
               ...prev[placeId],
-              analysis: 'レビューの分析中にエラーが発生しました。',
-              analysisStatus: { isAnalyzing: false, isQueued: false }
-            }
+              analysis: "レビューの分析中にエラーが発生しました。",
+              analysisStatus: { isAnalyzing: false, isQueued: false },
+            },
           }));
         }
       }
-      
+
       analysisQueue.current.shift();
     }
-    
+
     isProcessingQueue.current = false;
   };
 
   // Replace analyzeReviews with queueAnalysis
-  const queueAnalysis = (placeId: string, result: SearchResult, examples: string) => {
-    if (!searchResults[placeId]?.analysisStatus?.isAnalyzing && !searchResults[placeId]?.analysisStatus?.isQueued) {
+  const queueAnalysis = (
+    placeId: string,
+    result: SearchResult,
+    examples: string,
+  ) => {
+    if (
+      !searchResults[placeId]?.analysisStatus?.isAnalyzing &&
+      !searchResults[placeId]?.analysisStatus?.isQueued
+    ) {
       analysisQueue.current.push({ ...result, examples });
-      setSearchResults(prev => ({
+      setSearchResults((prev) => ({
         ...prev,
         [placeId]: {
           ...prev[placeId],
-          analysisStatus: { isAnalyzing: false, isQueued: true }
-        }
+          analysisStatus: { isAnalyzing: false, isQueued: true },
+        },
       }));
       processAnalysisQueue();
     }
@@ -286,17 +313,17 @@ function MapContent() {
 
   const handleSearch = async () => {
     if (!map || !placesLib) return;
-    
+
     setMarkers([]);
     setSearchResults({});
     setSelectedPlace(null);
 
     // Generate examples before search
     try {
-      const response = await fetch('/api/generate-examples', {
-        method: 'POST',
+      const response = await fetch("/api/generate-examples", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           searchTerm,
@@ -305,7 +332,7 @@ function MapContent() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate examples');
+        throw new Error("Failed to generate examples");
       }
 
       const { examples, searchQuery } = await response.json();
@@ -323,15 +350,15 @@ function MapContent() {
           const bounds = new google.maps.LatLngBounds();
           const newMarkers: MarkerData[] = [];
 
-          results.forEach(place => {
+          results.forEach((place) => {
             if (place.geometry?.location) {
               const markerData: MarkerData = {
                 id: place.place_id!,
                 position: place.geometry.location,
-                label: place.name?.[0] || '•',
-                color: "#ffffff"
+                label: place.name?.[0] || "•",
+                color: "#ffffff",
               };
-              
+
               newMarkers.push(markerData);
               bounds.extend(place.geometry.location);
 
@@ -339,32 +366,41 @@ function MapContent() {
                 service.getDetails(
                   {
                     placeId: place.place_id!,
-                    fields: ['name', 'formatted_address', 'rating', 'reviews']
+                    fields: ["name", "formatted_address", "rating", "reviews"],
                   },
                   async (placeDetails, detailStatus) => {
-                    if (detailStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails && place.geometry?.location) {
+                    if (
+                      detailStatus ===
+                        google.maps.places.PlacesServiceStatus.OK &&
+                      placeDetails &&
+                      place.geometry?.location
+                    ) {
                       const newResult: SearchResult = {
                         place_id: place.place_id!,
-                        name: place.name ?? '',
-                        address: place.formatted_address ?? '',
+                        name: place.name ?? "",
+                        address: place.formatted_address ?? "",
                         rating: place.rating,
-                        value: searchResults[place.place_id!]?.value || undefined,
+                        value:
+                          searchResults[place.place_id!]?.value || undefined,
                         reviews: placeDetails.reviews || [],
                         location: place.geometry.location,
                         analysisStatus: { isAnalyzing: false, isQueued: false },
-                        examples: examples
+                        examples: examples,
                       };
-                      
-                      setSearchResults(prev => ({
+
+                      setSearchResults((prev) => ({
                         ...prev,
-                        [place.place_id!]: newResult
+                        [place.place_id!]: newResult,
                       }));
 
-                      if (placeDetails.reviews && placeDetails.reviews.length > 0) {
+                      if (
+                        placeDetails.reviews &&
+                        placeDetails.reviews.length > 0
+                      ) {
                         queueAnalysis(place.place_id!, newResult, examples);
                       }
                     }
-                  }
+                  },
                 );
               }
             }
@@ -374,31 +410,31 @@ function MapContent() {
 
           if (!bounds.isEmpty()) {
             map.fitBounds(bounds);
-            if (results.length === 1 && map.getZoom() > 15) {
+            const currentZoom = map.getZoom();
+            if (results.length === 1 && currentZoom && currentZoom > 15) {
               map.setZoom(15);
             }
           }
-
-          const ratings = results
-            .map(place => place.rating)
-            .filter((rating): rating is number => rating !== undefined);
-          setRatingsData(ratings);
         }
       });
     } catch (error) {
-      console.error('Error in search:', error);
+      console.error("Error in search:", error);
     }
   };
 
   // Update marker color when value data is received
   useEffect(() => {
-    setMarkers(prev => prev.map(marker => {
-      const result = searchResults[marker.id];
-      return {
-        ...marker,
-        color: result?.value ? getRatingColor(result.value, true) : marker.color
-      };
-    }));
+    setMarkers((prev) =>
+      prev.map((marker) => {
+        const result = searchResults[marker.id];
+        return {
+          ...marker,
+          color: result?.value
+            ? getRatingColor(result.value, true)
+            : marker.color,
+        };
+      }),
+    );
   }, [searchResults]);
 
   // Add this new effect
@@ -412,7 +448,7 @@ function MapContent() {
   // Add this helper function for the histogram
   const generateHistogramData = (results: { [key: string]: SearchResult }) => {
     const bins = [0, 0, 0, 0, 0]; // For value 1-5
-    Object.values(results).forEach(result => {
+    Object.values(results).forEach((result) => {
       if (result.value) {
         const binIndex = Math.floor(result.value) - 1;
         if (binIndex >= 0 && binIndex < 5) {
@@ -424,20 +460,25 @@ function MapContent() {
   };
 
   // Create a custom overlay for the info window
-  const CustomOverlay = ({ position, content }: { 
+  const CustomOverlay = ({
+    position,
+    content,
+  }: {
     position: google.maps.LatLng;
     content: React.ReactNode;
   }) => {
-    const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+    const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(
+      null,
+    );
 
     useEffect(() => {
       if (!containerRef || !map) return;
 
       const overlay = new google.maps.OverlayView();
       overlay.onAdd = () => {
-        containerRef.style.position = 'absolute';
+        containerRef.style.position = "absolute";
       };
-      
+
       overlay.draw = () => {
         if (!containerRef) return;
         const projection = overlay.getProjection();
@@ -459,28 +500,28 @@ function MapContent() {
     }, [containerRef, map, position]);
 
     return (
-      <Box sx={{ position: 'absolute', left: "50%", top: "50%" }}>
-        <Paper 
+      <Box sx={{ position: "absolute", left: "50%", top: "50%" }}>
+        <Paper
           ref={setContainerRef}
-          elevation={3} 
-          sx={{ 
-            position: 'absolute',
-            transform: 'translate(-50%, calc(-100% - 40px))',
+          elevation={3}
+          sx={{
+            position: "absolute",
+            transform: "translate(-50%, calc(-100% - 40px))",
             zIndex: 1000,
           }}
         >
           {content}
           <Box
             sx={{
-              position: 'absolute',
+              position: "absolute",
               bottom: -10,
-              left: '50%',
-              transform: 'translateX(-50%)',
+              left: "50%",
+              transform: "translateX(-50%)",
               width: 0,
               height: 0,
-              borderLeft: '10px solid transparent',
-              borderRight: '10px solid transparent',
-              borderTop: '10px solid white',
+              borderLeft: "10px solid transparent",
+              borderRight: "10px solid transparent",
+              borderTop: "10px solid white",
             }}
           />
         </Paper>
@@ -500,9 +541,9 @@ function MapContent() {
         defaultCenter={defaultCenter}
         defaultZoom={defaultZoom}
         onCenterChanged={(evt: MapCameraChangedEvent) => {
-          const newCenter = { 
+          const newCenter = {
             lat: evt.detail.center.lat,
-            lng: evt.detail.center.lng 
+            lng: evt.detail.center.lng,
           };
           setCenter(newCenter);
           updateUrl(newCenter, zoom);
@@ -513,11 +554,11 @@ function MapContent() {
             updateUrl(center, evt.detail.zoom);
           }
         }}
-        gestureHandling={'greedy'}
+        gestureHandling={"greedy"}
         disableDefaultUI={true}
-        style={{ width: '100%', height: '100vh' }}
+        style={{ width: "100%", height: "100vh" }}
       >
-        {markers.map(marker => (
+        {markers.map((marker) => (
           <Marker
             key={marker.id}
             position={marker.position}
@@ -527,11 +568,11 @@ function MapContent() {
               fillColor: marker.color,
               fillOpacity: 0.75,
               strokeWeight: 1,
-              scale: 20
+              scale: 20,
             }}
             label={{
               text: marker.label,
-              color: 'black'
+              color: "black",
             }}
           />
         ))}
@@ -539,30 +580,28 @@ function MapContent() {
           <CustomOverlay
             position={searchResults[selectedPlace].location}
             content={
-              <InfoWindowContent
-                result={searchResults[selectedPlace]}
-              />
+              <InfoWindowContent result={searchResults[selectedPlace]} />
             }
           />
         )}
       </Map>
       <Box
         sx={{
-          position: 'fixed',
+          position: "fixed",
           bottom: 16,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: "50%",
+          transform: "translateX(-50%)",
           zIndex: 1000,
         }}
       >
         <Paper
           elevation={3}
           sx={{
-            p: '2px 4px',
-            display: 'flex',
-            alignItems: 'center',
+            p: "2px 4px",
+            display: "flex",
+            alignItems: "center",
             width: 400,
-            maxWidth: '90vw',
+            maxWidth: "90vw",
           }}
         >
           <InputBase
@@ -574,15 +613,20 @@ function MapContent() {
           <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
           <InputBase
             sx={{ ml: 1, flex: 1 }}
-            placeholder="Enter evaluation" 
+            placeholder="Enter evaluation"
             value={evaluation}
             onChange={(e) => setEvaluation(e.target.value)}
           />
-          <IconButton type="button" sx={{ p: '10px' }} aria-label="search" onClick={handleSearch}>
+          <IconButton
+            type="button"
+            sx={{ p: "10px" }}
+            aria-label="search"
+            onClick={handleSearch}
+          >
             <SearchIcon />
           </IconButton>
-          <IconButton 
-            sx={{ p: '10px' }}
+          <IconButton
+            sx={{ p: "10px" }}
             aria-label="menu"
             onClick={() => setDrawerOpen(true)}
           >
@@ -594,10 +638,10 @@ function MapContent() {
       {drawerOpen && (
         <Box
           sx={{
-            position: 'fixed',
+            position: "fixed",
             bottom: 80, // Position above the search box
             right: 16,
-            backgroundColor: 'white',
+            backgroundColor: "white",
             borderRadius: 2,
             boxShadow: 3,
             p: 2,
@@ -607,47 +651,48 @@ function MapContent() {
         >
           <Box
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               mb: 1,
             }}
           >
-            <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+            <Typography variant="h6" sx={{ fontSize: "1rem" }}>
               分布
             </Typography>
-            <IconButton
-              size="small"
-              onClick={() => setDrawerOpen(false)}
-            >
+            <IconButton size="small" onClick={() => setDrawerOpen(false)}>
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
           <Box
             sx={{
-              width: '100%',
+              width: "100%",
               height: 150, // Smaller height
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-around',
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "space-around",
             }}
           >
             {generateHistogramData(searchResults).map((count, index) => (
               <Box
                 key={index}
                 sx={{
-                  width: '18%',
+                  width: "18%",
                   height: `${(count / Math.max(...generateHistogramData(searchResults))) * 100}%`,
                   backgroundColor: getRatingColor(index + 1, true),
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
                   minHeight: 20,
                 }}
               >
-                <Typography sx={{ color: 'white', mb: 1, fontSize: '0.75rem' }}>{count}</Typography>
-                <Typography sx={{ mt: 1, fontSize: '0.75rem' }}>{index + 1}★</Typography>
+                <Typography sx={{ color: "white", mb: 1, fontSize: "0.75rem" }}>
+                  {count}
+                </Typography>
+                <Typography sx={{ mt: 1, fontSize: "0.75rem" }}>
+                  {index + 1}★
+                </Typography>
               </Box>
             ))}
           </Box>
@@ -659,7 +704,7 @@ function MapContent() {
 
 export default function Home() {
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
       <MapContent />
     </APIProvider>
   );
