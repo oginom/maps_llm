@@ -14,11 +14,11 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: `以下のレビューから混雑度を1から5の数字で評価してください（1: 常に混雑している、5: 常に空いている）
+          content: `以下のレビューから主な傾向を3行程度の箇条書きで要約してください（ポジティブな点とネガティブな点の両方を含める）
 
 必ず以下のJSON形式で返答してください。他の文章は含めないでください：
 {
-  "crowdedness": 数字(1-5)
+  "analysis": "・箇条書き1\\n・箇条書き2\\n・箇条書き3"
 }`
         },
         {
@@ -27,15 +27,15 @@ export async function POST(request: Request) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 100,
+      max_tokens: 300,
     });
 
     const result = JSON.parse(completion.choices[0].message.content);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error analyzing crowdedness:', error);
+    console.error('Error analyzing summary:', error);
     return NextResponse.json(
-      { error: 'Failed to analyze crowdedness' },
+      { error: 'Failed to analyze summary' },
       { status: 500 }
     );
   }

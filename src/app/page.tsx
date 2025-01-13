@@ -1,6 +1,6 @@
 'use client'
 
-import { APIProvider, Map, useMap, useMapsLibrary, MapCameraChangedEvent } from '@vis.gl/react-google-maps';
+import { AdvancedMarker, APIProvider, Map, MapCameraChangedEvent, Marker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Paper, InputBase, IconButton, Box, Divider, Typography, CircularProgress } from '@mui/material';
@@ -13,6 +13,7 @@ type SearchResult = {
   name: string;
   address: string;
   rating?: number;
+  crowdedness?: number;
   reviews?: google.maps.places.PlaceReview[];
   analysis?: string;
   location: google.maps.LatLng;
@@ -78,6 +79,13 @@ const InfoWindowContent = ({ result }: InfoWindowContentProps) => {
   );
 };
 
+type MarkerData = {
+  id: string;
+  position: google.maps.LatLng;
+  label: string;
+  color: string;
+};
+
 function MapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,7 +96,7 @@ function MapContent() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('カフェ');
   const [location, setLocation] = useState('電源がある');
-  const [markers, setMarkers] = useState<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
   const [ratingsData, setRatingsData] = useState<number[]>([]);
@@ -151,23 +159,22 @@ function MapContent() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const clearMarkers = () => {
-    markers.forEach(marker => marker.map = null);
-    setMarkers([]);
-  };
-
-  const getRatingColor = (rating: number = 0) => {
+  const getRatingColor = (rating: number = 3, isCrowdedness: boolean = false) => {
+    
     // Normalize rating between 0 and 1
     const normalizedRating = Math.min(Math.max(rating, 0), 5) / 5;
     
-    // RGB values for blue (low rating) and red (high rating)
+    // For crowdedness, invert the color scale (5 should be blue, 1 should be red)
+    const value = isCrowdedness ? 1 - normalizedRating : normalizedRating;
+    
+    // RGB values for blue (low rating/high crowdedness) and red (high rating/low crowdedness)
     const startColor = { r: 66, g: 133, b: 244 };  // #4285F4 (blue)
     const endColor = { r: 219, g: 68, b: 55 };     // #DB4437 (red)
     
     // Interpolate between the colors
-    const r = Math.round(startColor.r + (endColor.r - startColor.r) * normalizedRating);
-    const g = Math.round(startColor.g + (endColor.g - startColor.g) * normalizedRating);
-    const b = Math.round(startColor.b + (endColor.b - startColor.b) * normalizedRating);
+    const r = Math.round(startColor.r + (endColor.r - startColor.r) * value);
+    const g = Math.round(startColor.g + (endColor.g - startColor.g) * value);
+    const b = Math.round(startColor.b + (endColor.b - startColor.b) * value);
     
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   };
@@ -208,11 +215,33 @@ function MapContent() {
           }
 
           const data = await response.json();
+          
+          // Update marker color with new crowdedness data
+          //console.log("markers", markers);
+          //if (markers[placeId]) {
+          //  console.log("markers[placeId]", markers[placeId]);
+          //  const marker = markers[placeId];
+          //  marker.content = new markerLib.PinElement({
+          //    glyph: result.name[0] || '•',
+          //    background: getRatingColor(data.crowdedness, true)
+          //  }).element;
+          //}
+          setMarkers((prev) => prev.map((marker) => {
+            if (marker.id != placeId) {
+              return marker
+            }
+            return {
+              ...marker,
+              color: getRatingColor(data.crowdedness, true)
+            }
+          }))
+
           setSearchResults(prev => ({
             ...prev,
             [placeId]: {
               ...prev[placeId],
-              analysis: data.analysis,
+              analysis: "test",
+              crowdedness: data.crowdedness,
               analysisStatus: { isAnalyzing: false, isQueued: false }
             }
           }));
@@ -250,9 +279,9 @@ function MapContent() {
   };
 
   const handleSearch = () => {
-    if (!map || !placesLib || !markerLib) return;
+    if (!map || !placesLib) return;
     
-    clearMarkers();
+    setMarkers([]);
 
     const service = new placesLib.PlacesService(map);
     const combinedQuery = `${searchTerm} ${location}`.trim();
@@ -268,18 +297,19 @@ function MapContent() {
     service.textSearch(request, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
         const bounds = new google.maps.LatLngBounds();
-        const newMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
+        const newMarkers: MarkerData[] = [];
 
         results.forEach(place => {
           if (place.geometry?.location) {
-            const marker = new markerLib.AdvancedMarkerElement({
-              map,
+            const markerData: MarkerData = {
+              id: place.place_id!,
               position: place.geometry.location,
-              content: new markerLib.PinElement({
-                glyph: place.name?.[0] || '•',
-                background: getRatingColor(place.rating)
-              }).element
-            });
+              label: place.name?.[0] || '•',
+              color: "#ffffff"
+            };
+            
+            newMarkers.push(markerData);
+            bounds.extend(place.geometry.location);
 
             if (map) {
               service.getDetails(
@@ -294,6 +324,7 @@ function MapContent() {
                       name: place.name ?? '',
                       address: place.formatted_address ?? '',
                       rating: place.rating,
+                      crowdedness: searchResults[place.place_id!]?.crowdedness || 3,
                       reviews: placeDetails.reviews || [],
                       location: place.geometry.location,
                       analysisStatus: { isAnalyzing: false, isQueued: false }
@@ -307,18 +338,10 @@ function MapContent() {
                     if (placeDetails.reviews && placeDetails.reviews.length > 0) {
                       queueAnalysis(place.place_id!, newResult);
                     }
-
-                    // Add click listener to marker that uses the CustomOverlay
-                    marker.addListener('click', () => {
-                      handleMarkerClick(place.place_id!);
-                    });
                   }
                 }
               );
             }
-
-            newMarkers.push(marker);
-            bounds.extend(place.geometry.location);
           }
         });
 
@@ -331,23 +354,24 @@ function MapContent() {
           }
         }
 
-        // Collect ratings data
         const ratings = results
           .map(place => place.rating)
           .filter((rating): rating is number => rating !== undefined);
         setRatingsData(ratings);
-      } else {
-        console.log('No results found or error occurred');
       }
     });
   };
 
-  // Clean up markers when component unmounts
+  // Update marker color when crowdedness data is received
   useEffect(() => {
-    return () => {
-      clearMarkers();
-    };
-  }, []);
+    setMarkers(prev => prev.map(marker => {
+      const result = searchResults[marker.id];
+      return {
+        ...marker,
+        color: result?.crowdedness ? getRatingColor(result.crowdedness, true) : marker.color
+      };
+    }));
+  }, [searchResults]);
 
   // Add this new effect
   useEffect(() => {
@@ -358,12 +382,14 @@ function MapContent() {
   }, [map, placesLib, markerLib]);
 
   // Add this helper function for the histogram
-  const generateHistogramData = (ratings: number[]) => {
-    const bins = [0, 0, 0, 0, 0]; // For ratings 1-5
-    ratings.forEach(rating => {
-      const binIndex = Math.floor(rating) - 1;
-      if (binIndex >= 0 && binIndex < 5) {
-        bins[binIndex]++;
+  const generateHistogramData = (results: { [key: string]: SearchResult }) => {
+    const bins = [0, 0, 0, 0, 0]; // For crowdedness 1-5
+    Object.values(results).forEach(result => {
+      if (result.crowdedness) {
+        const binIndex = Math.floor(result.crowdedness) - 1;
+        if (binIndex >= 0 && binIndex < 5) {
+          bins[binIndex]++;
+        }
       }
     });
     return bins;
@@ -463,6 +489,24 @@ function MapContent() {
         disableDefaultUI={true}
         style={{ width: '100%', height: '100vh' }}
       >
+        {markers.map(marker => (
+          <Marker
+            key={marker.id}
+            position={marker.position}
+            onClick={() => handleMarkerClick(marker.id)}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: marker.color,
+              fillOpacity: 0.75,
+              strokeWeight: 1,
+              scale: 20
+            }}
+            label={{
+              text: marker.label,
+              color: 'black'
+            }}
+          />
+        ))}
         {selectedPlace && searchResults[selectedPlace] && (
           <CustomOverlay
             position={searchResults[selectedPlace].location}
@@ -560,13 +604,13 @@ function MapContent() {
               justifyContent: 'space-around',
             }}
           >
-            {generateHistogramData(ratingsData).map((count, index) => (
+            {generateHistogramData(searchResults).map((count, index) => (
               <Box
                 key={index}
                 sx={{
                   width: '18%',
-                  height: `${(count / Math.max(...generateHistogramData(ratingsData))) * 100}%`,
-                  backgroundColor: getRatingColor((index + 1) * 1.0),
+                  height: `${(count / Math.max(...generateHistogramData(searchResults))) * 100}%`,
+                  backgroundColor: getRatingColor(index + 1, true),
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-end',
