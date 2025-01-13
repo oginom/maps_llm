@@ -125,7 +125,6 @@ function MapContent() {
   const searchParams = useSearchParams();
   const map = useMap();
   const placesLib = useMapsLibrary("places");
-  const markerLib = useMapsLibrary("marker");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("カフェ");
@@ -164,6 +163,8 @@ function MapContent() {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
     const zoomParam = searchParams.get("zoom");
+    const searchTermParam = searchParams.get("searchTerm");
+    const evaluationParam = searchParams.get("evaluation");
 
     if (lat && lng) {
       setCenter({
@@ -173,6 +174,12 @@ function MapContent() {
     }
     if (zoomParam) {
       setZoom(parseInt(zoomParam));
+    }
+    if (searchTermParam) {
+      setSearchTerm(searchTermParam);
+    }
+    if (evaluationParam) {
+      setEvaluation(evaluationParam);
     }
   }, [searchParams]);
 
@@ -184,12 +191,16 @@ function MapContent() {
     params.set("lat", newCenter.lat.toString());
     params.set("lng", newCenter.lng.toString());
     params.set("zoom", newZoom.toString());
+    params.set("searchTerm", searchTerm);
+    params.set("evaluation", evaluation);
 
     const currentParams = new URLSearchParams(window.location.search);
     if (
       currentParams.get("lat") === params.get("lat") &&
       currentParams.get("lng") === params.get("lng") &&
-      currentParams.get("zoom") === params.get("zoom")
+      currentParams.get("zoom") === params.get("zoom") &&
+      currentParams.get("searchTerm") === params.get("searchTerm") &&
+      currentParams.get("evaluation") === params.get("evaluation")
     ) {
       return;
     }
@@ -222,81 +233,82 @@ function MapContent() {
 
     isProcessingQueue.current = true;
 
-    while (analysisQueue.current.length > 0) {
-      const result = analysisQueue.current[0];
-      const placeId = result.place_id;
+    try {
+      // Process up to 5 items simultaneously
+      while (analysisQueue.current.length > 0) {
+        const batch = analysisQueue.current.splice(0, 5);
+        await Promise.all(
+          batch.map(async (result) => {
+            const placeId = result.place_id;
 
-      if (result?.reviews && !result.analysis) {
-        try {
-          setSearchResults((prev) => ({
-            ...prev,
-            [placeId]: {
-              ...prev[placeId],
-              analysisStatus: { isAnalyzing: true, isQueued: false },
-            },
-          }));
+            if (result?.reviews && !result.analysis) {
+              try {
+                setSearchResults((prev) => ({
+                  ...prev,
+                  [placeId]: {
+                    ...prev[placeId],
+                    analysisStatus: { isAnalyzing: true, isQueued: false },
+                  },
+                }));
 
-          const reviewTexts = result.reviews
-            .slice(0, 20)
-            .map((r) => r.text)
-            .join("\n\n---\n\n");
-          const response = await fetch("/api/analyze-reviews", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              reviews: reviewTexts,
-              metric: evaluation,
-              examples: result.examples,
-              scale: "5",
-            }),
-          });
+                const reviewTexts = result.reviews
+                  .slice(0, 20)
+                  .map((r) => r.text)
+                  .join("\n\n---\n\n");
+                const response = await fetch("/api/analyze-reviews", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    reviews: reviewTexts,
+                    metric: evaluation,
+                    examples: result.examples,
+                    scale: "5",
+                  }),
+                });
 
-          if (!response.ok) {
-            throw new Error("Failed to analyze reviews");
-          }
+                if (!response.ok) {
+                  throw new Error("Failed to analyze reviews");
+                }
 
-          const data = await response.json();
+                const data = await response.json();
 
-          setMarkers((prev) =>
-            prev.map((marker) => {
-              if (marker.id != placeId) {
-                return marker;
+                setMarkers((prev) =>
+                  prev.map((marker) =>
+                    marker.id === placeId
+                      ? { ...marker, color: getRatingColor(data.value, true) }
+                      : marker,
+                  ),
+                );
+
+                setSearchResults((prev) => ({
+                  ...prev,
+                  [placeId]: {
+                    ...prev[placeId],
+                    analysis: data.related_review,
+                    value: data.value,
+                    analysisStatus: { isAnalyzing: false, isQueued: false },
+                  },
+                }));
+              } catch (error) {
+                console.error(error);
+                setSearchResults((prev) => ({
+                  ...prev,
+                  [placeId]: {
+                    ...prev[placeId],
+                    analysis: "レビューの分析中にエラーが発生しました。",
+                    analysisStatus: { isAnalyzing: false, isQueued: false },
+                  },
+                }));
               }
-              return {
-                ...marker,
-                color: getRatingColor(data.value, true),
-              };
-            }),
-          );
-
-          setSearchResults((prev) => ({
-            ...prev,
-            [placeId]: {
-              ...prev[placeId],
-              analysis: data.related_review,
-              value: data.value,
-              analysisStatus: { isAnalyzing: false, isQueued: false },
-            },
-          }));
-        } catch (error) {
-          console.error(error);
-          setSearchResults((prev) => ({
-            ...prev,
-            [placeId]: {
-              ...prev[placeId],
-              analysis: "レビューの分析中にエラーが発生しました。",
-              analysisStatus: { isAnalyzing: false, isQueued: false },
-            },
-          }));
-        }
+            }
+          }),
+        );
       }
-
-      analysisQueue.current.shift();
+    } finally {
+      isProcessingQueue.current = false;
     }
-
-    isProcessingQueue.current = false;
   };
 
   // Replace analyzeReviews with queueAnalysis
@@ -449,14 +461,6 @@ function MapContent() {
     );
   }, [searchResults]);
 
-  // Add this new effect
-  useEffect(() => {
-    // Wait for map and libraries to be loaded
-    if (map && placesLib && markerLib) {
-      handleSearch();
-    }
-  }, [map, placesLib, markerLib]);
-
   // Add this helper function for the histogram
   const generateHistogramData = (results: { [key: string]: SearchResult }) => {
     const bins = [0, 0, 0, 0, 0]; // For value 1-5
@@ -546,6 +550,13 @@ function MapContent() {
     setSelectedPlace(placeId);
   };
 
+  // Add this new function inside MapContent
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      handleSearch();
+    }
+  };
+
   return (
     <>
       <Map
@@ -621,19 +632,55 @@ function MapContent() {
             maxWidth: "90vw",
           }}
         >
-          <InputBase
-            sx={{ ml: 1, flex: 1 }}
-            placeholder="Enter search term"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <Box
+            sx={{
+              flexDirection: "column",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <Typography sx={{ ml: 1, minWidth: "80px" }}>
+                検索ワード
+              </Typography>
+              <InputBase
+                sx={{
+                  ml: 1,
+                  flex: 1,
+                  border: "1px solid #ddd",
+                  borderRadius: 1,
+                  px: 1,
+                  py: 0.5,
+                  "&:hover": {
+                    border: "1px solid #aaa",
+                  },
+                }}
+                placeholder="Enter search term"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyPress}
+              />
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography sx={{ ml: 1, minWidth: "80px" }}>条件</Typography>
+              <InputBase
+                sx={{
+                  ml: 1,
+                  flex: 1,
+                  border: "1px solid #ddd",
+                  borderRadius: 1,
+                  px: 1,
+                  py: 0.5,
+                  "&:hover": {
+                    border: "1px solid #aaa",
+                  },
+                }}
+                placeholder="Enter evaluation"
+                value={evaluation}
+                onChange={(e) => setEvaluation(e.target.value)}
+                onKeyDown={handleKeyPress}
+              />
+            </Box>
+          </Box>
           <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
-          <InputBase
-            sx={{ ml: 1, flex: 1 }}
-            placeholder="Enter evaluation"
-            value={evaluation}
-            onChange={(e) => setEvaluation(e.target.value)}
-          />
           <IconButton
             type="button"
             sx={{ p: "10px" }}
@@ -656,7 +703,7 @@ function MapContent() {
         <Box
           sx={{
             position: "fixed",
-            bottom: 80, // Position above the search box
+            bottom: 120, // Position above the search box
             right: 16,
             backgroundColor: "white",
             borderRadius: 2,
@@ -704,11 +751,8 @@ function MapContent() {
                   minHeight: 20,
                 }}
               >
-                <Typography sx={{ color: "white", mb: 1, fontSize: "0.75rem" }}>
+                <Typography sx={{ color: "black", mb: 1, fontSize: "0.75rem" }}>
                   {count}
-                </Typography>
-                <Typography sx={{ mt: 1, fontSize: "0.75rem" }}>
-                  {index + 1}★
                 </Typography>
               </Box>
             ))}
