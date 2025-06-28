@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
 # Configuration
 PROJECT_ID=$PROJECT_ID
