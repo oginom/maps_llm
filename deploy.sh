@@ -5,6 +5,7 @@ set -eu
 PROJECT_ID=$PROJECT_ID
 REGION="asia-northeast1"
 SERVICE_NAME="mapsllm"
+REPOSITORY_NAME="docker"
 
 # Load environment variables from .env file
 if [ -f .env ]; then
@@ -15,14 +16,14 @@ else
 fi
 
 # Build the container with platform specification
-docker build --platform linux/amd64 -t gcr.io/$PROJECT_ID/$SERVICE_NAME .
+docker build --platform linux/amd64 -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY_NAME/$SERVICE_NAME .
 
-# Push to Google Container Registry
-docker push gcr.io/$PROJECT_ID/$SERVICE_NAME
+# Push to Artifact Registry
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY_NAME/$SERVICE_NAME
 
 # Deploy to Cloud Run
 gcloud run deploy $SERVICE_NAME \
-  --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+  --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY_NAME/$SERVICE_NAME \
   --platform managed \
   --region $REGION \
   --project $PROJECT_ID \
