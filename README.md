@@ -1,9 +1,9 @@
 # maps_llm
 
-## what
+## What is it?
 
-Maps LLM is a customized Google Maps application with LLM function.
+Maps LLM is a customized Google Maps application enhanced with AI capabilities.
 
-- User can search locations with user defined evaluation, then visualize them by pin color.
+- Users can search for locations based on custom evaluation criteria, and visualize the results using colored map pins.
 
 ![maps_llm_1](docs/img/maps_llm_1.png)
