@@ -9,7 +9,8 @@ export async function POST(request: Request) {
   const { reviews, metric, scale, examples } = await request.json();
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.6-luna",
+      reasoning_effort: "none",
       messages: [
         {
           role: "system",
@@ -27,11 +28,52 @@ export async function POST(request: Request) {
           content: reviews,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 10000,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "review_analysis",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              value: { type: "integer" },
+              related_review: { type: "string" },
+            },
+            required: ["value", "related_review"],
+            additionalProperties: false,
+          },
+        },
+      },
+      max_completion_tokens: 10000,
     });
 
-    const result = JSON.parse(completion.choices[0].message.content ?? "{}");
+    const content = completion.choices[0]?.message.content;
+    if (!content) {
+      console.error(
+        `Error analyzing ${metric}: empty response content`,
+        JSON.stringify(completion),
+      );
+      return NextResponse.json(
+        { error: `Failed to analyze ${metric}: empty response from model` },
+        { status: 500 },
+      );
+    }
+
+    let result: { value: number; related_review: string };
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error(
+        `Error analyzing ${metric}: failed to parse response content`,
+        parseError,
+        content,
+      );
+      return NextResponse.json(
+        { error: `Failed to analyze ${metric}: invalid JSON from model` },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     console.error(`Error analyzing ${metric}:`, error);

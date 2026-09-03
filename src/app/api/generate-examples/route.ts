@@ -10,7 +10,8 @@ export async function POST(request: Request) {
     const { searchTerm, evaluation } = await request.json();
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.6-luna",
+      reasoning_effort: "none",
       messages: [
         {
           role: "system",
@@ -34,11 +35,52 @@ export async function POST(request: Request) {
           content: `searchTerm="${searchTerm}", evaluation="${evaluation}"`,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 100,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "evaluation_examples",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              examples: { type: "string" },
+              searchQuery: { type: "string" },
+            },
+            required: ["examples", "searchQuery"],
+            additionalProperties: false,
+          },
+        },
+      },
+      max_completion_tokens: 200,
     });
 
-    const response = JSON.parse(completion.choices[0].message.content || "{}");
+    const content = completion.choices[0]?.message.content;
+    if (!content) {
+      console.error(
+        "Error generating examples: empty response content",
+        JSON.stringify(completion),
+      );
+      return NextResponse.json(
+        { error: "Failed to generate examples: empty response from model" },
+        { status: 500 },
+      );
+    }
+
+    let response: { examples: string; searchQuery: string };
+    try {
+      response = JSON.parse(content);
+    } catch (parseError) {
+      console.error(
+        "Error generating examples: failed to parse response content",
+        parseError,
+        content,
+      );
+      return NextResponse.json(
+        { error: "Failed to generate examples: invalid JSON from model" },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error generating examples:", error);
