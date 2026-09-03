@@ -3,7 +3,7 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
