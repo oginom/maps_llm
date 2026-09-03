@@ -71,11 +71,6 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - `deploy.sh` builds the image for `linux/amd64`, pushes it, and runs `gcloud run deploy`. It reads `PROJECT_ID` and the environment variables above from `.env`.
 - `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `OPENAI_API_KEY`.
 
-### GitHub Actions for Claude
-- `.github/workflows/claude.yml`: Runs Claude Code when `@claude` is mentioned in an issue, issue comment, PR review, or PR review comment.
-- `.github/workflows/claude-code-review.yml`: Runs an automated Claude code review on every PR open and synchronize.
-- Both use `anthropics/claude-code-action@beta` with the `ANTHROPIC_API_KEY` secret.
-
 ### Key Features
 - Real-time geolocation detection (used as the initial map center when no `lat`/`lng` is in the URL)
 - Batch processing of review analysis to avoid API rate limits
