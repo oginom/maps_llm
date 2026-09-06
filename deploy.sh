@@ -28,6 +28,8 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --project $PROJECT_ID \
   --port 3000 \
+  --max 1 \
+  --max-instances 1 \
   --allow-unauthenticated \
   --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" \
   --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_ID=${NEXT_PUBLIC_GOOGLE_MAPS_ID}" \

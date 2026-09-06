@@ -70,6 +70,7 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - Docker containerization with multi-stage build, using the standalone Next.js output
 - Target: Google Cloud Run, service `mapsllm`, region `asia-northeast1`, image pushed to Artifact Registry (repository `docker`)
 - `deploy.sh` builds the image for `linux/amd64`, pushes it, and runs `gcloud run deploy`. It reads `PROJECT_ID` and the environment variables above from `.env`.
+- `deploy.sh` sets both the service-wide and per-revision maximum instance counts to 1 for personal use. This limits scaling, not monthly spending; persistent application budget enforcement is still planned.
 - `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `OPENAI_API_KEY`.
 
 ### Key Features
