@@ -17,7 +17,9 @@
 
 技術選定は実装規模と UI 要件からの判断。日本の実店舗での精度・速度・請求額は未測定であり、後述の Phase 0 で検証する。
 
-## 2. 現状の実装から分かったこと
+## 2. 初回調査時の実装から分かったこと（2026-09-07）
+
+以下は変更前の課題一覧。2026-09-09 には口コミ取得を初期 5 店・最大 10 店に絞り、旧検索結果の破棄と 3 件のバッチテストを追加した。残作業の現在地は [引き継ぎ](handoff.md) を参照。
 
 調査対象: `src/app/page.tsx`、2 つの API route、`package.json`、`CLAUDE.md`、Docker/デプロイ設定、README の既存スクリーンショット。実ブラウザでの再現確認はまだ行っていない。
 
@@ -35,7 +37,7 @@
 | 評価 API は短い JSON に対して出力上限 10,000 tokens                              | スキーマに合わせて小さくし、使用量を記録する                                                                                                               |
 | 自動テストなし。main への push で Cloud Run へ自動デプロイ                       | 移行用フラグとモック検証を用意し、段階的にリリースする                                                                                                     |
 
-`reviews.slice(0, 50)` は 50 件を取得する指定ではない。Places API が返す口コミは最大 5 件であり、既存の `CLAUDE.md` の説明も修正対象。[Place の仕様](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
+`reviews.slice(0, 50)` は 50 件を取得する指定ではない。Places API が返す口コミは最大 5 件。`CLAUDE.md` の説明は 2026-09-09 に訂正した。[Place の仕様](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
 
 ## 3. 取得できるデータと、採点の前提
 
@@ -350,7 +352,7 @@ Phase 1 の UI 作業は Phase 0 と並行可能。Phase 2 の画面・ツール
 
 ## 10. 検証とリリース条件
 
-現在は計画書のみを変更するためアプリのテストは実行しない。実装時に追加する検証は以下に絞る。
+初回の計画書作成時はアプリのテストを実行していない。その後の取得件数制限ではバッチテスト 3 件・型チェック・lint・本番ビルドを実施した。実ブラウザ・実 API のスモーク検証は未実施。今後の機能実装では以下を追加する。
 
 - 単体: 条件抽出スキーマ、必須条件と希望条件、unknown の扱い、根拠 ID の実在、検索の版、費用予約の競合と精算。
 - 統合: Places / Routes / LLM をモックし、ツールの選択、イベント順序、429 / timeout / 部分失敗 / 不正入力を検証。

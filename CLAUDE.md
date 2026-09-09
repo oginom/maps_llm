@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Read `docs/handoff.md` first when resuming work. It records the user's decisions, completed changes, remaining work, and validation limits; `docs/README.md` is the document index.
+
 ## Agent Operating Rules
 
 - You (the main session) are responsible for planning, decision-making and judgment, organizing tasks, instructing and managing sub-agents, and reviewing their output.
