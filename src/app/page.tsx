@@ -18,10 +18,13 @@ import {
   Divider,
   Typography,
   CircularProgress,
+  Button,
+  Alert,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import { PlaceDetailBatch } from "@/lib/place-detail-batch";
 
 type SearchResult = {
   place_id: string;
@@ -31,6 +34,7 @@ type SearchResult = {
   value?: number;
   reviews?: google.maps.places.PlaceReview[];
   analysis?: string;
+  detailsStatus: "pending" | "loading" | "loaded" | "error";
   location: google.maps.LatLng;
   analysisStatus: {
     isAnalyzing: boolean;
@@ -88,7 +92,15 @@ const InfoWindowContent = ({ result, onClose }: InfoWindowContentProps) => {
           Google マップで開く
         </a>
       </Typography>
-      {result.reviews?.length ? (
+      {result.detailsStatus !== "loaded" ? (
+        <Typography variant="body2">
+          {result.detailsStatus === "loading"
+            ? "口コミを取得中..."
+            : result.detailsStatus === "error"
+              ? "口コミを取得できませんでした。時間をおいて再検索してください。"
+              : "この候補の口コミは未取得です。検索結果の先頭5件を評価し、追加で最大10件まで評価できます。"}
+        </Typography>
+      ) : result.reviews?.length ? (
         <>
           <Typography variant="body2" sx={{ fontWeight: "bold" }}>
             レビュー例:
@@ -124,6 +136,13 @@ type MarkerData = {
   color: string;
 };
 
+type SearchSession = {
+  controller: AbortController;
+  batch: PlaceDetailBatch<SearchResult>;
+  service: google.maps.places.PlacesService;
+  evaluation: string;
+};
+
 function MapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,8 +156,14 @@ function MapContent() {
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
-  const analysisQueue = useRef<SearchResult[]>([]);
-  const isProcessingQueue = useRef(false);
+  const activeSession = useRef<SearchSession | null>(null);
+  const searchController = useRef<AbortController | null>(null);
+  const searchInProgress = useRef(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [requestedDetails, setRequestedDetails] = useState(0);
+  const [remainingDetails, setRemainingDetails] = useState(0);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<{
     [key: string]: SearchResult;
   }>({});
@@ -231,169 +256,38 @@ function MapContent() {
     return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
   };
 
-  // Add this new function to process the queue
-  const processAnalysisQueue = async () => {
-    if (isProcessingQueue.current || analysisQueue.current.length === 0) return;
+  useEffect(() => () => searchController.current?.abort(), []);
 
-    isProcessingQueue.current = true;
+  const loadNextDetails = async (session: SearchSession) => {
+    if (activeSession.current !== session || session.controller.signal.aborted)
+      return;
+    const batch = session.batch.take();
+    if (batch.length === 0) return;
+    const isCurrent = () =>
+      activeSession.current === session && !session.controller.signal.aborted;
+    setIsLoadingDetails(true);
+    setRequestedDetails(session.batch.requestedCount);
+    setRemainingDetails(session.batch.remainingCount);
 
-    try {
-      // Process up to 5 items simultaneously
-      while (analysisQueue.current.length > 0) {
-        const batch = analysisQueue.current.splice(0, 5);
-        await Promise.all(
-          batch.map(async (result) => {
-            const placeId = result.place_id;
-
-            if (result?.reviews && !result.analysis) {
-              try {
-                setSearchResults((prev) => ({
-                  ...prev,
-                  [placeId]: {
-                    ...prev[placeId],
-                    analysisStatus: { isAnalyzing: true, isQueued: false },
-                  },
-                }));
-
-                const reviewTexts = result.reviews
-                  .slice(0, 50)
-                  .map((r) => r.text)
-                  .join("\n\n---\n\n");
-                const response = await fetch("/api/analyze-reviews", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    reviews: reviewTexts,
-                    metric: evaluation,
-                    examples: result.examples,
-                    scale: "5",
-                  }),
-                });
-
-                if (!response.ok) {
-                  throw new Error("Failed to analyze reviews");
-                }
-
-                const data = await response.json();
-
-                setMarkers((prev) =>
-                  prev.map((marker) =>
-                    marker.id === placeId
-                      ? { ...marker, color: getRatingColor(data.value, true) }
-                      : marker,
-                  ),
-                );
-
-                setSearchResults((prev) => ({
-                  ...prev,
-                  [placeId]: {
-                    ...prev[placeId],
-                    analysis: data.related_review,
-                    value: data.value,
-                    analysisStatus: { isAnalyzing: false, isQueued: false },
-                  },
-                }));
-              } catch (error) {
-                console.error(error);
-                setSearchResults((prev) => ({
-                  ...prev,
-                  [placeId]: {
-                    ...prev[placeId],
-                    analysis: "レビューの分析中にエラーが発生しました。",
-                    analysisStatus: { isAnalyzing: false, isQueued: false },
-                  },
-                }));
-              }
-            }
-          }),
-        );
-      }
-    } finally {
-      isProcessingQueue.current = false;
-    }
-  };
-
-  // Replace analyzeReviews with queueAnalysis
-  const queueAnalysis = (
-    placeId: string,
-    result: SearchResult,
-    examples: string,
-  ) => {
-    if (
-      !searchResults[placeId]?.analysisStatus?.isAnalyzing &&
-      !searchResults[placeId]?.analysisStatus?.isQueued
-    ) {
-      analysisQueue.current.push({ ...result, examples });
-      setSearchResults((prev) => ({
-        ...prev,
-        [placeId]: {
-          ...prev[placeId],
-          analysisStatus: { isAnalyzing: false, isQueued: true },
-        },
-      }));
-      processAnalysisQueue();
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!map || !placesLib) return;
-
-    setMarkers([]);
-    setSearchResults({});
-    setSelectedPlace(null);
-
-    // Generate examples before search
-    try {
-      const response = await fetch("/api/generate-examples", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          searchTerm,
-          evaluation,
-        }),
+    const updateResult = (placeId: string, update: Partial<SearchResult>) => {
+      if (!isCurrent()) return;
+      setSearchResults((previous) => {
+        if (!isCurrent() || !previous[placeId]) return previous;
+        return { ...previous, [placeId]: { ...previous[placeId], ...update } };
       });
+    };
 
-      if (!response.ok) {
-        throw new Error("Failed to generate examples");
-      }
-
-      const { examples, searchQuery } = await response.json();
-
-      console.log(`searchQuery: ${searchQuery}`);
-
-      const service = new placesLib.PlacesService(map);
-
-      const bounds = map.getBounds();
-      const request: google.maps.places.TextSearchRequest = {
-        query: searchQuery,
-        bounds: bounds || undefined,
-      };
-
-      service.textSearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const bounds = new google.maps.LatLngBounds();
-          const newMarkers: MarkerData[] = [];
-
-          results.forEach((place) => {
-            if (place.geometry?.location) {
-              const markerData: MarkerData = {
-                id: place.place_id!,
-                position: place.geometry.location,
-                label: place.name?.[0] || "•",
-                color: "#ffffff",
-              };
-
-              newMarkers.push(markerData);
-              bounds.extend(place.geometry.location);
-
-              if (map) {
-                service.getDetails(
+    try {
+      await Promise.all(
+        batch.map(async (result) => {
+          const placeId = result.place_id;
+          updateResult(placeId, { detailsStatus: "loading" });
+          try {
+            const details = await new Promise<google.maps.places.PlaceResult>(
+              (resolve, reject) => {
+                session.service.getDetails(
                   {
-                    placeId: place.place_id!,
+                    placeId,
                     fields: [
                       "name",
                       "formatted_address",
@@ -402,58 +296,212 @@ function MapContent() {
                       "url",
                     ],
                   },
-                  async (placeDetails, detailStatus) => {
+                  (place, status) => {
                     if (
-                      detailStatus ===
-                        google.maps.places.PlacesServiceStatus.OK &&
-                      placeDetails &&
-                      place.geometry?.location
-                    ) {
-                      const newResult: SearchResult = {
-                        place_id: place.place_id!,
-                        name: place.name ?? "",
-                        address: place.formatted_address ?? "",
-                        rating: place.rating,
-                        value:
-                          searchResults[place.place_id!]?.value || undefined,
-                        reviews: placeDetails.reviews || [],
-                        location: place.geometry.location,
-                        analysisStatus: { isAnalyzing: false, isQueued: false },
-                        examples: examples,
-                        url: placeDetails.url,
-                      };
-
-                      setSearchResults((prev) => ({
-                        ...prev,
-                        [place.place_id!]: newResult,
-                      }));
-
-                      if (
-                        placeDetails.reviews &&
-                        placeDetails.reviews.length > 0
-                      ) {
-                        queueAnalysis(place.place_id!, newResult, examples);
-                      }
-                    }
+                      status === google.maps.places.PlacesServiceStatus.OK &&
+                      place
+                    )
+                      resolve(place);
+                    else
+                      reject(
+                        new Error(
+                          status ===
+                          google.maps.places.PlacesServiceStatus
+                            .OVER_QUERY_LIMIT
+                            ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
+                            : "一部の店舗の口コミを取得できませんでした。",
+                        ),
+                      );
                   },
                 );
-              }
-            }
-          });
+              },
+            );
+            if (!isCurrent()) return;
+            const reviews = details.reviews || [];
+            updateResult(placeId, {
+              detailsStatus: "loaded",
+              reviews,
+              url: details.url,
+              name: details.name || result.name,
+              address: details.formatted_address || result.address,
+              rating: details.rating ?? result.rating,
+              analysisStatus: {
+                isAnalyzing: reviews.length > 0,
+                isQueued: false,
+              },
+            });
+            if (reviews.length === 0) return;
 
-          setMarkers(newMarkers);
-
-          if (!bounds.isEmpty()) {
-            map.fitBounds(bounds);
-            const currentZoom = map.getZoom();
-            if (results.length === 1 && currentZoom && currentZoom > 15) {
-              map.setZoom(15);
+            try {
+              const response = await fetch("/api/analyze-reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: session.controller.signal,
+                body: JSON.stringify({
+                  reviews: reviews
+                    .slice(0, 50)
+                    .map((review) => review.text)
+                    .join("\n\n---\n\n"),
+                  metric: session.evaluation,
+                  examples: result.examples,
+                  scale: "5",
+                }),
+              });
+              if (!response.ok)
+                throw new Error(
+                  response.status === 429
+                    ? "レビュー分析の利用上限に達しました。"
+                    : "レビューの分析中にエラーが発生しました。",
+                );
+              const data = await response.json();
+              updateResult(placeId, {
+                analysis: data.related_review,
+                value: data.value,
+                analysisStatus: { isAnalyzing: false, isQueued: false },
+              });
+            } catch (error) {
+              if (!isCurrent()) return;
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : "レビューの分析中にエラーが発生しました。";
+              updateResult(placeId, {
+                analysis: message,
+                analysisStatus: { isAnalyzing: false, isQueued: false },
+              });
+              setSearchError(message);
             }
+          } catch (error) {
+            if (!isCurrent()) return;
+            updateResult(placeId, { detailsStatus: "error" });
+            setSearchError(
+              error instanceof Error
+                ? error.message
+                : "口コミを取得できませんでした。",
+            );
           }
-        }
+        }),
+      );
+    } finally {
+      session.batch.finish();
+      if (isCurrent()) setIsLoadingDetails(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!map || !placesLib || searchInProgress.current) return;
+    searchInProgress.current = true;
+    searchController.current?.abort();
+    const controller = new AbortController();
+    searchController.current = controller;
+    activeSession.current = null;
+    const isCurrent = () =>
+      searchController.current === controller && !controller.signal.aborted;
+    setIsSearching(true);
+    setIsLoadingDetails(false);
+    setRequestedDetails(0);
+    setRemainingDetails(0);
+    setSearchError(null);
+    setMarkers([]);
+    setSearchResults({});
+    setSelectedPlace(null);
+
+    try {
+      const response = await fetch("/api/generate-examples", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ searchTerm, evaluation }),
       });
+      if (!response.ok)
+        throw new Error(
+          response.status === 429
+            ? "検索の利用上限に達しました。"
+            : "検索の準備に失敗しました。時間をおいて再検索してください。",
+        );
+      const { examples, searchQuery } = await response.json();
+      if (!isCurrent()) return;
+      const service = new placesLib.PlacesService(map);
+      const places = await new Promise<google.maps.places.PlaceResult[]>(
+        (resolve, reject) => {
+          service.textSearch(
+            { query: searchQuery, bounds: map.getBounds() || undefined },
+            (results, status) => {
+              if (
+                status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS
+              )
+                resolve([]);
+              else if (
+                status === google.maps.places.PlacesServiceStatus.OK &&
+                results
+              )
+                resolve(results);
+              else
+                reject(
+                  new Error(
+                    status ===
+                    google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT
+                      ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
+                      : "場所の検索に失敗しました。",
+                  ),
+                );
+            },
+          );
+        },
+      );
+      if (!isCurrent()) return;
+      const results: Record<string, SearchResult> = {};
+      const bounds = new google.maps.LatLngBounds();
+      for (const place of places) {
+        if (!place.place_id || !place.geometry?.location) continue;
+        results[place.place_id] = {
+          place_id: place.place_id,
+          name: place.name || "",
+          address: place.formatted_address || "",
+          rating: place.rating,
+          location: place.geometry.location,
+          detailsStatus: "pending",
+          analysisStatus: { isAnalyzing: false, isQueued: false },
+          examples,
+        };
+        bounds.extend(place.geometry.location);
+      }
+      const candidates = Object.values(results);
+      setSearchResults(results);
+      setMarkers(
+        candidates.map((place) => ({
+          id: place.place_id,
+          position: place.location,
+          label: place.name[0] || "•",
+          color: "#ffffff",
+        })),
+      );
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds);
+        const currentZoom = map.getZoom();
+        if (candidates.length === 1 && currentZoom && currentZoom > 15)
+          map.setZoom(15);
+      }
+      const session: SearchSession = {
+        controller,
+        batch: new PlaceDetailBatch(candidates),
+        service,
+        evaluation,
+      };
+      activeSession.current = session;
+      if (candidates.length === 0)
+        setSearchError("条件に合う場所が見つかりませんでした。");
+      void loadNextDetails(session);
     } catch (error) {
-      console.error("Error in search:", error);
+      if (isCurrent())
+        setSearchError(
+          error instanceof Error ? error.message : "検索に失敗しました。",
+        );
+    } finally {
+      if (isCurrent()) {
+        searchInProgress.current = false;
+        setIsSearching(false);
+      }
     }
   };
 
@@ -633,6 +681,32 @@ function MapContent() {
           zIndex: 1000,
         }}
       >
+        {searchError && (
+          <Alert severity="warning" sx={{ mb: 1, maxWidth: "90vw" }}>
+            {searchError}
+          </Alert>
+        )}
+        {(isSearching || requestedDetails > 0) && (
+          <Paper sx={{ p: 1, mb: 1, maxWidth: "90vw" }} role="status">
+            <Typography variant="body2">
+              {isSearching
+                ? "検索中..."
+                : `口コミ取得対象 ${requestedDetails} 件 / 最大10件${isLoadingDetails ? "・評価中..." : ""}`}
+            </Typography>
+            {remainingDetails > 0 && (
+              <Button
+                size="small"
+                disabled={isSearching || isLoadingDetails}
+                onClick={() => {
+                  if (activeSession.current)
+                    void loadNextDetails(activeSession.current);
+                }}
+              >
+                次の{Math.min(5, remainingDetails)}件を評価
+              </Button>
+            )}
+          </Paper>
+        )}
         <Paper
           elevation={3}
           sx={{
@@ -696,6 +770,7 @@ function MapContent() {
             type="button"
             sx={{ p: "10px" }}
             aria-label="search"
+            disabled={isSearching || !map || !placesLib}
             onClick={handleSearch}
           >
             <SearchIcon />

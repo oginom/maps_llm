@@ -23,7 +23,7 @@ Maps LLM is a Next.js application that provides a customized Google Maps interfa
 
 Node version is pinned to 24.20.0 via `.mise.toml` for local development. The Docker image uses `node:24-slim`. Node 22 or newer is required by the openai SDK 7.x.
 
-There are no automated tests in this repository.
+Run the request-batch tests with `node --test src/lib/place-detail-batch.test.mjs` (Node 24 supports the TypeScript helper directly).
 
 ## Architecture
 
@@ -49,14 +49,14 @@ There are no automated tests in this repository.
 1. User enters search term (e.g., "カフェ") and evaluation criteria (e.g., "電源がある")
 2. `/api/generate-examples` creates evaluation scale examples and an optimized search query
 3. Google Places API text search runs with the generated query, bounded to the current map viewport
-4. For each location, up to 50 reviews are joined and sent to `/api/analyze-reviews`, which assigns a 1-5 rating and extracts the most relevant review excerpt
+4. Fetch details for the first 5 places; the user can request up to 5 more (10 attempts per search). Join the returned reviews (Places returns at most 5) and send them to `/api/analyze-reviews`, which assigns a 1-5 rating and extracts the most relevant review excerpt
 5. Map markers are color-coded based on the LLM evaluation scores
 
 The LLM prompts are written in Japanese and expect Japanese input.
 
 ### State Management
 - Uses React hooks for state management (no external state library)
-- Real-time analysis queue processing with concurrent batch handling (max 5 simultaneous requests)
+- Search-scoped detail and analysis batches (5 places at a time, max 10 attempts). New searches abort old analysis requests and ignore old Places callbacks.
 - URL state persistence for map position (`lat`, `lng`, `zoom`) and search parameters (`searchTerm`, `evaluation`)
 
 ### Environment Variables Required
@@ -71,6 +71,7 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - Target: Google Cloud Run, service `mapsllm`, region `asia-northeast1`, image pushed to Artifact Registry (repository `docker`)
 - `deploy.sh` builds the image for `linux/amd64`, pushes it, and runs `gcloud run deploy`. It reads `PROJECT_ID` and the environment variables above from `.env`.
 - `deploy.sh` sets both the service-wide and per-revision maximum instance counts to 1 for personal use. This limits scaling, not monthly spending; persistent application budget enforcement is still planned.
+- Cloud Run automatic budget shutdown is intentionally not configured. Google API daily quotas and the scoped reapplication script are documented in `docs/api-limits.md`; current Places Legacy uses a shared 40 requests/day quota.
 - `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `OPENAI_API_KEY`.
 
 ### Key Features

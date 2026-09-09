@@ -1,5 +1,7 @@
 # AI Map の費用・設定確認
 
+これは 2026-09-07 の調査記録。後続で変更した OpenAI の月 $10 の強制上限、Google の日次割当、Cloud Run の自動停止を導入しない方針は [API 利用制限](api-limits.md) を参照。
+
 確認日: 2026-09-07（JST）。対象は Google Cloud `ogidata` の `mapsllm` と OpenAI の `Maps LLM` プロジェクト。管理画面、Cloud Run API、Monitoring API、Artifact Registry CLI を読み取り、ユーザーの依頼に基づき Cloud Run の最大インスタンス数のみ変更した。API キー、予算、自動チャージ、データ共有、API の有効化は変更していない。
 
 ## 費用の現状
