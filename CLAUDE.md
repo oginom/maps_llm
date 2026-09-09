@@ -10,6 +10,7 @@ Read `docs/handoff.md` first when resuming work. It records the user's decisions
 - Delegate the actual work, such as implementation and investigation, to sub-agents (model: default, which is Opus 5 with 1M context).
 - Small changes, such as minor edits or small documentation updates, may be done directly without delegation.
 - Work that can proceed in parallel may be delegated to multiple sub-agents at the same time.
+- Delegate screen verification, UI/UX design, and UI implementation to a Codex sub-agent (Codex CLI running in its own herdr tab; see the global `~/.claude/CLAUDE.md` section "Using Codex CLI as a Sub-Agent" for the procedure). Other work goes to Claude sub-agents as above.
 
 ## Project Overview
 
