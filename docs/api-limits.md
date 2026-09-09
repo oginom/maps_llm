@@ -1,6 +1,6 @@
 # AI Map の API 利用制限
 
-2026-09-09 設定。Google Cloud プロジェクト `ogidata` が対象。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
+2026-09-09 設定。対象の Google Cloud プロジェクトとアカウントは git 管理外の `CLAUDE.local.md` に記載している。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
 
 ## Google 側の日次割当
 
@@ -40,10 +40,10 @@ Places New と Routes は確認時点で無効のまま。今回は割当を事�
 
 ```sh
 # 読み取りのみ: 現在の実効値と設定値を照合
-python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=ogidata
+python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=YOUR_PROJECT
 
 # 適用して実効値を検証（すでに設定済みなら変更しない）
-python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=ogidata --apply
+python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=YOUR_PROJECT --apply
 ```
 
 既存の割当がより厳しい場合、スクリプトは勝手に引き上げず停止する。最近の使用量より低い割当への変更も既定では停止する。その制限による利用停止を受け入れて設定する場合のみ `--allow-below-usage` を付ける。今回の Places Legacy は最近の使用量 74 回に対して 40 回への変更なので、このオプションを使用した。

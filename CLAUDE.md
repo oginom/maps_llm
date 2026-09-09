@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Read `docs/handoff.md` first when resuming work. It records the user's decisions, completed changes, remaining work, and validation limits; `docs/README.md` is the document index.
+Read `docs/handoff.md` first when resuming work. Personal environment details such as the GCP operating account live in the gitignored `CLAUDE.local.md`, which Claude Code loads automatically when present. It records the user's decisions, completed changes, remaining work, and validation limits; `docs/README.md` is the document index.
 
 ## Agent Operating Rules
 
