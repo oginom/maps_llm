@@ -10,6 +10,7 @@
 | [phase0-verification.md](phase0-verification.md)             | Google データの LLM 利用条件（規約原文）、現行採点方式の判定、AI SDK の最小検証            |
 | [verification-fetch-limits.md](verification-fetch-limits.md) | 口コミ取得制限のモックブラウザ検証（12 件 OK）、見つかった UI 不具合、`e2e/` の実行手順    |
 | [dev-api-research.md](dev-api-research.md)                   | TypeSafe AI「Jev」（通称 Dev）の調査。スコアリング工程への適用可否、価格比較、スパイク手順 |
+| [verification-detail-panel.md](verification-detail-panel.md) | PC サイドパネル / スマホ下部シートの設計判断、モック検証（18 件 OK）、レビュー指摘への対応 |
 | [cost-audit-2026-09-07.md](cost-audit-2026-09-07.md)         | 当時の請求・使用量・インフラ設定の調査記録。最新の設定値とは分けて読む                     |
 
 費用の「目標」「試算」「実績」「設定上限」は別の値。最新の決定と進捗は引き継ぎ、具体的な割当値は API 利用制限を優先し、古い調査記録を現在値として使わない。

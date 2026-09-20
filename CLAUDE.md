@@ -26,7 +26,7 @@ Maps LLM is a Next.js application that provides a customized Google Maps interfa
 
 Node version is pinned to 24.20.0 via `.mise.toml` for local development. The Docker image uses `node:24-slim`. Node 22 or newer is required by the openai SDK 7.x.
 
-Run the request-batch tests with `node --test src/lib/place-detail-batch.test.mjs` (Node 24 supports the TypeScript helper directly).
+Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the TypeScript helpers directly). Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
 
 ## Architecture
 
@@ -43,7 +43,9 @@ Run the request-batch tests with `node --test src/lib/place-detail-batch.test.mj
 - `eslint.config.mjs` imports the flat configs `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`. The React Compiler rules `react-hooks/immutability`, `react-hooks/set-state-in-effect` and `react-hooks/static-components` are downgraded to warnings because `page.tsx` still uses patterns they reject.
 
 ### Key Components Structure
-- `src/app/page.tsx`: Main map interface with search functionality. Nearly all frontend logic lives in this single file (search form, map, markers, info window, histogram, URL state).
+- `src/app/page.tsx`: Main map interface. Owns the search / fetch / analysis flow, search sessions, selection and URL state, and composes the UI components.
+- `src/components/`: `BottomSheet` (PC right side panel of 400px at widths of 900px and above, phone bottom sheet with collapsed / half / full heights), `SearchPanel` (form, status line, warnings, fetch-more button), `ResultsList`, `PlaceDetails` (score, review excerpt with reviewer attribution, Google Maps link) and `Histogram`.
+- `src/lib/place-result.ts` (score colours and result state), `src/lib/review-match.ts` (matches the LLM excerpt back to a Places review for attribution), `src/lib/map-layout.ts` (waits for the map container resize to settle before reading bounds).
 - `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Returns `{ value, related_review }` as JSON. Returns a 500 with an error message when the model response is empty or not valid JSON.
 - `src/app/api/generate-examples/route.ts`: OpenAI API endpoint for generating evaluation examples and an optimized search query. Returns `{ examples, searchQuery }` as JSON. The system prompt must keep its concrete 入力/出力 example; without it the model has returned a JSON string inside `examples`.
 - `src/app/layout.tsx`: Root layout with font configuration
@@ -80,7 +82,7 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 ### Key Features
 - Real-time geolocation detection (used as the initial map center when no `lat`/`lng` is in the URL)
 - Batch processing of review analysis to avoid API rate limits
-- Custom info windows with analysis results
+- Place details, results list and histogram in a side panel (PC) or bottom sheet (phone); no map-anchored info window
 - Color-coded markers based on evaluation scores (blue=high score, red=low score)
 - Histogram visualization of result distribution
 - URL state persistence for sharing locations

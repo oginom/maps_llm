@@ -4,7 +4,7 @@
 
 ## 現在地
 
-**調査・設計と費用制限の初期整備まで完了。チャット化・本格的な UI 改善はこれから。** 現行はログイン不要の「検索語＋条件 → Google Places 検索 → 口コミを AI 評価 → 色付きピン」のアプリ。
+**調査・設計、費用制限の初期整備、詳細パネルへの UI 移行まで完了。チャット化はこれから。** 現行はログイン不要の「検索語＋条件 → Google Places 検索 → 口コミを AI 評価 → 色付きピン」のアプリ。
 
 機能変更として最後に検証・配信したコミットは `961b6a6`。main に push 済みで、[GitHub Actions のデプロイ](https://github.com/oginom/maps_llm/actions/runs/34333737326)は成功。確認時の Cloud Run リビジョンは `mapsllm-00023-kn9`、トラフィック 100%、サービス全体・リビジョンとも最大インスタンス数 1。その後のドキュメント更新でも main への push は再デプロイを起こすので、再開時の最新リビジョンは実環境で確認する。
 
@@ -24,18 +24,19 @@
 
 ## 完了したもの
 
-| 内容                                                     | 状態 / 主なファイル                                                                                                                       |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 機能・データ源・フレームワーク・UI・費用・段階計画の調査 | [ai-map-plan.md](ai-map-plan.md)。SDK の導入や機能実装を完了した文書ではない                                                              |
-| 実アカウントの費用・課金方式・保持設定の確認             | [cost-audit-2026-09-07.md](cost-audit-2026-09-07.md)。金額・使用量は記載期間の履歴                                                        |
-| Cloud Run 最大数を 1 に変更                              | 実環境と [deploy.sh](../deploy.sh) の `--max 1` / `--max-instances 1`                                                                     |
-| Google の日次割当設定                                    | 6 項目を適用し、Service Usage API の `effectiveLimit` を確認。再確認・再適用用の [スクリプト](../scripts/configure-maps-quotas.py) を保存 |
-| 口コミ取得の件数制限                                     | [page.tsx](../src/app/page.tsx) と [PlaceDetailBatch](../src/lib/place-detail-batch.ts)。初期 5 店、追加で最大 10 店。候補ピンは全件表示  |
-| 連続操作と旧結果の混入防止                               | 同期的な取得対象予約で二重クリックを防止。検索セッションを区別し、前の検索の遅延結果を破棄。前の分析 fetch を中断                         |
-| エラーと未取得表示                                       | 割当超過等を表示。取得失敗も 1 attempt として消費、自動再試行なし。未取得候補は白ピン                                                     |
-| 小さな自動テスト                                         | [place-detail-batch.test.mjs](../src/lib/place-detail-batch.test.mjs) の 3 件。5→追加5、重複除去、検索間の独立性                          |
-| 取得制限のモックブラウザ検証                             | [verification-fetch-limits.md](verification-fetch-limits.md)。6 シナリオ×2 画面で 12 件 OK。実 API 呼び出しなし。UI 不具合 2 件を記録     |
-| Phase 0 検証票と AI SDK 最小検証                         | [phase0-verification.md](phase0-verification.md)。現行の口コミ採点は規約上持ち越せない。Phase 1 は Places New + Grounding Lite を推奨     |
+| 内容                                                     | 状態 / 主なファイル                                                                                                                                                                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 機能・データ源・フレームワーク・UI・費用・段階計画の調査 | [ai-map-plan.md](ai-map-plan.md)。SDK の導入や機能実装を完了した文書ではない                                                                                                                                                                           |
+| 実アカウントの費用・課金方式・保持設定の確認             | [cost-audit-2026-09-07.md](cost-audit-2026-09-07.md)。金額・使用量は記載期間の履歴                                                                                                                                                                     |
+| Cloud Run 最大数を 1 に変更                              | 実環境と [deploy.sh](../deploy.sh) の `--max 1` / `--max-instances 1`                                                                                                                                                                                  |
+| Google の日次割当設定                                    | 6 項目を適用し、Service Usage API の `effectiveLimit` を確認。再確認・再適用用の [スクリプト](../scripts/configure-maps-quotas.py) を保存                                                                                                              |
+| 口コミ取得の件数制限                                     | [page.tsx](../src/app/page.tsx) と [PlaceDetailBatch](../src/lib/place-detail-batch.ts)。初期 5 店、追加で最大 10 店。候補ピンは全件表示                                                                                                               |
+| 連続操作と旧結果の混入防止                               | 同期的な取得対象予約で二重クリックを防止。検索セッションを区別し、前の検索の遅延結果を破棄。前の分析 fetch を中断                                                                                                                                      |
+| エラーと未取得表示                                       | 割当超過等を表示。取得失敗も 1 attempt として消費、自動再試行なし。未取得候補は白ピン                                                                                                                                                                  |
+| 小さな自動テスト                                         | [place-detail-batch.test.mjs](../src/lib/place-detail-batch.test.mjs) の 3 件。5→追加5、重複除去、検索間の独立性                                                                                                                                       |
+| 取得制限のモックブラウザ検証                             | [verification-fetch-limits.md](verification-fetch-limits.md)。6 シナリオ×2 画面で 12 件 OK。実 API 呼び出しなし。UI 不具合 2 件を記録                                                                                                                  |
+| Phase 0 検証票と AI SDK 最小検証                         | [phase0-verification.md](phase0-verification.md)。現行の口コミ採点は規約上持ち越せない。Phase 1 は Places New + Grounding Lite を推奨                                                                                                                  |
+| 詳細パネルへの UI 移行                                   | [verification-detail-panel.md](verification-detail-panel.md)。`page.tsx` を `src/components/` に分割。PC 右 400px パネル、スマホ 3 段階シート。吹き出しと分布の浮動パネルを撤去。投稿者帰属と Google Maps 帰属を追加。モック検証 18 件 + 回帰 14 件 OK |
 
 主要コミット: `7049b06`（初期調査計画）、`6bf29e9`（最大数 1 と費用確認）、`961b6a6`（日次割当・取得件数制限）。既存の Next.js / OpenAI SDK / Luna への更新は `c94361a` にある。
 
@@ -75,7 +76,7 @@ OpenAI の入出力等の共有は Disabled、API call logging は Enabled per c
 
 1. **完了（2026-09-20）: 取得制限のモック画面テスト。** `e2e/` と [検証報告](verification-fetch-limits.md)。実 Google / OpenAI の接続は依然未検証。
 2. **完了（2026-09-20）: Phase 0 の検証票。** [phase0-verification.md](phase0-verification.md)。結論: 口コミ原文を第三者 LLM に送る現行方式は規約上の許可根拠がなく、投稿者帰属も欠く。Google への照会（§7 の 6 問）と OpenAI の ZDR 確認は未実施。ユーザーの判断で現行の点数化方式は次フェーズにも残す（上記の決定事項）。検証票の推奨経路は採用せず、表示側の是正のみ取り込む。
-3. **詳細パネルへ移して吹き出しのはみ出しを解消する。** 現行 `CustomOverlay` は未修正。PC / スマホのパネル切替と、地図・一覧・選択店の状態を分割する。まず合成データで操作を確認する。
+3. **完了（2026-09-20）: 詳細パネルへの移行。** `CustomOverlay` と `markers` の二重管理を撤去。実 Google Maps の投影・panTo、実機のタッチ・キーボード、実口コミの長文表示は未検証。次に実キーで 1 回だけ手動確認する価値がある（Places 割当 40 回 / 日に注意）。
 4. **Places New アダプターと API 入力検証を整備する。** New は上限だけ設定済みで、有効化、必要なキー制限、DTO、FieldMask、エラー変換の実装はこれから。新しい有料 API を無条件に全機能有効化する必要はない。
 5. **アプリ側の費用・呼出し制御を実装する。** 月次・セッション・実行ごとの予算、外部呼び出し前の予約と精算。Firestore 等の永続台帳は候補であり、導入済みではない。Cloud Run の最大数 1 でも同時リクエスト・再起動があるためメモリだけのカウンターにはしない。
 6. **チャットの最小フローを作る。** `search_places` 1 ツールで「会話→条件表示→候補ピン」を通し、その後に個店質問・根拠付き評価を足す。出典・unknown・部分失敗・中断を扱う。
@@ -87,7 +88,7 @@ OpenAI の入出力等の共有は Disabled、API call logging は Enabled per c
 - ブラウザ fetch の中断は追加済みだが、サーバーから OpenAI へ AbortSignal を伝える実装はない。開始済み処理の課金停止まで検証していない。
 - OpenAI の 429 をバックエンドが一般的な 500 に変換するため、フロントの 429 用メッセージだけでは実際の上限エラーを十分説明できない。
 - 評価 API の出力上限は依然 10,000 tokens。短いスキーマに合わせた引き下げと、入力 / 出力 / reasoning 使用量の記録が必要。
-- `markers` / `searchResults` の二重管理、URL・現在地から実カメラへの同期、Google 評価と条件スコアの見分け、既存 lint 警告は残っている。
+- URL・現在地から実カメラへの同期と、既存 lint 警告 3 件（effect 内 setState 等）は残っている。`markers` の二重管理と Google 評価 / 条件スコアの見分けは詳細パネル移行で解消。
 - API キーのリファラー / API 制限、サーバー用との分離は未監査。日次割当を設定したことをキー制限も完了したと解釈しない。
 
 ## 開発・検証の引き継ぎ
@@ -99,7 +100,7 @@ OpenAI の入出力等の共有は Disabled、API call logging は Enabled per c
 ```sh
 pnpm lint
 pnpm exec tsc --noEmit
-node --test src/lib/place-detail-batch.test.mjs
+node --test src/lib/*.test.mjs
 pnpm build
 ```
 
