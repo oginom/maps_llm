@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-09-20T16:04:29.228Z",
+  "note": "Supplemental diagnostic, separate from the two regression suites",
+  "results": [
+    {
+      "view": "phone",
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "RESOURCE_EXHAUSTED",
+          "message": "QUOTA_SENTINEL_FROM_SERVER"
+        }
+      },
+      "expected": "Google Places の検索上限に達しました。時間をおいて再検索してください。",
+      "actual": "QUOTA_SENTINEL_FROM_SERVER",
+      "result": "NG",
+      "screenshot": "docs/img/detail-panel/phone-quota-wording-bug.png",
+      "external": [],
+      "unexpected": []
+    },
+    {
+      "view": "desktop",
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "RESOURCE_EXHAUSTED",
+          "message": "QUOTA_SENTINEL_FROM_SERVER"
+        }
+      },
+      "expected": "Google Places の検索上限に達しました。時間をおいて再検索してください。",
+      "actual": "QUOTA_SENTINEL_FROM_SERVER",
+      "result": "NG",
+      "screenshot": "docs/img/detail-panel/desktop-quota-wording-bug.png",
+      "external": [],
+      "unexpected": []
+    }
+  ]
+}

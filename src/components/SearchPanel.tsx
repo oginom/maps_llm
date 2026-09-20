@@ -26,7 +26,7 @@ type Props = {
 };
 export function SearchPanel(props: Props) {
   const { results, selectedPlace } = props;
-  const selected = results.find((result) => result.place_id === selectedPlace);
+  const selected = results.find((result) => result.placeId === selectedPlace);
   const evaluated = results.filter(
     (result) => resultState(result) === "evaluated",
   ).length;

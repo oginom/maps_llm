@@ -2,6 +2,7 @@
 (() => {
   const state = (window.__mock = {
     config: { count: 12, holdDetails: false, fail: [], gateJson: false },
+    positions: {},
     searches: [],
     searchRequests: [],
     fits: [],
@@ -66,6 +67,7 @@
       return this;
     }
     contains(point) {
+      point = positionFor(point);
       return point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
     }
     isEmpty() {
@@ -112,8 +114,9 @@
       }).observe(div);
     }
     panTo(position) {
+      position = positionFor(position);
       state.pans.push(position.id);
-      this.center = position;
+      this.center = new LatLng(position);
       position.x = 0.5;
       position.y = 0.5;
       state.markers.forEach((marker) => marker.render());
@@ -167,8 +170,8 @@
     }
     fitBounds(bounds) {
       this.bounds = bounds;
-      const latitudes = bounds.points.map((point) => point.lat());
-      const longitudes = bounds.points.map((point) => point.lng());
+      const latitudes = bounds.points.map((point) => new LatLng(point).lat());
+      const longitudes = bounds.points.map((point) => new LatLng(point).lng());
       const latSpan = Math.max(...latitudes) - Math.min(...latitudes) || 0.001;
       const lngSpan =
         Math.max(...longitudes) - Math.min(...longitudes) || 0.001;
@@ -185,6 +188,7 @@
       state.fits.push({ before, after: this.zoom, ...this.appliedSize });
     }
     project(position) {
+      position = positionFor(position);
       // Container coordinates for synthetic marker positions.
       return {
         x: position.x * this.div.clientWidth,
@@ -194,7 +198,7 @@
   }
   class Marker {
     constructor(options) {
-      this.options = options;
+      this.options = { ...options, position: positionFor(options.position) };
       this.element = document.createElement("button");
       this.element.type = "button";
       this.element.style.cssText =
@@ -213,10 +217,11 @@
     }
     setOptions(options) {
       Object.assign(this.options, options);
+      this.options.position = positionFor(this.options.position);
       this.render();
     }
     setPosition(position) {
-      this.options.position = position;
+      this.options.position = positionFor(position);
       this.render();
     }
     setDraggable() {}
@@ -261,77 +266,53 @@
       };
     }
   }
-  const makePlaces = (query, count) =>
-    Array.from({ length: count }, (_, i) => {
-      const id = `${query}-${i + 1}`;
-      const location = new LatLng(35.7 + i * 0.001, 139.7 + i * 0.001);
-      Object.assign(location, {
-        id,
-        x: 0.16 + (i % 4) * 0.22,
-        // Preserve the default 12-pin layout while fitting larger cap fixtures.
-        y:
-          0.17 +
-          Math.floor(i / 4) *
-            Math.min(0.16, 0.64 / Math.max(1, Math.ceil(count / 4) - 1)),
-      });
-      return {
-        place_id: id,
-        name: `${query} 店舗${i + 1}`,
-        formatted_address: "東京都 モック区 検証町1-2-3",
-        rating: 4,
-        geometry: { location },
-      };
-    });
-  class PlacesService {
-    textSearch({ query, bounds }, callback) {
-      state.searches.push(query);
-      state.searchRequests.push({
-        query,
-        bounds: bounds?.toJSON(),
-        viewSize: bounds?.viewSize,
-        zoom: bounds?.zoom,
-      });
-      const places = makePlaces(query, state.config.count);
-      setTimeout(() => callback(places, "OK"), 0);
-    }
-    getDetails({ placeId }, callback) {
-      state.details.push(placeId);
-      const failure = state.config.fail.includes(placeId);
-      const release = () => {
-        state.releasedDetails.push(placeId);
-        callback(
-          failure
-            ? null
-            : {
-                name: `${placeId} 詳細店舗`,
-                formatted_address: "東京都 モック区 検証町1-2-3",
-                rating: 4,
-                reviews: [
-                  {
-                    text: `REVIEW:${placeId}`,
-                    author_name: `投稿者 ${placeId}`,
-                    profile_photo_url:
-                      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect width="32" height="32" fill="%2399bbdd"/%3E%3C/svg%3E',
-                    author_url: `https://example.invalid/author/${placeId}`,
-                  },
-                ],
-                url: "https://example.invalid/mock-place",
-              },
-          failure ? "OVER_QUERY_LIMIT" : "OK",
-        );
-      };
-      if (state.config.holdDetails) state.pendingDetails.push(release);
-      else setTimeout(release, 0);
-    }
-  }
+  // Layout metadata lives outside the JSON DTOs returned by route mocks.
+  const positionFor = (point) => {
+    const lat = typeof point.lat === "function" ? point.lat() : point.lat;
+    const lng = typeof point.lng === "function" ? point.lng() : point.lng;
+    return state.positions[`${lat},${lng}`] ?? point;
+  };
   state.releaseDetails = () =>
     state.pendingDetails.splice(0).forEach((fn) => fn());
   const jsonReleases = [];
   state.releaseJson = () => jsonReleases.splice(0).forEach((fn) => fn());
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async (input, options) => {
-    if (!String(input).includes("/api/analyze-reviews"))
-      return nativeFetch(input, options);
+    const path = new URL(String(input), location.href).pathname;
+    if (path === "/api/places/search") {
+      const body = JSON.parse(options.body);
+      const { low, high } = body.rectangle;
+      state.searches.push(body.textQuery);
+      state.searchRequests.push({
+        query: body.textQuery,
+        bounds: {
+          north: high.lat,
+          south: low.lat,
+          east: high.lng,
+          west: low.lng,
+        },
+        viewSize: { ...state.map.appliedSize },
+        zoom: state.map.getZoom(),
+        body,
+      });
+    } else if (path.startsWith("/api/places/")) {
+      const id = decodeURIComponent(path.split("/").at(-1));
+      state.details.push(id);
+      const hold = state.config.holdDetails;
+      const response = await nativeFetch(input, options);
+      const data = await response.json();
+      response.json = () =>
+        new Promise((resolve) => {
+          const release = () => {
+            state.releasedDetails.push(id);
+            resolve(data);
+          };
+          if (hold) state.pendingDetails.push(release);
+          else release();
+        });
+      return response;
+    }
+    if (path !== "/api/analyze-reviews") return nativeFetch(input, options);
     const id = JSON.parse(options.body).reviews.replace("REVIEW:", "");
     const gate = state.config.gateJson;
     state.analyses.push(id);
@@ -368,15 +349,11 @@
     LatLngBounds,
     event,
     SymbolPath: { CIRCLE: 0 },
-    places: {
-      PlacesService,
-      PlacesServiceStatus: {
-        OK: "OK",
-        ZERO_RESULTS: "ZERO_RESULTS",
-        OVER_QUERY_LIMIT: "OVER_QUERY_LIMIT",
-      },
-    },
   };
-  maps.importLibrary = async (name) => (name === "places" ? maps.places : maps);
+  maps.importLibrary = async (name) => {
+    if (name === "places")
+      throw new Error("Legacy Places library must not be loaded");
+    return maps;
+  };
   window.google = { maps };
 })();

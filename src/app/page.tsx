@@ -6,7 +6,6 @@ import {
   MapCameraChangedEvent,
   Marker,
   useMap,
-  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { flushSync } from "react-dom";
@@ -17,6 +16,13 @@ import { SearchPanel } from "@/components/SearchPanel";
 import { BottomSheet, type SheetHeight } from "@/components/BottomSheet";
 import { PlaceDetailBatch } from "@/lib/place-detail-batch";
 import { getRatingColor, type SearchResult } from "@/lib/place-result";
+import {
+  MAX_REVIEWS_TEXT_LENGTH,
+  type PlaceDetail,
+  type PlaceSearchRequest,
+  type PlaceSearchResponse,
+} from "@/lib/place-dto";
+import { viewportToRectangle } from "@/lib/viewport";
 
 const defaultCenter = {
   lat: 35.7,
@@ -28,15 +34,31 @@ const defaultZoom = 10;
 type SearchSession = {
   controller: AbortController;
   batch: PlaceDetailBatch<SearchResult>;
-  service: google.maps.places.PlacesService;
   evaluation: string;
 };
+
+// Every API route answers failures with `{ error: { code, message } }`. Quota
+// errors (429) keep the fixed wording the panel already shows; other errors
+// surface the server message when there is one.
+async function readErrorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  if (response.status === 429) return fallback;
+  try {
+    const data = await response.json();
+    const message = data?.error?.message;
+    if (typeof message === "string" && message) return message;
+  } catch {
+    // Non-JSON error body: use the fallback.
+  }
+  return fallback;
+}
 
 function MapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const map = useMap();
-  const placesLib = useMapsLibrary("places");
 
   const [sheetHeight, setSheetHeight] = useState<SheetHeight>("collapsed");
   const [searchTerm, setSearchTerm] = useState("カフェ");
@@ -156,51 +178,36 @@ function MapContent() {
     try {
       await Promise.all(
         batch.map(async (result) => {
-          const placeId = result.place_id;
+          const placeId = result.placeId;
           updateResult(placeId, { detailsStatus: "loading" });
           try {
-            const details = await new Promise<google.maps.places.PlaceResult>(
-              (resolve, reject) => {
-                session.service.getDetails(
-                  {
-                    placeId,
-                    fields: [
-                      "name",
-                      "formatted_address",
-                      "rating",
-                      "reviews",
-                      "url",
-                    ],
-                  },
-                  (place, status) => {
-                    if (
-                      status === google.maps.places.PlacesServiceStatus.OK &&
-                      place
-                    )
-                      resolve(place);
-                    else
-                      reject(
-                        new Error(
-                          status ===
-                          google.maps.places.PlacesServiceStatus
-                            .OVER_QUERY_LIMIT
-                            ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
-                            : "一部の店舗の口コミを取得できませんでした。",
-                        ),
-                      );
-                  },
-                );
-              },
+            const detailResponse = await fetch(
+              `/api/places/${encodeURIComponent(placeId)}`,
+              { signal: session.controller.signal },
             );
+            if (!detailResponse.ok)
+              throw new Error(
+                await readErrorMessage(
+                  detailResponse,
+                  detailResponse.status === 429
+                    ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
+                    : "一部の店舗の口コミを取得できませんでした。",
+                ),
+              );
+            const details: PlaceDetail = await detailResponse.json();
             if (!isCurrent()) return;
-            const reviews = details.reviews || [];
+            const reviews = details.reviews;
             updateResult(placeId, {
               detailsStatus: "loaded",
               reviews,
-              url: details.url,
+              googleMapsUri: details.googleMapsUri || result.googleMapsUri,
               name: details.name || result.name,
-              address: details.formatted_address || result.address,
-              rating: details.rating ?? result.rating,
+              address: details.address || result.address,
+              rating: details.rating,
+              userRatingCount: details.userRatingCount,
+              openNow: details.openNow,
+              weekdayDescriptions: details.weekdayDescriptions,
+              websiteUri: details.websiteUri,
               analysisStatus: {
                 isAnalyzing: reviews.length > 0,
                 isQueued: false,
@@ -215,9 +222,9 @@ function MapContent() {
                 signal: session.controller.signal,
                 body: JSON.stringify({
                   reviews: reviews
-                    .slice(0, 50)
                     .map((review) => review.text)
-                    .join("\n\n---\n\n"),
+                    .join("\n\n---\n\n")
+                    .slice(0, MAX_REVIEWS_TEXT_LENGTH),
                   metric: session.evaluation,
                   examples: result.examples,
                   scale: "5",
@@ -225,9 +232,12 @@ function MapContent() {
               });
               if (!response.ok)
                 throw new Error(
-                  response.status === 429
-                    ? "レビュー分析の利用上限に達しました。"
-                    : "レビューの分析中にエラーが発生しました。",
+                  await readErrorMessage(
+                    response,
+                    response.status === 429
+                      ? "レビュー分析の利用上限に達しました。"
+                      : "レビューの分析中にエラーが発生しました。",
+                  ),
                 );
               const data = await response.json();
               updateResult(placeId, {
@@ -266,7 +276,7 @@ function MapContent() {
   };
 
   const handleSearch = async () => {
-    if (!map || !placesLib || searchInProgress.current) return;
+    if (!map || searchInProgress.current) return;
     searchInProgress.current = true;
     searchController.current?.abort();
     layoutController.current?.abort();
@@ -301,59 +311,51 @@ function MapContent() {
       });
       if (!response.ok)
         throw new Error(
-          response.status === 429
-            ? "検索の利用上限に達しました。"
-            : "検索の準備に失敗しました。時間をおいて再検索してください。",
+          await readErrorMessage(
+            response,
+            response.status === 429
+              ? "検索の利用上限に達しました。"
+              : "検索の準備に失敗しました。時間をおいて再検索してください。",
+          ),
         );
       const { examples, searchQuery } = await response.json();
       if (!isCurrent()) return;
       await prepareSearchMap();
       if (!isCurrent()) return;
-      const service = new placesLib.PlacesService(map);
-      const places = await new Promise<google.maps.places.PlaceResult[]>(
-        (resolve, reject) => {
-          service.textSearch(
-            { query: searchQuery, bounds: map.getBounds() || undefined },
-            (results, status) => {
-              if (
-                status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS
-              )
-                resolve([]);
-              else if (
-                status === google.maps.places.PlacesServiceStatus.OK &&
-                results
-              )
-                resolve(results);
-              else
-                reject(
-                  new Error(
-                    status ===
-                    google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT
-                      ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
-                      : "場所の検索に失敗しました。",
-                  ),
-                );
-            },
-          );
-        },
-      );
+      const viewport = map.getBounds()?.toJSON();
+      if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
+      const searchRequest: PlaceSearchRequest = {
+        textQuery: searchQuery,
+        rectangle: viewportToRectangle(viewport),
+      };
+      const searchResponse = await fetch("/api/places/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify(searchRequest),
+      });
+      if (!searchResponse.ok)
+        throw new Error(
+          await readErrorMessage(
+            searchResponse,
+            searchResponse.status === 429
+              ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
+              : "場所の検索に失敗しました。",
+          ),
+        );
+      const { places }: PlaceSearchResponse = await searchResponse.json();
       if (!isCurrent()) return;
       const results: Record<string, SearchResult> = {};
       const bounds = new google.maps.LatLngBounds();
       for (const place of places) {
-        if (!place.place_id || !place.geometry?.location) continue;
-        results[place.place_id] = {
-          place_id: place.place_id,
-          name: place.name || "",
-          address: place.formatted_address || "",
-          rating: place.rating,
-          location: place.geometry.location,
+        results[place.placeId] = {
+          ...place,
           detailsStatus: "pending",
           analysisStatus: { isAnalyzing: false, isQueued: false },
           examples,
           evaluation,
         };
-        bounds.extend(place.geometry.location);
+        bounds.extend(place.location);
       }
       const candidates = Object.values(results);
       setSearchResults(results);
@@ -368,7 +370,6 @@ function MapContent() {
       const session: SearchSession = {
         controller,
         batch: new PlaceDetailBatch(candidates),
-        service,
         evaluation,
       };
       activeSession.current = session;
@@ -453,11 +454,11 @@ function MapContent() {
         >
           {results.map((result, index) => (
             <Marker
-              key={result.place_id}
+              key={result.placeId}
               position={result.location}
-              onClick={() => selectPlace(result.place_id)}
+              onClick={() => selectPlace(result.placeId)}
               title={`${index + 1}. ${result.name}`}
-              zIndex={selectedPlace === result.place_id ? 1000 : index}
+              zIndex={selectedPlace === result.placeId ? 1000 : index}
               icon={{
                 path: google.maps.SymbolPath.CIRCLE,
                 fillColor: result.value
@@ -465,8 +466,8 @@ function MapContent() {
                   : "#ffffff",
                 fillOpacity: 0.75,
                 strokeColor:
-                  selectedPlace === result.place_id ? "#152d45" : "#333333",
-                strokeWeight: selectedPlace === result.place_id ? 4 : 1,
+                  selectedPlace === result.placeId ? "#152d45" : "#333333",
+                strokeWeight: selectedPlace === result.placeId ? 4 : 1,
                 scale: 20,
               }}
               label={{ text: String(index + 1), color: "black" }}
@@ -489,7 +490,7 @@ function MapContent() {
           evaluation={evaluation}
           setEvaluation={setEvaluation}
           onSearch={handleSearch}
-          searchDisabled={isSearching || !map || !placesLib}
+          searchDisabled={isSearching || !map}
           isSearching={isSearching}
           isLoadingDetails={isLoadingDetails}
           requestedDetails={requestedDetails}

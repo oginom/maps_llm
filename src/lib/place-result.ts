@@ -1,22 +1,20 @@
-export type SearchResult = {
-  place_id: string;
-  name: string;
-  address: string;
-  rating?: number;
-  value?: number;
-  reviews?: google.maps.places.PlaceReview[];
-  analysis?: string;
-  detailsStatus: "pending" | "loading" | "loaded" | "error";
-  location: google.maps.LatLng;
-  analysisStatus: {
-    isAnalyzing: boolean;
-    isQueued: boolean;
+import type { PlaceDetail, PlaceSummary } from "./place-dto";
+
+// A search candidate as held in the browser: the Places summary, the detail
+// fields once fetched, and the analysis state for the evaluation criteria.
+export type SearchResult = PlaceSummary &
+  Partial<Omit<PlaceDetail, keyof PlaceSummary>> & {
+    value?: number;
+    analysis?: string;
+    detailsStatus: "pending" | "loading" | "loaded" | "error";
+    analysisStatus: {
+      isAnalyzing: boolean;
+      isQueued: boolean;
+    };
+    examples: string;
+    evaluation: string;
+    analysisError?: boolean;
   };
-  examples: string;
-  evaluation: string;
-  analysisError?: boolean;
-  url?: string;
-};
 
 export const getRatingColor = (
   rating: number = 3,

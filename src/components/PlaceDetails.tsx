@@ -68,7 +68,31 @@ export function PlaceDetails({
         </Typography>
         <Typography variant="body2">
           Google 評価: {result.rating ?? "—"}/5
+          {result.userRatingCount !== undefined &&
+            `（${result.userRatingCount}件）`}
         </Typography>
+        {result.openNow !== undefined && (
+          <Typography variant="body2">
+            {result.openNow ? "営業中" : "営業時間外"}
+          </Typography>
+        )}
+        {result.weekdayDescriptions && (
+          <Box component="ul" sx={{ m: 0, pl: 2, fontSize: 12 }}>
+            {result.weekdayDescriptions.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </Box>
+        )}
+        {result.websiteUri && (
+          <Link
+            href={result.websiteUri}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="body2"
+          >
+            公式サイト
+          </Link>
+        )}
         <Typography variant="body2" sx={{ mt: 1 }}>
           条件「{result.evaluation}」:{" "}
           <Box
@@ -103,37 +127,55 @@ export function PlaceDetails({
             </Typography>
             {authors.map((review, index) => (
               <Box
-                key={`${review.author_url}-${index}`}
+                key={`${review.author.uri ?? review.author.name}-${index}`}
                 sx={{ display: "flex", alignItems: "center", gap: 1, my: 0.75 }}
               >
                 <Avatar
-                  src={review.profile_photo_url}
-                  alt={review.author_name || "投稿者"}
+                  src={review.author.photoUri}
+                  alt={review.author.name || "投稿者"}
                   sx={{ width: 28, height: 28 }}
                 />
-                {review.author_url ? (
-                  <Link
-                    href={review.author_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="body2"
+                <Box sx={{ minWidth: 0 }}>
+                  {review.author.uri ? (
+                    <Link
+                      href={review.author.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="body2"
+                    >
+                      {review.author.name || "投稿者プロフィール"}
+                    </Link>
+                  ) : (
+                    <Typography variant="body2">
+                      {review.author.name || "投稿者情報なし"}
+                    </Typography>
+                  )}
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
                   >
-                    {review.author_name || "投稿者プロフィール"}
-                  </Link>
-                ) : (
-                  <Typography variant="body2">
-                    {review.author_name || "投稿者情報なし"}
+                    {review.relativePublishTimeDescription}
+                    {review.googleMapsUri && (
+                      <>
+                        {" · "}
+                        <Link
+                          href={review.googleMapsUri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Google マップで口コミを見る
+                        </Link>
+                      </>
+                    )}
                   </Typography>
-                )}
+                </Box>
               </Box>
             ))}
           </Box>
         )}
         <Link
-          href={
-            result.url ||
-            `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
-          }
+          href={result.googleMapsUri}
           target="_blank"
           rel="noopener noreferrer"
           sx={{ display: "inline-block", mt: 1 }}

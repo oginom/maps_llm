@@ -3,11 +3,11 @@ import test from "node:test";
 import { matchReview } from "./review-match.ts";
 const review = {
   text: "窓際の席には電源があり、長時間の作業でも快適に過ごせました。店内は静かでした。",
-  author_name: "A",
+  author: { name: "A" },
 };
 const other = {
   text: "駅に近くて便利です。ランチがおいしい。",
-  author_name: "B",
+  author: { name: "B" },
 };
 test("attributes an exact excerpt to its unique source", () => {
   assert.equal(
@@ -56,14 +56,14 @@ test("does not attribute exact or fuzzy excerpts shared by two reviews", () => {
   assert.equal(
     matchReview("長時間の作業でも快適に過ごせました", [
       review,
-      { ...review, author_name: "C" },
+      { ...review, author: { name: "C" } },
     ]),
     undefined,
   );
   assert.equal(
     matchReview("窓際の席には電源あり、長時間の作業でも快適に過ごせました。", [
       review,
-      { ...review, author_name: "C" },
+      { ...review, author: { name: "C" } },
     ]),
     undefined,
   );

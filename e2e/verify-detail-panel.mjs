@@ -1,3 +1,8 @@
+import {
+  placesRoutes,
+  serverErrorMessage,
+  weekdayDescriptions,
+} from "./places-routes.mjs";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -97,13 +102,15 @@ try {
     const audit = { view, external: [], unexpectedAPI: [], errors: [] };
     audits.push(audit);
     page.on("pageerror", (e) => audit.errors.push(e.message));
-    await context.route("**/*", (route) => {
+    const handlePlaces = placesRoutes(page, audit);
+    await context.route("**/*", async (route) => {
       const req = route.request(),
         url = new URL(req.url());
       if (url.origin !== origin) {
         audit.external.push(url.href);
         return route.abort();
       }
+      if (await handlePlaces(route)) return;
       if (url.pathname === "/api/generate-examples")
         return route.fulfill({
           json: {
@@ -113,6 +120,7 @@ try {
         });
       if (url.pathname === "/api/analyze-reviews") {
         const review = req.postDataJSON().reviews;
+        audit.analysisRequests.push(review.replace("REVIEW:", ""));
         const n = Number(review.split("-").at(-1));
         return route.fulfill({
           json: { value: ((n - 1) % 5) + 1, related_review: review },
@@ -181,6 +189,21 @@ try {
           .count(),
         5,
       );
+      assert.match(
+        await page.locator('[data-result-id="panel-6"]').textContent(),
+        /未取得 · Google ★ —/,
+      );
+      assert.match(
+        await page.locator('[data-result-id="panel-1"]').textContent(),
+        /評価済み · Google ★ 4/,
+      );
+      assert.match(
+        await page.locator('[data-result-id="panel-5"]').textContent(),
+        /評価済み · Google ★ —/,
+      );
+      assert.equal(audit.searchRequests.length, 1);
+      assert.equal(audit.detailRequests.length, 5);
+      assert.equal(audit.analysisRequests.length, 5);
       return { screenshot: await shot("initial") };
     });
     await check("2-edge-pin", async () => {
@@ -213,7 +236,14 @@ try {
       await page
         .locator("[data-detail-scroll]")
         .evaluate((el) => (el.scrollTop = el.scrollHeight));
-      await visibleInside(page, "[data-place-details] a");
+      // New hours make details scrollable: verify every link can be reached.
+      for (const link of await page.locator("[data-place-details] a").all()) {
+        await link.scrollIntoViewIfNeeded();
+        await visibleInside(
+          page,
+          `[data-place-details] a[href="${await link.getAttribute("href")}"]`,
+        );
+      }
       return { screenshot: await shot("edge-details") };
     });
     await check("3-offscreen-row", async () => {
@@ -283,6 +313,9 @@ try {
       assert.equal(
         await page.getByRole("status").getAttribute("aria-live"),
         "off",
+      );
+      await page.waitForFunction(
+        () => window.__mock.pendingDetails.length === 5,
       );
       await page.evaluate(() => window.__mock.releaseDetails());
       await done(page);
@@ -454,7 +487,65 @@ try {
       await detail
         .locator("[data-detail-scroll]")
         .evaluate((el) => (el.scrollTop = el.scrollHeight));
-      return { screenshot: await shot("attribution") };
+      const screenshots = [await shot("attribution")];
+      for (const n of [1, 4, 5]) {
+        await page.getByRole("button", { name: "一覧に戻る" }).click();
+        await page.locator(`[data-result-id="quota-${n}"]`).click();
+        const current = page.locator("[data-place-details]");
+        const open = current.getByText(n % 2 ? "営業中" : "営業時間外", {
+          exact: true,
+        });
+        await open.scrollIntoViewIfNeeded();
+        for (const line of weekdayDescriptions)
+          assert.equal(
+            await current.getByText(line, { exact: true }).count(),
+            1,
+          );
+        assert.equal(
+          await current
+            .getByRole("link", { name: "公式サイト" })
+            .getAttribute("href"),
+          `https://example.invalid/site/quota-${n}`,
+        );
+        assert.match(
+          await current.textContent(),
+          n === 5 ? /Google 評価: —\/5/ : /Google 評価: 4\/5/,
+        );
+        await visibleInside(page, "[data-place-details] ul");
+        screenshots.push(await shot(`places-new-${n}-hours`));
+        const reviewLink = current.getByRole("link", {
+          name: "Google マップで口コミを見る",
+        });
+        assert.equal(
+          await reviewLink.getAttribute("href"),
+          `https://example.invalid/review/quota-${n}`,
+        );
+        await reviewLink.scrollIntoViewIfNeeded();
+        await visibleInside(
+          page,
+          `[data-place-details] a[href="https://example.invalid/review/quota-${n}"]`,
+        );
+        if (n === 5) {
+          assert.equal(
+            await current.getByText("投稿者 quota-5", { exact: true }).count(),
+            1,
+          );
+          assert.equal(
+            await current
+              .getByRole("link", { name: "投稿者 quota-5", exact: true })
+              .count(),
+            0,
+          );
+          assert.equal(
+            await current
+              .getByRole("img", { name: "投稿者 quota-5", exact: true })
+              .count(),
+            0,
+          );
+        }
+        screenshots.push(await shot(`places-new-${n}-review`));
+      }
+      return { screenshots };
     });
     await check("8-search-map-size", async () => {
       await page.evaluate(() => {
@@ -579,6 +670,44 @@ try {
       await page.setViewportSize(viewport);
       return { screenshot: await shot("explicit-selection") };
     });
+    await check("10-server-error", async () => {
+      const before = {
+        details: audit.detailRequests.length,
+        analyses: audit.analysisRequests.length,
+      };
+      await page.evaluate((message) => {
+        window.__mock.config.searchError = {
+          status: 502,
+          error: { code: "UPSTREAM_ERROR", message },
+        };
+      }, serverErrorMessage);
+      await page.getByPlaceholder("Enter search term").fill("server-error");
+      await page.getByRole("button", { name: "search", exact: true }).click();
+      await page
+        .getByRole("alert")
+        .getByText(serverErrorMessage, { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.locator("aside").getByRole("alert").textContent(),
+        serverErrorMessage,
+      );
+      await visibleInside(page, 'aside [role="alert"]');
+      assert.equal(audit.detailRequests.length, before.details);
+      assert.equal(audit.analysisRequests.length, before.analyses);
+      return { screenshot: await shot("server-error") };
+    });
+    assert.deepEqual(
+      audit.searchRequests.map((body) => body.textQuery),
+      await page.evaluate(() => window.__mock.searches),
+    );
+    assert.deepEqual(
+      audit.detailRequests.slice().sort(),
+      await page.evaluate(() => window.__mock.details.slice().sort()),
+    );
+    assert.deepEqual(
+      audit.analysisRequests.slice().sort(),
+      await page.evaluate(() => window.__mock.analyses.slice().sort()),
+    );
     assert.deepEqual(audit.external, []);
     assert.deepEqual(audit.unexpectedAPI, []);
     assert.deepEqual(audit.errors, []);

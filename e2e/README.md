@@ -4,8 +4,9 @@
 
 ## ファイル
 
-- `maps-mock.js`: ページのスクリプトより先に `google.maps` を注入。Map / PlacesService / Marker / OverlayView を置換し、既定で合成の候補12店を返す（上限シナリオは23店、部分バッチは7店に上書き）。実 Maps JS のダウンロードは発生しない。
-- `verify-fetch-limits.mjs`: Playwright のルーティングで `/api/generate-examples` と `/api/analyze-reviews` を応答し、他の API と外部 origin を遮断する。service worker も無効化する。
+- `maps-mock.js`: ページのスクリプトより先に `google.maps` を注入。Map / Marker / OverlayView・bounds・投影・リサイズを置換する。`google.maps.places` は定義せず、旧ライブラリの読み込みはエラーにする。実 Maps JS のダウンロードは発生しない。
+- `places-routes.mjs`: 両スイート共通の Playwright route モック。`POST /api/places/search` の本文（検索語・rectangle・任意フィールド）を検査して `{ places: PlaceSummary[] }` を返し、`GET /api/places/{placeId}` は `PlaceDetail` を返す。検索時は rating を含めない。既定12候補、部分バッチ7候補。上限の23候補は、サーバーの最大20候補を意図的に超える防御的なfixture。
+- `verify-fetch-limits.mjs` / `verify-detail-panel.mjs`: 上記2ルートと `/api/generate-examples`、`/api/analyze-reviews` を置換し、他の API と外部 origin を遮断する。service worker も無効化する。検索・詳細・分析の要求配列をJSONに保存し、ブラウザ側の記録とも照合する。地図用の合成配置情報はDTOの `{lat,lng}` に混ぜず、モックの座標台帳で管理する。
 - `results.json`: 最後の実行の検証値・通信監査・UI 座標。
 - `run.log`: 提出時のコンソール出力。再実行時は任意でリダイレクトして更新する。
 - `../docs/img/detail-panel/fetch-limits/*.png`: パネル化後の回帰検証の証跡。旧 `img/fetch-limits/` の画像は初回の不具合記録として保持する。最新の判定は [詳細パネル検証報告](../docs/verification-detail-panel.md)。
@@ -17,6 +18,7 @@
 ```sh
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=e2e-fake-key \
 NEXT_PUBLIC_GOOGLE_MAPS_ID=e2e-fake-map \
+GOOGLE_MAPS_SERVER_API_KEY=e2e-fake-key \
 OPENAI_API_KEY=e2e-fake-key \
 mise exec node@24.6.0 -- node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3107
 ```
@@ -45,15 +47,15 @@ mise exec node@24.6.0 -- node e2e/verify-fetch-limits.mjs
 
 この環境ではローカルポート作成と Chromium 起動にサンドボックス外実行の承認が必要だった。Next.js が開発起動時に CLAUDE.md へ自動追記する場合がある。今回の実行で増えた自動生成ブロックのみ、サーバー停止後に除去した。
 
-2026-09-20 の最大20試行対応後の実行結果: 取得制限12/12＋UI採取2/2、詳細パネル18/18成功（両方終了コード0）。外部通信試行・想定外API・ブラウザ例外はいずれも0。
+2026-09-21 Places New 移行後: 取得制限14/14＋UI採取2/2、詳細パネル20/20成功（両方終了コード0）。既存12件・18件に、それぞれ502のサーバーエラー表示を各画面1件ずつ追加。外部通信試行・想定外API・ブラウザ例外はいずれも0。429の固定文言については下記の別診断で不一致を確認した。
 
 ## 判定とモックの範囲
 
-- 6シナリオ×2サイズをそれぞれ独立した BrowserContext で検証する。追加で各サイズの UI 座標と画像を採取する。`ui-observations` の `OK` は採取成功を意味し、UI の正常判定ではない。
+- 7シナリオ×2サイズをそれぞれ独立した BrowserContext で検証する。追加で各サイズの UI 座標と画像を採取する。`ui-observations` の `OK` は採取成功を意味し、UI の正常判定ではない。
 - 初期・追加の place ID と実呼び出し配列を照合し、DOM 化した Marker の `icon.fillColor` を検証する。23候補で初期5→10→15→20試行、未取得3店を残して停止し、追加ボタン消失と「20 件 / 最大20件」を確認する。候補7店の場合の 5→追加2 も確認する。
 - 二重操作は Playwright のネイティブ `mouse.dblclick` と同一イベントループ内の `button.click()` 2回で検証する。
-- 詳細取得の失敗は `OVER_QUERY_LIMIT`。失敗後の追加取得まで含め、同じ ID が再要求されないことを確認する。完了後の追加観測時間は250ms。
-- 旧 Places `getDetails` コールバックを保留し、新検索完了後に返す。別の検索では旧分析の JSON 解決を保留し、AbortSignal 発火後にも意図的に解決させ、遅延結果破棄を検証する。
+- 詳細取得の失敗は HTTP 429 + `{ error: { code: "RESOURCE_EXHAUSTED", message: "Google Places の利用上限に達しました。時間をおいて再検索してください。" } }`。失敗後の追加取得まで含め、同じ ID が再要求されないことを確認する。完了後の追加観測時間は250ms。
+- `holdDetails` は実fetchで受信済みの詳細JSONの解決を保留し、5件の保留完了後に新検索を開始する。新検索完了後も意図的に旧JSONを解決して破棄を検証する。別の検索では旧分析のJSON解決を同様に保留する。候補数・失敗ID・保留・解放は `window.__mock.config` / `releaseDetails()` / `releaseJson()` で制御する。これは中断済み通信への送信ではなく、受信済み応答の遅延処理を再現する。
 - 中断シナリオは本物のブラウザ `fetch` を使用。分析応答をルーティング層で保留し、新検索での `abort` イベント・`AbortError`・`requestfailed: net::ERR_ABORTED` をすべて確認する。
 - 外部リクエストの試行、未定義 API、ブラウザ例外も失敗扱い。NG があれば終了コード1、通常は0。起動そのものに失敗した場合は既存 `results.json` が残るので、実行日時と終了コードを必ず確認する。
 - 地図・投影・マーカーは簡略化したモック。投影は地図中心を原点とする draggable pane をモデル化し、画面端の吹き出しを自動補正しない。実 Google Maps のパン・ズーム・タイルやスマホ実機のキーボードは再現しない。
@@ -74,7 +76,7 @@ E2E_CHROMIUM_PATH=/Users/ogino/Library/Caches/ms-playwright/chromium_headless_sh
 mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run.log
 ```
 
-9シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
+10シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
 初期5件・追加5件・検索ごと最大20試行（失敗も含む）を前提にする。シナリオ4は12候補で、追加1回後の評価済み9・失敗1・未取得2を区別し、さらに2件取得後の評価済み11・失敗1・未取得0とボタン消失を確認する。分布は `[3,2,2,2,2]`。
 一覧の取得状態、選択・スクロール、画面外選択の panTo、各高さでの警告・追加ボタンの矩形とヒットテスト、分布、投稿者情報を確認する。
 モックは地図サイズ変更の次のフレームで適用済み寸法を更新し、getBounds / fitBounds の範囲・zoomを寸法から計算する。入力フォーカス後の検索で半分の地図寸法を使うこと、および任意のリサイズで選択ピンへ戻らないことも確認する。bounds.contains と panTo は簡略モデルであり、実 Google の投影検証ではない。
@@ -85,3 +87,11 @@ mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run
 ```sh
 mise exec node@24.6.0 -- node --test src/lib/place-detail-batch.test.mjs src/lib/review-match.test.mjs
 ```
+
+## Places New の追加表示と既知の不一致
+
+詳細fixtureは営業中／営業時間外、7曜日の営業時間、公式サイト、口コミごとのGoogleマップURL、投稿日時・星・投稿者名を持つ。5店目はGoogle評価と投稿者URL／写真を省略する。初期一覧で未取得の「Google ★ —」、評価済みの「Google ★ 4」、詳細取得済みでもratingなしの「—」を確認する。既存の帰属シナリオ内で、追加フィールドと欠落時の表示、各リンクへのスクロール・ヒットテストを確認する。
+
+証跡は `docs/img/detail-panel/{phone,desktop}-places-new-{1,4,5}-{hours,review}.png`、非割当エラーは `{phone,desktop}-server-error.png`。502は `error.message` の完全一致、詳細・分析の追加呼び出しがないことを検証する。
+
+**アプリの既知不一致（src/は変更していない）:** 429で `error.message` があれば、固定の割当文言よりその値が優先される。`page.tsx` の `readErrorMessage` がステータスに関係なく本文を返すため。既存の割当シナリオはサーバーが標準の日本語文言を返す経路を検証している。別診断で検索ルートに HTTP 429 / `RESOURCE_EXHAUSTED` / `message: "QUOTA_SENTINEL_FROM_SERVER"` を返すと、両画面でセンチネルがそのまま表示された（固定文言の期待には0/2）。[診断結果](quota-wording-results.json)・[検証報告](../docs/verification-detail-panel.md)。この診断は上記の回帰成功数には含めない。

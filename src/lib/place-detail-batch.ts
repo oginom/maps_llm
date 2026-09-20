@@ -4,7 +4,7 @@ export const INITIAL_DETAIL_COUNT = 5;
 export const DETAIL_BATCH_SIZE = 5;
 export const MAX_DETAILS_PER_SEARCH = 20;
 
-export class PlaceDetailBatch<T extends { place_id: string }> {
+export class PlaceDetailBatch<T extends { placeId: string }> {
   private candidates: T[];
   requestedCount = 0;
   isBusy = false;
@@ -13,8 +13,8 @@ export class PlaceDetailBatch<T extends { place_id: string }> {
     const seen = new Set<string>();
     this.candidates = candidates
       .filter((candidate) => {
-        if (seen.has(candidate.place_id)) return false;
-        seen.add(candidate.place_id);
+        if (seen.has(candidate.placeId)) return false;
+        seen.add(candidate.placeId);
         return true;
       })
       .slice(0, MAX_DETAILS_PER_SEARCH);

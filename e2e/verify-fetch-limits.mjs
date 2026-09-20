@@ -1,3 +1,4 @@
+import { placesRoutes, serverErrorMessage } from "./places-routes.mjs";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -54,6 +55,7 @@ async function setup(viewport) {
       });
     }
   });
+  const handlePlaces = placesRoutes(page, audit);
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -61,6 +63,7 @@ async function setup(viewport) {
       audit.externalBlocked.push(`${url.origin}${url.pathname}`);
       return route.abort("blockedbyclient");
     }
+    if (await handlePlaces(route)) return;
     if (url.pathname === "/api/generate-examples") {
       const body = request.postDataJSON();
       return route.fulfill({
@@ -162,6 +165,18 @@ async function check(view, scenario, run) {
     );
     assert.deepEqual(env.audit.unexpectedAPI, []);
     assert.deepEqual(env.audit.pageErrors, []);
+    assert.deepEqual(
+      env.audit.searchRequests.map((body) => body.textQuery),
+      await env.page.evaluate(() => window.__mock.searches),
+    );
+    assert.deepEqual(
+      env.audit.detailRequests.slice().sort(),
+      await env.page.evaluate(() => window.__mock.details.slice().sort()),
+    );
+    assert.deepEqual(
+      env.audit.analysisRequests.slice().sort(),
+      await env.page.evaluate(() => window.__mock.analyses.slice().sort()),
+    );
     const result = { viewport: view, scenario, result: "OK", ...evidence };
     results.push(result);
     console.log(JSON.stringify(result));
@@ -277,6 +292,9 @@ try {
       let state = await snapshot(page);
       assert.deepEqual(state.details, ids("double", 10));
       assert.equal(new Set(state.details).size, 10);
+      await page.waitForFunction(
+        () => window.__mock.pendingDetails.length === 5,
+      );
       await page.evaluate(() => window.__mock.releaseDetails());
       await done(page);
       await pinCounts(page, 10, 2);
@@ -300,10 +318,18 @@ try {
         button.click();
         button.click();
       });
+      await page.waitForFunction(
+        () =>
+          window.__mock.details.filter((id) => id.startsWith("sync")).length ===
+          10,
+      );
       state = await snapshot(page);
       assert.deepEqual(
         state.details.filter((id) => id.startsWith("sync")),
         ids("sync", 10),
+      );
+      await page.waitForFunction(
+        () => window.__mock.pendingDetails.length === 5,
       );
       await page.evaluate(() => window.__mock.releaseDetails());
       await done(page);
@@ -352,12 +378,18 @@ try {
       });
       await search(page, "old-details");
       await page.waitForFunction(() => window.__mock.details.length === 5);
+      await page.waitForFunction(
+        () => window.__mock.pendingDetails.length === 5,
+      );
       await page.evaluate(() => {
         window.__mock.config.holdDetails = false;
       });
       await search(page, "new-details");
       await done(page);
       await pinCounts(page, 5, 7);
+      await page.waitForFunction(
+        () => window.__mock.pendingDetails.length === 5,
+      );
       await page.evaluate(() => window.__mock.releaseDetails());
       await page.waitForTimeout(100);
       const detailsState = await snapshot(page);
@@ -447,6 +479,27 @@ try {
         failedRequests: audit.failedRequests,
         screenshot: await shot(page, `${view}-abort`),
       };
+    });
+    await check(view, "7-server-error", async ({ page, audit }) => {
+      await page.evaluate((message) => {
+        window.__mock.config.searchError = {
+          status: 502,
+          error: { code: "UPSTREAM_ERROR", message },
+        };
+      }, serverErrorMessage);
+      await search(page, "server-error");
+      await page
+        .getByRole("alert")
+        .getByText(serverErrorMessage, { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.locator("aside").getByRole("alert").textContent(),
+        serverErrorMessage,
+      );
+      assert.equal(audit.searchRequests.length, 1);
+      assert.equal(audit.detailRequests.length, 0);
+      assert.equal(audit.analysisRequests.length, 0);
+      return { screenshot: await shot(page, `${view}-server-error`) };
     });
     await check(view, "ui-observations", async ({ page }) => {
       await page.evaluate(() => {

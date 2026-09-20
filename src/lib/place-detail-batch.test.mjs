@@ -4,20 +4,20 @@ import { PlaceDetailBatch } from "./place-detail-batch.ts";
 
 test("reserves five requests synchronously and never exceeds twenty attempts", () => {
   const batch = new PlaceDetailBatch(
-    Array.from({ length: 25 }, (_, index) => ({ place_id: String(index) })),
+    Array.from({ length: 25 }, (_, index) => ({ placeId: String(index) })),
   );
   assert.equal(batch.take().length, 5);
   assert.deepEqual(batch.take(), []); // A second click while work is pending.
   batch.finish(); // Failures still consumed attempts; no automatic retries.
   assert.deepEqual(
-    batch.take().map((place) => place.place_id),
+    batch.take().map((place) => place.placeId),
     ["5", "6", "7", "8", "9"],
   );
   batch.finish();
   assert.equal(batch.take().length, 5);
   batch.finish();
   assert.deepEqual(
-    batch.take().map((place) => place.place_id),
+    batch.take().map((place) => place.placeId),
     ["15", "16", "17", "18", "19"],
   );
   batch.finish();
@@ -27,7 +27,7 @@ test("reserves five requests synchronously and never exceeds twenty attempts", (
 
 test("deduplicates places and handles a partial final batch", () => {
   const places = Array.from({ length: 7 }, (_, index) => ({
-    place_id: String(index),
+    placeId: String(index),
   }));
   const batch = new PlaceDetailBatch([...places, ...places]);
   assert.equal(batch.take().length, 5);
@@ -40,9 +40,9 @@ test("deduplicates places and handles a partial final batch", () => {
 });
 
 test("independent searches have independent request allowances", () => {
-  const oldSearch = new PlaceDetailBatch([{ place_id: "same" }]);
+  const oldSearch = new PlaceDetailBatch([{ placeId: "same" }]);
   oldSearch.take();
-  const newSearch = new PlaceDetailBatch([{ place_id: "same" }]);
+  const newSearch = new PlaceDetailBatch([{ placeId: "same" }]);
   assert.equal(newSearch.take().length, 1);
   assert.equal(newSearch.isBusy, true);
   oldSearch.finish();

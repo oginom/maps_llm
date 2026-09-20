@@ -1,21 +1,34 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { generateExamplesRequestSchema } from "@/lib/api-schemas";
+import { errorResponse, logRoute, parseJsonBody } from "@/lib/api-route";
+import { logCompletionUsage, openAiErrorResponse } from "@/lib/openai-route";
+
+const ROUTE = "generate-examples";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(request: Request) {
-  try {
-    const { searchTerm, evaluation } = await request.json();
+  const startedAt = Date.now();
+  const parsed = await parseJsonBody(request, generateExamplesRequestSchema);
+  if (!parsed.ok) {
+    logRoute(ROUTE, 400, startedAt, "invalid input");
+    return parsed.response;
+  }
+  const { searchTerm, evaluation } = parsed.data;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.6-luna",
-      reasoning_effort: "none",
-      messages: [
-        {
-          role: "system",
-          content: `あなたは評価基準のエキスパートです。与えられた検索語とその評価項目から、1から5の評価基準の例と、高評価のものを見つけるための簡単な検索クエリを生成してください。
+  let completion;
+  try {
+    completion = await openai.chat.completions.create(
+      {
+        model: "gpt-5.6-luna",
+        reasoning_effort: "none",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは評価基準のエキスパートです。与えられた検索語とその評価項目から、1から5の評価基準の例と、高評価のものを見つけるための簡単な検索クエリを生成してください。
 
 出力形式:
 {
@@ -29,64 +42,75 @@ export async function POST(request: Request) {
   "examples": "1 ... 電源は一切ない, 5 ... 全席に電源完備",
   "searchQuery": "電源 カフェ"
 }`,
-        },
-        {
-          role: "user",
-          content: `searchTerm="${searchTerm}", evaluation="${evaluation}"`,
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "evaluation_examples",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              examples: { type: "string" },
-              searchQuery: { type: "string" },
+          },
+          {
+            role: "user",
+            content: `searchTerm="${searchTerm}", evaluation="${evaluation}"`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "evaluation_examples",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                examples: { type: "string" },
+                searchQuery: { type: "string" },
+              },
+              required: ["examples", "searchQuery"],
+              additionalProperties: false,
             },
-            required: ["examples", "searchQuery"],
-            additionalProperties: false,
           },
         },
+        max_completion_tokens: 1200,
       },
-      max_completion_tokens: 200,
-    });
-
-    const content = completion.choices[0]?.message.content;
-    if (!content) {
-      console.error(
-        "Error generating examples: empty response content",
-        JSON.stringify(completion),
-      );
-      return NextResponse.json(
-        { error: "Failed to generate examples: empty response from model" },
-        { status: 500 },
-      );
-    }
-
-    let response: { examples: string; searchQuery: string };
-    try {
-      response = JSON.parse(content);
-    } catch (parseError) {
-      console.error(
-        "Error generating examples: failed to parse response content",
-        parseError,
-        content,
-      );
-      return NextResponse.json(
-        { error: "Failed to generate examples: invalid JSON from model" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json(response);
+      { signal: request.signal },
+    );
   } catch (error) {
-    console.error("Error generating examples:", error);
-    return NextResponse.json(
-      { error: "Failed to generate examples" },
-      { status: 500 },
+    return openAiErrorResponse(ROUTE, error, startedAt, request.signal);
+  }
+  logCompletionUsage(ROUTE, completion, startedAt);
+
+  const finishReason = completion.choices[0]?.finish_reason;
+  if (finishReason === "length") {
+    console.error(`[api/${ROUTE}] output truncated at max_completion_tokens`);
+    return errorResponse(
+      500,
+      "OUTPUT_TRUNCATED",
+      "生成結果が長すぎて途中で切れました。もう一度お試しください。",
     );
   }
+
+  const content = completion.choices[0]?.message.content;
+  if (!content) {
+    console.error(
+      `[api/${ROUTE}] empty response content`,
+      JSON.stringify({ ...completion, choices: undefined }),
+    );
+    return errorResponse(
+      500,
+      "EMPTY_RESPONSE",
+      "Failed to generate examples: empty response from model",
+    );
+  }
+
+  let response: { examples: string; searchQuery: string };
+  try {
+    response = JSON.parse(content);
+  } catch (parseError) {
+    console.error(
+      `[api/${ROUTE}] failed to parse response content`,
+      parseError,
+      `length=${content.length} finish_reason=${finishReason}`,
+    );
+    return errorResponse(
+      500,
+      "INVALID_RESPONSE",
+      "Failed to generate examples: invalid JSON from model",
+    );
+  }
+
+  return NextResponse.json(response);
 }

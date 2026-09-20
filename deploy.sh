@@ -33,4 +33,5 @@ gcloud run deploy $SERVICE_NAME \
   --allow-unauthenticated \
   --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" \
   --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_ID=${NEXT_PUBLIC_GOOGLE_MAPS_ID}" \
+  --set-env-vars "GOOGLE_MAPS_SERVER_API_KEY=${GOOGLE_MAPS_SERVER_API_KEY}" \
   --set-env-vars "OPENAI_API_KEY=${OPENAI_API_KEY}"

@@ -39,14 +39,14 @@ export function ResultsList({
       }}
     >
       {results.map((result, index) => (
-        <ListItem key={result.place_id} disablePadding>
+        <ListItem key={result.placeId} disablePadding>
           <ListItemButton
             component="button"
-            data-result-id={result.place_id}
+            data-result-id={result.placeId}
             data-fetch-state={resultState(result)}
-            selected={selectedPlace === result.place_id}
-            aria-pressed={selectedPlace === result.place_id}
-            onClick={() => onSelect(result.place_id)}
+            selected={selectedPlace === result.placeId}
+            aria-pressed={selectedPlace === result.placeId}
+            onClick={() => onSelect(result.placeId)}
             sx={{
               width: "100%",
               textAlign: "left",
@@ -56,7 +56,7 @@ export function ResultsList({
               px: 1.5,
               borderBottom: "1px solid #edf0f3",
               borderLeft:
-                selectedPlace === result.place_id
+                selectedPlace === result.placeId
                   ? "4px solid #1976d2"
                   : "4px solid transparent",
             }}

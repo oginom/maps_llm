@@ -18,7 +18,7 @@ TARGETS = {
     "maps-backend.googleapis.com": {"billable_default": 50},
     # Legacy combines searches and details into one counter.
     "places-backend.googleapis.com": {"billable_default": 100},
-    "places.googleapis.com": {"SearchTextRequest": 10, "GetPlaceRequest": 30},
+    "places.googleapis.com": {"SearchTextRequest": 20, "GetPlaceRequest": 100},
     "routes.googleapis.com": {
         "compute_routes_requests": 20,
         "compute_route_matrix_elements": 30,

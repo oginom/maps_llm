@@ -91,3 +91,25 @@ node e2e/verify-fetch-limits.mjs
 - 実口コミの長文・著者情報欠落・複数口コミを組み合わせた抜粋の画面確認は未実施。非一致時の全投稿者表示には上記の対応付け制限がある。
 - 元のURL復元・位置情報と実カメラの同期の問題は今回の対象外として維持。チャット、停止／再試行、並び替えなど改善計画の将来機能は追加していない。
 - 本番ビルド・デプロイは未実施。画像の左下の「N」はNext.js開発インジケーター。
+
+## Places New 移行後の再検証
+
+2026-09-21（JST）。PlacesService のモックを撤去し、検索・詳細は共有の Playwright route モックから新DTOを返すよう更新した。既存の遅延応答破棄・fetch中断・二重操作・地図寸法・最大20試行を維持し、両スイートに各画面1件ずつ HTTP 502 のメッセージ表示を追加した。
+
+- 取得制限 **14/14成功＋UI採取2/2成功**（既存12件＋502の2件）、詳細パネル **20/20成功**（既存18件＋502の2件）。両コマンドの終了コード0。
+- 詳細パネルの既存シナリオに、営業中／営業時間外、7曜日の営業時間、公式サイト、口コミリンク、投稿者URL／写真の有無、ratingの有無を追加。一覧の未取得「Google ★ —」と評価済み「Google ★ 4」も確認。詳細のリンクはスクロール後にそれぞれ矩形・ヒットテストを検証した。
+- 通信監査: 取得制限は検索28・詳細194・分析180、詳細パネルは検索8・詳細44・分析42。すべてモックへの要求。外部origin試行・想定外API・ブラウザ例外は両スイートとも0。実 Google Maps / Places / OpenAI API 呼び出しなし。
+- port 3000 はそのまま、一時コピー `/private/tmp/maps-e2e-task4-hpb22ywc` とダミーキー4個で port 3107 を使用。`.env*` はコピーせず、この作業では src/・依存・Gitのindex／ブランチ／commitを変更していない。並行作業のソース更新を検知したため、一時コピーを更新して両スイートを再実行した。再実行手順は [e2e/README.md](../e2e/README.md)。
+
+| 証跡                               | スマホ                                                 | PC                                                       |
+| ---------------------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| 営業中・曜日別営業時間・公式サイト | [画像](img/detail-panel/phone-places-new-1-hours.png)  | [画像](img/detail-panel/desktop-places-new-1-hours.png)  |
+| 営業時間外                         | [画像](img/detail-panel/phone-places-new-4-hours.png)  | [画像](img/detail-panel/desktop-places-new-4-hours.png)  |
+| 投稿者・口コミのGoogleマップリンク | [画像](img/detail-panel/phone-places-new-1-review.png) | [画像](img/detail-panel/desktop-places-new-1-review.png) |
+| Google評価なし                     | [画像](img/detail-panel/phone-places-new-5-hours.png)  | [画像](img/detail-panel/desktop-places-new-5-hours.png)  |
+| 投稿者URL／写真なし                | [画像](img/detail-panel/phone-places-new-5-review.png) | [画像](img/detail-panel/desktop-places-new-5-review.png) |
+| 502のサーバーメッセージ            | [画像](img/detail-panel/phone-server-error.png)        | [画像](img/detail-panel/desktop-server-error.png)        |
+
+**発見したアプリ不具合1件（未修正）:** HTTP 429でも本文に `error.message` があると固定の割当文言を表示しない。`src/app/page.tsx` の `readErrorMessage` が本文を優先するため、検索ルートが `{ error: { code: "RESOURCE_EXHAUSTED", message: "QUOTA_SENTINEL_FROM_SERVER" } }` を429で返す別診断では、スマホ・PCとも `QUOTA_SENTINEL_FROM_SERVER` が表示された。期待は「Google Places の検索上限に達しました。時間をおいて再検索してください。」。この追加診断は **0/2成功（同一不具合を2画面で再現）** で、上記の回帰成功数とは別。[診断JSON](../e2e/quota-wording-results.json)、[スマホ](img/detail-panel/phone-quota-wording-bug.png)、[PC](img/detail-panel/desktop-quota-wording-bug.png)。既存の詳細割当シナリオはサーバー自身が標準文言を返すため成功する。src/変更禁止の指示に従い、修正は行っていない。 その後、`readErrorMessage` が 429 では本文を読まずに固定文言を返すよう修正した（コミット時点。診断スクリプトの再実行は未実施）。
+
+画面画像は営業時間部分と口コミ部分をそれぞれスクロールして採取し、スマホ・PCで目視確認した。モックによる画面と呼出し制御の検証であり、実アダプターの外部接続・課金・Googleの応答内容は検証していない。

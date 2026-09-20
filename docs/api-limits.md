@@ -1,6 +1,6 @@
 # AI Map の API 利用制限
 
-2026-09-09 設定、2026-09-20 に Places Legacy を 40 → 100 回 / 日、アプリ内の最大取得数を 10 → 20 店に変更。対象の Google Cloud プロジェクトとアカウントは git 管理外の `CLAUDE.local.md` に記載している。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
+2026-09-09 設定、2026-09-20 に Places Legacy を 40 → 100 回 / 日、アプリ内の最大取得数を 10 → 20 店に変更。2026-09-21 に Places New を Text Search 10 → 20 回 / 日、Place Details 30 → 100 回 / 日に変更し、`effectiveLimit` を確認。対象の Google Cloud プロジェクトとアカウントは git 管理外の `CLAUDE.local.md` に記載している。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
 
 ## Google 側の日次割当
 
@@ -8,8 +8,8 @@
 | ----------------------------------- | -------: | ----------------------------------------------------- |
 | Maps JavaScript の 2D 地図表示      |    50 回 | `maps-backend.googleapis.com/billable_default`        |
 | 現行 Places Legacy の検索・詳細合計 |   100 回 | `places-backend.googleapis.com/billable_default`      |
-| Places New の Text Search           |    10 回 | `places.googleapis.com/SearchTextRequest`             |
-| Places New の Place Details         |    30 回 | `places.googleapis.com/GetPlaceRequest`               |
+| Places New の Text Search           |    20 回 | `places.googleapis.com/SearchTextRequest`             |
+| Places New の Place Details         |   100 回 | `places.googleapis.com/GetPlaceRequest`               |
 | Routes の経路計算                   |    20 回 | `routes.googleapis.com/compute_routes_requests`       |
 | Routes の比較                       |  30 要素 | `routes.googleapis.com/compute_route_matrix_elements` |
 
@@ -17,7 +17,7 @@
 
 適用後、6 項目それぞれの `effectiveLimit` が表の値になったことを Service Usage API で確認した。
 
-**現行 Places Legacy では、検索と詳細を個別には強制できない。** 実際の API が公開する共通枠を合計 100 回 / 日に制限する。口コミ付き詳細取得に加算される Atmosphere Data の無料枠は月 1,000 回なので、毎日上限まで使うと有料になる。日次上限は誤操作の抑止であり、月次の無料枠の保証ではない。個別の日次枠が必要な場合は Places New への移行時に上の 10 / 30 の割当を使う。ブラウザの localStorage をプロジェクト全体の上限として扱う実装はしていない。
+**現行 Places Legacy では、検索と詳細を個別には強制できない。** 実際の API が公開する共通枠を合計 100 回 / 日に制限する。口コミ付き詳細取得に加算される Atmosphere Data の無料枠は月 1,000 回なので、毎日上限まで使うと有料になる。日次上限は誤操作の抑止であり、月次の無料枠の保証ではない。個別の日次枠が必要な場合は Places New への移行時に上の 20 / 100 の割当を使う。ブラウザの localStorage をプロジェクト全体の上限として扱う実装はしていない。
 
 Places New と Routes は確認時点で無効のまま。今回は割当を事前設定するだけで API の有効化や機能追加は行わない。Nearby Search、写真、3D 地図等はこのアプリでは未使用で、上表の制限対象に含めていない。導入時には別の割当を確認する。
 

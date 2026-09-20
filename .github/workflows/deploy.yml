@@ -14,7 +14,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       id-token: write
@@ -42,6 +42,7 @@ jobs:
           echo "PROJECT_ID=${{ secrets.PROJECT_ID }}" >> .env
           echo "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}" >> .env
           echo "NEXT_PUBLIC_GOOGLE_MAPS_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_ID }}" >> .env
+          echo "GOOGLE_MAPS_SERVER_API_KEY=${{ secrets.GOOGLE_MAPS_SERVER_API_KEY }}" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
 
       - name: Make deploy script executable

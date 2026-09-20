@@ -26,14 +26,14 @@ Maps LLM is a Next.js application that provides a customized Google Maps interfa
 
 Node version is pinned to 24.20.0 via `.mise.toml` for local development. The Docker image uses `node:24-slim`. Node 22 or newer is required by the openai SDK 7.x.
 
-Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the TypeScript helpers directly). Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
+Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the TypeScript helpers directly). They cover the detail batch, review matching, the Places (New) DTO/error mapping and the zod request schemas. Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
 
 ## Architecture
 
 ### Core Technologies
 
 - **Framework**: Next.js 16.3.4 (App Router, Turbopack) with TypeScript and React 19.2
-- **Maps**: Google Maps via @vis.gl/react-google-maps, Places API (`PlacesService.textSearch` and `getDetails`)
+- **Maps**: Google Maps JavaScript API via @vis.gl/react-google-maps for the map and markers only. Places data comes from Places API (New), called server-side by the adapter `src/lib/places-new.ts` through two route handlers; the browser no longer loads the `places` library and the public key no longer needs Places access. Design, FieldMasks and SKUs: `docs/places-new-adapter.md`
 - **UI**: Material-UI (@mui/material) with Emotion styling
 - **LLM**: OpenAI API via the openai SDK 7.x, Chat Completions with model `gpt-5.6-luna`, `reasoning_effort: "none"`, `max_completion_tokens`, no `temperature`, and a strict JSON schema `response_format`
 - **Styling**: Tailwind CSS + PostCSS
@@ -49,7 +49,9 @@ Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the T
 - `src/app/page.tsx`: Main map interface. Owns the search / fetch / analysis flow, search sessions, selection and URL state, and composes the UI components.
 - `src/components/`: `BottomSheet` (PC right side panel of 400px at widths of 900px and above, phone bottom sheet with collapsed / half / full heights), `SearchPanel` (form, status line, warnings, fetch-more button), `ResultsList`, `PlaceDetails` (score, review excerpt with reviewer attribution, Google Maps link) and `Histogram`.
 - `src/lib/place-result.ts` (score colours and result state), `src/lib/review-match.ts` (matches the LLM excerpt back to a Places review for attribution), `src/lib/map-layout.ts` (waits for the map container resize to settle before reading bounds).
-- `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Returns `{ value, related_review }` as JSON. Returns a 500 with an error message when the model response is empty or not valid JSON.
+- `src/app/api/places/search/route.ts` (POST) and `src/app/api/places/[placeId]/route.ts` (GET): Places API (New) Text Search and Place Details, validated with zod (`src/lib/api-schemas.ts`) and mapped to the DTOs in `src/lib/place-dto.ts`. Google quota errors become 429, key/permission problems 502, bad input 400.
+- `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Body is zod-validated (`reviews`, `metric`, `examples`, `scale`). Returns `{ value, related_review }` as JSON. OpenAI 429 / `insufficient_quota` become 429, other API errors 502, and an empty or invalid model response 500. Usage tokens and duration are logged per call.
+- All API routes return `{ error: { code, message } }` on failure and pass the request's AbortSignal upstream.
 - `src/app/api/generate-examples/route.ts`: OpenAI API endpoint for generating evaluation examples and an optimized search query. Returns `{ examples, searchQuery }` as JSON. The system prompt must keep its concrete 入力/出力 example; without it the model has returned a JSON string inside `examples`.
 - `src/app/layout.tsx`: Root layout with font configuration
 
@@ -57,8 +59,8 @@ Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the T
 
 1. User enters search term (e.g., "カフェ") and evaluation criteria (e.g., "電源がある")
 2. `/api/generate-examples` creates evaluation scale examples and an optimized search query
-3. Google Places API text search runs with the generated query, bounded to the current map viewport
-4. Fetch details for the first 5 places; the user can request 5 more at a time (20 attempts per search). Join the returned reviews (Places returns at most 5) and send them to `/api/analyze-reviews`, which assigns a 1-5 rating and extracts the most relevant review excerpt
+3. `/api/places/search` runs a Places API (New) Text Search with the generated query, restricted to the current map viewport (Text Search Pro SKU; the search results carry no Google rating)
+4. `/api/places/{placeId}` fetches details (Place Details Enterprise + Atmosphere SKU) for the first 5 places; the user can request 5 more at a time (20 attempts per search). Join the returned reviews (Places returns at most 5) and send them to `/api/analyze-reviews`, which assigns a 1-5 rating and extracts the most relevant review excerpt
 5. Map markers are color-coded based on the LLM evaluation scores
 
 The LLM prompts are written in Japanese and expect Japanese input.
@@ -73,6 +75,7 @@ The LLM prompts are written in Japanese and expect Japanese input.
 
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Google Maps JavaScript API key
 - `NEXT_PUBLIC_GOOGLE_MAPS_ID`: Google Maps ID for styling
+- `GOOGLE_MAPS_SERVER_API_KEY`: server-only key for Places API (New); never exposed to the browser
 - `OPENAI_API_KEY`: OpenAI API key for LLM analysis
 
 See `.env.example`. `.env` and `.env.local` are gitignored.

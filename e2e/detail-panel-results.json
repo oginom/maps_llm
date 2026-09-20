@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T12:44:34.504Z",
+  "generatedAt": "2026-09-20T16:07:23.973Z",
   "results": [
     {
       "view": "phone",
@@ -75,7 +75,15 @@
       "view": "phone",
       "scenario": "7-attribution",
       "result": "OK",
-      "screenshot": "docs/img/detail-panel/phone-attribution.png"
+      "screenshots": [
+        "docs/img/detail-panel/phone-attribution.png",
+        "docs/img/detail-panel/phone-places-new-1-hours.png",
+        "docs/img/detail-panel/phone-places-new-1-review.png",
+        "docs/img/detail-panel/phone-places-new-4-hours.png",
+        "docs/img/detail-panel/phone-places-new-4-review.png",
+        "docs/img/detail-panel/phone-places-new-5-hours.png",
+        "docs/img/detail-panel/phone-places-new-5-review.png"
+      ]
     },
     {
       "view": "phone",
@@ -100,7 +108,20 @@
           "width": 390,
           "height": 422
         },
-        "zoom": 10
+        "zoom": 10,
+        "body": {
+          "textQuery": "resize",
+          "rectangle": {
+            "low": {
+              "lat": 35.700450000000004,
+              "lng": 139.70125
+            },
+            "high": {
+              "lat": 35.72155000000001,
+              "lng": 139.72074999999998
+            }
+          }
+        }
       },
       "fit": {
         "before": 10,
@@ -117,6 +138,12 @@
       "scenario": "9-explicit-selection-only",
       "result": "OK",
       "screenshot": "docs/img/detail-panel/phone-explicit-selection.png"
+    },
+    {
+      "view": "phone",
+      "scenario": "10-server-error",
+      "result": "OK",
+      "screenshot": "docs/img/detail-panel/phone-server-error.png"
     },
     {
       "view": "desktop",
@@ -190,7 +217,15 @@
       "view": "desktop",
       "scenario": "7-attribution",
       "result": "OK",
-      "screenshot": "docs/img/detail-panel/desktop-attribution.png"
+      "screenshots": [
+        "docs/img/detail-panel/desktop-attribution.png",
+        "docs/img/detail-panel/desktop-places-new-1-hours.png",
+        "docs/img/detail-panel/desktop-places-new-1-review.png",
+        "docs/img/detail-panel/desktop-places-new-4-hours.png",
+        "docs/img/detail-panel/desktop-places-new-4-review.png",
+        "docs/img/detail-panel/desktop-places-new-5-hours.png",
+        "docs/img/detail-panel/desktop-places-new-5-review.png"
+      ]
     },
     {
       "view": "desktop",
@@ -215,7 +250,20 @@
           "width": 880,
           "height": 800
         },
-        "zoom": 11
+        "zoom": 11,
+        "body": {
+          "textQuery": "resize",
+          "rectangle": {
+            "low": {
+              "lat": 35.70100000000001,
+              "lng": 139.7
+            },
+            "high": {
+              "lat": 35.721000000000004,
+              "lng": 139.72199999999998
+            }
+          }
+        }
       },
       "fit": {
         "before": 11,
@@ -232,6 +280,12 @@
       "scenario": "9-explicit-selection-only",
       "result": "OK",
       "screenshot": "docs/img/detail-panel/desktop-explicit-selection.png"
+    },
+    {
+      "view": "desktop",
+      "scenario": "10-server-error",
+      "result": "OK",
+      "screenshot": "docs/img/detail-panel/desktop-server-error.png"
     }
   ],
   "audits": [
@@ -239,13 +293,215 @@
       "view": "phone",
       "external": [],
       "unexpectedAPI": [],
-      "errors": []
+      "errors": [],
+      "searchRequests": [
+        {
+          "textQuery": "panel",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        },
+        {
+          "textQuery": "quota",
+          "rectangle": {
+            "low": {
+              "lat": 35.700450000000004,
+              "lng": 139.70125
+            },
+            "high": {
+              "lat": 35.72155000000001,
+              "lng": 139.72074999999998
+            }
+          }
+        },
+        {
+          "textQuery": "resize",
+          "rectangle": {
+            "low": {
+              "lat": 35.700450000000004,
+              "lng": 139.70125
+            },
+            "high": {
+              "lat": 35.72155000000001,
+              "lng": 139.72074999999998
+            }
+          }
+        },
+        {
+          "textQuery": "server-error",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "panel-1",
+        "panel-2",
+        "panel-3",
+        "panel-4",
+        "panel-5",
+        "quota-1",
+        "quota-2",
+        "quota-3",
+        "quota-4",
+        "quota-5",
+        "quota-6",
+        "quota-7",
+        "quota-8",
+        "quota-9",
+        "quota-10",
+        "quota-11",
+        "quota-12",
+        "resize-1",
+        "resize-2",
+        "resize-3",
+        "resize-4",
+        "resize-5"
+      ],
+      "analysisRequests": [
+        "panel-1",
+        "panel-2",
+        "panel-3",
+        "panel-4",
+        "panel-5",
+        "quota-1",
+        "quota-3",
+        "quota-4",
+        "quota-5",
+        "quota-6",
+        "quota-7",
+        "quota-8",
+        "quota-9",
+        "quota-10",
+        "quota-11",
+        "quota-12",
+        "resize-1",
+        "resize-2",
+        "resize-3",
+        "resize-4",
+        "resize-5"
+      ]
     },
     {
       "view": "desktop",
       "external": [],
       "unexpectedAPI": [],
-      "errors": []
+      "errors": [],
+      "searchRequests": [
+        {
+          "textQuery": "panel",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        },
+        {
+          "textQuery": "quota",
+          "rectangle": {
+            "low": {
+              "lat": 35.70100000000001,
+              "lng": 139.7
+            },
+            "high": {
+              "lat": 35.721000000000004,
+              "lng": 139.72199999999998
+            }
+          }
+        },
+        {
+          "textQuery": "resize",
+          "rectangle": {
+            "low": {
+              "lat": 35.70100000000001,
+              "lng": 139.7
+            },
+            "high": {
+              "lat": 35.721000000000004,
+              "lng": 139.72199999999998
+            }
+          }
+        },
+        {
+          "textQuery": "server-error",
+          "rectangle": {
+            "low": {
+              "lat": 35.690000000000005,
+              "lng": 139.689
+            },
+            "high": {
+              "lat": 35.71,
+              "lng": 139.71099999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "panel-1",
+        "panel-2",
+        "panel-3",
+        "panel-4",
+        "panel-5",
+        "quota-1",
+        "quota-2",
+        "quota-3",
+        "quota-4",
+        "quota-5",
+        "quota-6",
+        "quota-7",
+        "quota-8",
+        "quota-9",
+        "quota-10",
+        "quota-11",
+        "quota-12",
+        "resize-1",
+        "resize-2",
+        "resize-3",
+        "resize-4",
+        "resize-5"
+      ],
+      "analysisRequests": [
+        "panel-1",
+        "panel-2",
+        "panel-3",
+        "panel-4",
+        "panel-5",
+        "quota-1",
+        "quota-3",
+        "quota-4",
+        "quota-5",
+        "quota-6",
+        "quota-7",
+        "quota-8",
+        "quota-9",
+        "quota-10",
+        "quota-11",
+        "quota-12",
+        "resize-1",
+        "resize-2",
+        "resize-3",
+        "resize-4",
+        "resize-5"
+      ]
     }
   ]
 }
