@@ -3,6 +3,9 @@
   const state = (window.__mock = {
     config: { count: 12, holdDetails: false, fail: [], gateJson: false },
     searches: [],
+    searchRequests: [],
+    fits: [],
+    resizes: [],
     details: [],
     releasedDetails: [],
     analyses: [],
@@ -12,6 +15,7 @@
     jsonDelivered: [],
     pendingDetails: [],
     markers: [],
+    pans: [],
   });
   const listeners = new WeakMap();
   const event = {
@@ -54,15 +58,28 @@
   }
   class LatLngBounds {
     points = [];
+    constructor(rectangle) {
+      this.rectangle = rectangle;
+    }
     extend(point) {
       this.points.push(point);
       return this;
+    }
+    contains(point) {
+      return point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
     }
     isEmpty() {
       return this.points.length === 0;
     }
     toJSON() {
-      return { north: 35.71, south: 35.69, east: 139.72, west: 139.68 };
+      return (
+        this.rectangle ?? {
+          north: 35.71,
+          south: 35.69,
+          east: 139.72,
+          west: 139.68,
+        }
+      );
     }
   }
   class MockMap {
@@ -78,6 +95,28 @@
       label.textContent = "MOCK MAP — synthetic places / no external API";
       label.style.cssText = "padding:12px;font:12px sans-serif;color:#43534b";
       div.append(label);
+      this.appliedSize = { width: div.clientWidth, height: div.clientHeight };
+      state.map = this;
+      new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          this.appliedSize = {
+            width: div.clientWidth,
+            height: div.clientHeight,
+          };
+          state.resizes.push({ ...this.appliedSize });
+          state.markers
+            .filter((marker) => marker.map === this)
+            .forEach((marker) => marker.render());
+          event.trigger(this, "idle");
+        });
+      }).observe(div);
+    }
+    panTo(position) {
+      state.pans.push(position.id);
+      this.center = position;
+      position.x = 0.5;
+      position.y = 0.5;
+      state.markers.forEach((marker) => marker.render());
     }
     getDiv() {
       return this.div;
@@ -95,7 +134,21 @@
       return 0;
     }
     getBounds() {
-      return new LatLngBounds();
+      // Deliberately use the last APPLIED size, not a fresh DOM measurement:
+      // callers reading before the resize frame get the previous thin bounds.
+      const { width, height } = this.appliedSize;
+      const pixelsPerDegree = 20000 * 2 ** (this.zoom - 10);
+      const lat = this.center.lat(),
+        lng = this.center.lng();
+      const bounds = new LatLngBounds({
+        north: lat + height / pixelsPerDegree / 2,
+        south: lat - height / pixelsPerDegree / 2,
+        east: lng + width / pixelsPerDegree / 2,
+        west: lng - width / pixelsPerDegree / 2,
+      });
+      bounds.viewSize = { width, height };
+      bounds.zoom = this.zoom;
+      return bounds;
     }
     setOptions(options) {
       Object.assign(this.options, options);
@@ -114,6 +167,22 @@
     }
     fitBounds(bounds) {
       this.bounds = bounds;
+      const latitudes = bounds.points.map((point) => point.lat());
+      const longitudes = bounds.points.map((point) => point.lng());
+      const latSpan = Math.max(...latitudes) - Math.min(...latitudes) || 0.001;
+      const lngSpan =
+        Math.max(...longitudes) - Math.min(...longitudes) || 0.001;
+      const before = this.zoom;
+      this.zoom = Math.floor(
+        10 +
+          Math.log2(
+            Math.min(
+              this.appliedSize.height / (latSpan * 20000),
+              this.appliedSize.width / (lngSpan * 20000),
+            ),
+          ),
+      );
+      state.fits.push({ before, after: this.zoom, ...this.appliedSize });
     }
     project(position) {
       // Container coordinates for synthetic marker positions.
@@ -159,9 +228,12 @@
         left: `${point.x}px`,
         top: `${point.y}px`,
         background: icon.fillColor,
+        borderWidth: `${icon.strokeWeight}px`,
+        borderColor: icon.strokeColor,
       });
       this.element.dataset.placeId = position.id;
       this.element.dataset.color = icon.fillColor;
+      this.element.dataset.selected = String(icon.strokeWeight === 4);
       this.element.setAttribute("aria-label", `mock pin ${position.id}`);
       this.element.textContent = label.text;
     }
@@ -207,8 +279,14 @@
       };
     });
   class PlacesService {
-    textSearch({ query }, callback) {
+    textSearch({ query, bounds }, callback) {
       state.searches.push(query);
+      state.searchRequests.push({
+        query,
+        bounds: bounds?.toJSON(),
+        viewSize: bounds?.viewSize,
+        zoom: bounds?.zoom,
+      });
       const places = makePlaces(query, state.config.count);
       setTimeout(() => callback(places, "OK"), 0);
     }
@@ -224,7 +302,15 @@
                 name: `${placeId} 詳細店舗`,
                 formatted_address: "東京都 モック区 検証町1-2-3",
                 rating: 4,
-                reviews: [{ text: `REVIEW:${placeId}` }],
+                reviews: [
+                  {
+                    text: `REVIEW:${placeId}`,
+                    author_name: `投稿者 ${placeId}`,
+                    profile_photo_url:
+                      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect width="32" height="32" fill="%2399bbdd"/%3E%3C/svg%3E',
+                    author_url: `https://example.invalid/author/${placeId}`,
+                  },
+                ],
                 url: "https://example.invalid/mock-place",
               },
           failure ? "OVER_QUERY_LIMIT" : "OK",

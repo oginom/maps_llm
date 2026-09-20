@@ -8,7 +8,7 @@
 - `verify-fetch-limits.mjs`: Playwright のルーティングで `/api/generate-examples` と `/api/analyze-reviews` を応答し、他の API と外部 origin を遮断する。service worker も無効化する。
 - `results.json`: 最後の実行の検証値・通信監査・UI 座標。
 - `run.log`: 提出時のコンソール出力。再実行時は任意でリダイレクトして更新する。
-- `../docs/img/fetch-limits/*.png`: 各画面の証跡。全体の判定と既存 UI 不具合は [検証報告](../docs/verification-fetch-limits.md)。
+- `../docs/img/detail-panel/fetch-limits/*.png`: パネル化後の回帰検証の証跡。旧 `img/fetch-limits/` の画像は初回の不具合記録として保持する。最新の判定は [詳細パネル検証報告](../docs/verification-detail-panel.md)。
 
 ## 実行
 
@@ -58,4 +58,25 @@ mise exec node@24.6.0 -- node e2e/verify-fetch-limits.mjs
 
 ```sh
 mise exec node@24.6.0 -- node --test src/lib/place-detail-batch.test.mjs
+```
+
+## 詳細パネルの検証
+
+同じダミーキーのサーバー、Playwright / Chromium の環境変数で、次を実行する。
+
+```sh
+PLAYWRIGHT_MODULE=/Users/ogino/.npm/_npx/9833c18b2d85bc59/node_modules/playwright/index.mjs \
+E2E_CHROMIUM_PATH=/Users/ogino/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell \
+mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run.log
+```
+
+9シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
+一覧の取得状態、選択・スクロール、画面外選択の panTo、各高さでの警告・追加ボタンの矩形とヒットテスト、分布、投稿者情報を確認する。
+モックは地図サイズ変更の次のフレームで適用済み寸法を更新し、getBounds / fitBounds の範囲・zoomを寸法から計算する。入力フォーカス後の検索で半分の地図寸法を使うこと、および任意のリサイズで選択ピンへ戻らないことも確認する。bounds.contains と panTo は簡略モデルであり、実 Google の投影検証ではない。
+`verify-fetch-limits.mjs` の6シナリオはそのまま残し、電話サイズのピン操作前にシートを縮小、旧分布メニューの採取を常設ヒストグラムの採取へ変更した。
+
+抜粋と投稿者の照合の単体テスト:
+
+```sh
+mise exec node@24.6.0 -- node --test src/lib/place-detail-batch.test.mjs src/lib/review-match.test.mjs
 ```

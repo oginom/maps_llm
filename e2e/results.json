@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T06:06:19.234Z",
+  "generatedAt": "2026-09-20T09:15:04.655Z",
   "browser": "Chromium 149.0.7827.55 (Playwright)",
   "viewports": {
     "phone": {
@@ -95,10 +95,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/phone-initial.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-initial.png"
     },
     {
       "viewport": "phone",
@@ -198,11 +198,11 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 10 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "partialAttempts": 7,
-      "screenshot": "docs/img/fetch-limits/phone-cap.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-cap.png"
     },
     {
       "viewport": "phone",
@@ -334,7 +334,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件・評価中...",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件・評価中...口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "state": {
@@ -473,10 +473,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 10 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/phone-double-click.png",
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-double-click.png",
       "note": "native dblclick + same-tick click()/click(); each reserves exactly 5 extra"
     },
     {
@@ -561,7 +561,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 4 件 / 最大10件 · 追加可能 5 件 · 失敗 1 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": "Google Places の利用上限に達しました。時間をおいて再検索してください。"
       },
       "state": {
@@ -657,10 +657,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 9 件 / 最大10件 · 追加可能 0 件 · 失敗 1 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": "Google Places の利用上限に達しました。時間をおいて再検索してください。"
       },
-      "screenshot": "docs/img/fetch-limits/phone-quota-error.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-quota-error.png"
     },
     {
       "viewport": "phone",
@@ -756,7 +756,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "state": {
@@ -904,10 +904,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/phone-stale-results.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-stale-results.png"
     },
     {
       "viewport": "phone",
@@ -1035,7 +1035,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "failedRequests": [
@@ -1060,7 +1060,7 @@
           "error": "net::ERR_ABORTED"
         }
       ],
-      "screenshot": "docs/img/fetch-limits/phone-abort.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-abort.png"
     },
     {
       "viewport": "phone",
@@ -1072,65 +1072,65 @@
           "height": 844
         },
         "alert": {
-          "x": 19.5,
-          "y": 581.203125,
-          "width": 351,
-          "height": 68.03125,
-          "right": 370.5,
-          "bottom": 649.234375
+          "x": 12,
+          "y": 599.15625,
+          "width": 366,
+          "height": 50.3125,
+          "right": 378,
+          "bottom": 649.46875
         },
         "status": {
-          "x": 19.5,
-          "y": 657.234375,
-          "width": 351,
-          "height": 66.765625,
-          "right": 370.5,
-          "bottom": 724
+          "x": 12,
+          "y": 554,
+          "width": 366,
+          "height": 41.15625,
+          "right": 378,
+          "bottom": 595.15625
         },
         "search": {
-          "x": 278.5,
-          "y": 758,
-          "width": 44,
-          "height": 44,
-          "right": 322.5,
-          "bottom": 802
+          "x": 314,
+          "y": 506,
+          "width": 64,
+          "height": 40,
+          "right": 378,
+          "bottom": 546
         },
-        "menu": {
-          "x": 322.5,
-          "y": 758,
-          "width": 44,
-          "height": 44,
-          "right": 366.5,
-          "bottom": 802
+        "histogram": {
+          "x": 0,
+          "y": 779,
+          "width": 390,
+          "height": 65,
+          "right": 390,
+          "bottom": 844
         },
         "input": {
-          "x": 129.265625,
-          "y": 739,
-          "width": 131.234375,
-          "height": 32,
-          "right": 260.5,
-          "bottom": 771
+          "x": 12,
+          "y": 458,
+          "width": 366,
+          "height": 40,
+          "right": 378,
+          "bottom": 498
         },
         "more": {
-          "x": 27.5,
-          "y": 685.25,
-          "width": 97.859375,
-          "height": 30.75,
-          "right": 125.359375,
-          "bottom": 716
+          "x": 12,
+          "y": 655.46875,
+          "width": 366,
+          "height": 36,
+          "right": 378,
+          "bottom": 691.46875
         },
         "documentWidth": 390
       },
       "overlay": {
-        "x": 219.796875,
-        "y": -132.625,
-        "width": 200,
-        "height": 236.109375,
-        "right": 419.796875,
-        "bottom": 103.484375
+        "x": 0,
+        "y": 496.78125,
+        "width": 390,
+        "height": 282.21875,
+        "right": 390,
+        "bottom": 779
       },
-      "screenshot": "docs/img/fetch-limits/phone-overlay.png",
-      "distributionScreenshot": "docs/img/fetch-limits/phone-distribution.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-overlay.png",
+      "distributionScreenshot": "docs/img/detail-panel/fetch-limits/phone-distribution.png"
     },
     {
       "viewport": "desktop",
@@ -1215,10 +1215,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/desktop-initial.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-initial.png"
     },
     {
       "viewport": "desktop",
@@ -1318,11 +1318,11 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 10 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "partialAttempts": 7,
-      "screenshot": "docs/img/fetch-limits/desktop-cap.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-cap.png"
     },
     {
       "viewport": "desktop",
@@ -1454,7 +1454,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件・評価中...",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件・評価中...口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "state": {
@@ -1593,10 +1593,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 10 件 / 最大10件 · 追加可能 0 件 · 失敗 0 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/desktop-double-click.png",
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-double-click.png",
       "note": "native dblclick + same-tick click()/click(); each reserves exactly 5 extra"
     },
     {
@@ -1681,7 +1681,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 4 件 / 最大10件 · 追加可能 5 件 · 失敗 1 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": "Google Places の利用上限に達しました。時間をおいて再検索してください。"
       },
       "state": {
@@ -1777,10 +1777,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 10 件 / 最大10件",
+        "status": "評価済み 9 件 / 最大10件 · 追加可能 0 件 · 失敗 1 件口コミ取得対象 10 件 / 最大10件 · 候補 12 件",
         "alert": "Google Places の利用上限に達しました。時間をおいて再検索してください。"
       },
-      "screenshot": "docs/img/fetch-limits/desktop-quota-error.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-quota-error.png"
     },
     {
       "viewport": "desktop",
@@ -1876,7 +1876,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "state": {
@@ -2024,10 +2024,10 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
-      "screenshot": "docs/img/fetch-limits/desktop-stale-results.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-stale-results.png"
     },
     {
       "viewport": "desktop",
@@ -2155,7 +2155,7 @@
             "color": "#ffffff"
           }
         ],
-        "status": "口コミ取得対象 5 件 / 最大10件次の5件を評価",
+        "status": "評価済み 5 件 / 最大10件 · 追加可能 5 件 · 失敗 0 件口コミ取得対象 5 件 / 最大10件 · 候補 12 件",
         "alert": null
       },
       "failedRequests": [
@@ -2180,7 +2180,7 @@
           "error": "net::ERR_ABORTED"
         }
       ],
-      "screenshot": "docs/img/fetch-limits/desktop-abort.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-abort.png"
     },
     {
       "viewport": "desktop",
@@ -2192,65 +2192,65 @@
           "height": 800
         },
         "alert": {
-          "x": 361.2890625,
-          "y": 557.21875,
-          "width": 557.421875,
-          "height": 48.015625,
-          "right": 918.7109375,
-          "bottom": 605.234375
+          "x": 892,
+          "y": 157.15625,
+          "width": 376,
+          "height": 50.3125,
+          "right": 1268,
+          "bottom": 207.46875
         },
         "status": {
-          "x": 361.2890625,
-          "y": 613.234375,
-          "width": 557.421875,
-          "height": 66.765625,
-          "right": 918.7109375,
-          "bottom": 680
+          "x": 892,
+          "y": 112,
+          "width": 376,
+          "height": 41.15625,
+          "right": 1268,
+          "bottom": 153.15625
         },
         "search": {
-          "x": 655.0546875,
-          "y": 714,
-          "width": 44,
-          "height": 44,
-          "right": 699.0546875,
-          "bottom": 758
+          "x": 1204,
+          "y": 64,
+          "width": 64,
+          "height": 40,
+          "right": 1268,
+          "bottom": 104
         },
-        "menu": {
-          "x": 699.0546875,
-          "y": 714,
-          "width": 44,
-          "height": 44,
-          "right": 743.0546875,
-          "bottom": 758
+        "histogram": {
+          "x": 880,
+          "y": 735,
+          "width": 400,
+          "height": 65,
+          "right": 1280,
+          "bottom": 800
         },
         "input": {
-          "x": 471.0546875,
-          "y": 695,
-          "width": 166,
-          "height": 32,
-          "right": 637.0546875,
-          "bottom": 727
+          "x": 892,
+          "y": 16,
+          "width": 376,
+          "height": 40,
+          "right": 1268,
+          "bottom": 56
         },
         "more": {
-          "x": 369.2890625,
-          "y": 641.25,
-          "width": 97.859375,
-          "height": 30.75,
-          "right": 467.1484375,
-          "bottom": 672
+          "x": 892,
+          "y": 213.46875,
+          "width": 376,
+          "height": 36,
+          "right": 1268,
+          "bottom": 249.46875
         },
         "documentWidth": 1280
       },
       "overlay": {
-        "x": 949.59375,
-        "y": -140.109375,
-        "width": 200,
-        "height": 236.109375,
-        "right": 1149.59375,
-        "bottom": 96
+        "x": 880,
+        "y": 392.375,
+        "width": 400,
+        "height": 342.625,
+        "right": 1280,
+        "bottom": 735
       },
-      "screenshot": "docs/img/fetch-limits/desktop-overlay.png",
-      "distributionScreenshot": "docs/img/fetch-limits/desktop-distribution.png"
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-overlay.png",
+      "distributionScreenshot": "docs/img/detail-panel/fetch-limits/desktop-distribution.png"
     }
   ],
   "network": [

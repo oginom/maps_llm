@@ -13,7 +13,7 @@ assert.ok(
   "Local server only",
 );
 const root = fileURLToPath(new URL("../", import.meta.url));
-const evidenceDir = `${root}docs/img/fetch-limits`;
+const evidenceDir = `${root}docs/img/detail-panel/fetch-limits`;
 await mkdir(evidenceDir, { recursive: true });
 const browser = await chromium.launch({
   headless: true,
@@ -110,7 +110,7 @@ async function done(page) {
     return (
       el &&
       /口コミ取得対象/.test(el.textContent) &&
-      !/評価中/.test(el.textContent)
+      !/評価中|検索中/.test(el.textContent)
     );
   });
 }
@@ -149,7 +149,7 @@ async function pinCounts(page, colored, white) {
 }
 async function shot(page, name) {
   await page.screenshot({ path: `${evidenceDir}/${name}.png` });
-  return `docs/img/fetch-limits/${name}.png`;
+  return `docs/img/detail-panel/fetch-limits/${name}.png`;
 }
 async function check(view, scenario, run) {
   const env = await setup(viewports[view]);
@@ -359,6 +359,13 @@ try {
       assert.ok(state.pins.every((p) => p.id.startsWith("new-json")));
       assert.match(state.status, /5 件 \/ 最大10件/);
       assert.equal(state.alert, null);
+      if (view === "phone") {
+        while (
+          (await page.locator("aside").getAttribute("data-sheet-height")) !==
+          "collapsed"
+        )
+          await page.locator("[data-sheet-handle]").click();
+      }
       await page
         .getByRole("button", { name: "mock pin new-json-1", exact: true })
         .click();
@@ -429,7 +436,7 @@ try {
           alert: box(document.querySelector('[role="alert"]')),
           status: box(document.querySelector('[role="status"]')),
           search: box(document.querySelector('[aria-label="search"]')),
-          menu: box(document.querySelector('[aria-label="menu"]')),
+          histogram: box(document.querySelector("[data-histogram]")),
           input: box(
             document.querySelector('[placeholder="Enter search term"]'),
           ),
@@ -441,13 +448,20 @@ try {
           documentWidth: document.documentElement.scrollWidth,
         };
       });
+      if (view === "phone") {
+        while (
+          (await page.locator("aside").getAttribute("data-sheet-height")) !==
+          "collapsed"
+        )
+          await page.locator("[data-sheet-handle]").click();
+      }
       await page
         .getByRole("button", { name: "mock pin ux-4", exact: true })
         .click();
       const overlay = await page
-        .getByText("ux-4 詳細店舗", { exact: true })
+        .locator("[data-place-details]")
         .evaluate((el) => {
-          const rect = el.closest(".MuiPaper-root").getBoundingClientRect();
+          const rect = el.getBoundingClientRect();
           return {
             x: rect.x,
             y: rect.y,
@@ -458,8 +472,7 @@ try {
           };
         });
       const screenshot = await shot(page, `${view}-overlay`);
-      await page.getByRole("button", { name: "menu", exact: true }).click();
-      assert.equal(await page.getByText("分布", { exact: true }).count(), 1);
+      assert.equal(await page.locator("[data-histogram]").count(), 1);
       return {
         boxes,
         overlay,
