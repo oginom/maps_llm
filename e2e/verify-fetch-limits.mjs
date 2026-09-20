@@ -190,7 +190,7 @@ try {
       const state = await snapshot(page);
       assert.deepEqual(state.details, ids("initial"));
       assert.deepEqual(state.analyses.slice().sort(), ids("initial").sort());
-      assert.match(state.status, /5 件 \/ 最大10件/);
+      assert.match(state.status, /5 件 \/ 最大20件/);
       assert.equal(
         await page.getByRole("button", { name: "次の5件を評価" }).isEnabled(),
         true,
@@ -198,20 +198,49 @@ try {
       return { state, screenshot: await shot(page, `${view}-initial`) };
     });
     await check(view, "2-cap", async ({ page }) => {
+      await page.evaluate(() => {
+        window.__mock.config.count = 23;
+      });
       await search(page, "cap");
       await done(page);
-      await page.getByRole("button", { name: "次の5件を評価" }).click();
-      await done(page);
-      await pinCounts(page, 10, 2);
+      const batches = [];
+      for (const count of [5, 10, 15, 20]) {
+        if (count > 5) {
+          await page.getByRole("button", { name: "次の5件を評価" }).click();
+          await done(page);
+        }
+        await pinCounts(page, count, 23 - count);
+        const batch = await snapshot(page);
+        assert.deepEqual(batch.details, ids("cap", count));
+        assert.deepEqual(
+          batch.analyses.slice().sort(),
+          ids("cap", count).sort(),
+        );
+        assert.match(batch.status, new RegExp(`${count} 件 / 最大20件`));
+        if (count < 20) {
+          assert.equal(
+            await page
+              .getByRole("button", { name: "次の5件を評価" })
+              .isEnabled(),
+            true,
+          );
+        }
+        batches.push(count);
+      }
+      await page.waitForTimeout(250); // No automatic fetching past the cap.
       const state = await snapshot(page);
-      assert.deepEqual(state.details, ids("cap", 10));
-      assert.equal(state.analyses.length, 10);
+      assert.deepEqual(state.details, ids("cap", 20));
+      assert.deepEqual(state.analyses.slice().sort(), ids("cap", 20).sort());
+      assert.equal(state.pins.length, 23);
+      assert.equal(
+        await page.locator('[data-fetch-state="unfetched"]').count(),
+        3,
+      );
       assert.equal(
         await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
         0,
       );
-      assert.match(state.status, /10 件 \/ 最大10件/);
-      // The persistent max-10 status is the only cap explanation.
+      assert.match(state.status, /20 件 \/ 最大20件/);
       const screenshot = await shot(page, `${view}-cap`);
       // Also verify a partial final batch (7 candidates => 5 + 2).
       await page.evaluate(() => {
@@ -231,7 +260,7 @@ try {
         await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
         0,
       );
-      return { state, partialAttempts: 7, screenshot };
+      return { state, batches, partialAttempts: 7, screenshot };
     });
     await check(view, "3-double-click", async ({ page }) => {
       await search(page, "double");
@@ -251,6 +280,11 @@ try {
       await page.evaluate(() => window.__mock.releaseDetails());
       await done(page);
       await pinCounts(page, 10, 2);
+      assert.match((await snapshot(page)).status, /10 件 \/ 最大20件/);
+      assert.equal(
+        await page.getByRole("button", { name: "次の2件を評価" }).isEnabled(),
+        true,
+      );
       const screenshot = await shot(page, `${view}-double-click`);
       // A second search stresses synchronous re-entry before React can render.
       await page.evaluate(() => {
@@ -309,7 +343,7 @@ try {
         "#ffffff",
       );
       assert.equal(state.analyses.length, 9);
-      assert.match(state.status, /10 件 \/ 最大10件/);
+      assert.match(state.status, /10 件 \/ 最大20件/);
       return { initial, state, screenshot };
     });
     await check(view, "5-stale-results", async ({ page }) => {
@@ -357,7 +391,7 @@ try {
       await page.waitForTimeout(100);
       const state = await snapshot(page);
       assert.ok(state.pins.every((p) => p.id.startsWith("new-json")));
-      assert.match(state.status, /5 件 \/ 最大10件/);
+      assert.match(state.status, /5 件 \/ 最大20件/);
       assert.equal(state.alert, null);
       if (view === "phone") {
         while (
@@ -405,6 +439,7 @@ try {
         ids("abort-old").sort(),
       );
       assert.ok(state.pins.every((p) => p.id.startsWith("abort-new")));
+      assert.match(state.status, /5 件 \/ 最大20件/);
       // Release mock server responses only after cancellation was observed.
       await Promise.allSettled(audit.holds.map((fn) => fn()));
       return {

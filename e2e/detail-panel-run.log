@@ -1,8 +1,8 @@
 {"view":"phone","scenario":"1-initial","result":"OK","screenshot":"docs/img/detail-panel/phone-initial.png"}
 {"view":"phone","scenario":"2-edge-pin","result":"OK","screenshot":"docs/img/detail-panel/phone-edge-details.png"}
 {"view":"phone","scenario":"3-offscreen-row","result":"OK","screenshot":"docs/img/detail-panel/phone-offscreen-row.png"}
-{"view":"phone","scenario":"4-fetch-and-failure","result":"OK","screenshots":["docs/img/detail-panel/phone-warning-collapsed.png","docs/img/detail-panel/phone-warning-half.png","docs/img/detail-panel/phone-warning-full.png"],"screenshot":"docs/img/detail-panel/phone-fetch-complete.png"}
-{"view":"phone","scenario":"5-histogram","result":"OK","bins":[2,1,2,2,2],"screenshot":"docs/img/detail-panel/phone-histogram.png"}
+{"view":"phone","scenario":"4-fetch-and-failure","result":"OK","attempts":["quota-1","quota-2","quota-3","quota-4","quota-5","quota-6","quota-7","quota-8","quota-9","quota-10","quota-11","quota-12"],"analyses":["quota-1","quota-3","quota-4","quota-5","quota-6","quota-7","quota-8","quota-9","quota-10","quota-11","quota-12"],"screenshots":["docs/img/detail-panel/phone-warning-collapsed.png","docs/img/detail-panel/phone-warning-half.png","docs/img/detail-panel/phone-warning-full.png","docs/img/detail-panel/phone-fetch-partial.png"],"screenshot":"docs/img/detail-panel/phone-fetch-complete.png"}
+{"view":"phone","scenario":"5-histogram","result":"OK","bins":[3,2,2,2,2],"screenshot":"docs/img/detail-panel/phone-histogram.png"}
 {"view":"phone","scenario":"6-sheet","result":"OK","screenshot":"docs/img/detail-panel/phone-sheet-map.png"}
 {"view":"phone","scenario":"7-attribution","result":"OK","screenshot":"docs/img/detail-panel/phone-attribution.png"}
 {"view":"phone","scenario":"8-search-map-size","result":"OK","before":10,"fullBounds":{"north":35.713100000000004,"south":35.70890000000001,"east":139.72074999999998,"west":139.70125},"request":{"query":"resize","bounds":{"north":35.72155000000001,"south":35.700450000000004,"east":139.72074999999998,"west":139.70125},"viewSize":{"width":390,"height":422},"zoom":10},"fit":{"before":10,"after":10,"width":390,"height":422},"after":10,"actualHeight":422,"screenshot":"docs/img/detail-panel/phone-search-map-size.png"}
@@ -10,8 +10,8 @@
 {"view":"desktop","scenario":"1-initial","result":"OK","screenshot":"docs/img/detail-panel/desktop-initial.png"}
 {"view":"desktop","scenario":"2-edge-pin","result":"OK","screenshot":"docs/img/detail-panel/desktop-edge-details.png"}
 {"view":"desktop","scenario":"3-offscreen-row","result":"OK","screenshot":"docs/img/detail-panel/desktop-offscreen-row.png"}
-{"view":"desktop","scenario":"4-fetch-and-failure","result":"OK","screenshots":["docs/img/detail-panel/desktop-warning-full.png"],"screenshot":"docs/img/detail-panel/desktop-fetch-complete.png"}
-{"view":"desktop","scenario":"5-histogram","result":"OK","bins":[2,1,2,2,2],"screenshot":"docs/img/detail-panel/desktop-histogram.png"}
+{"view":"desktop","scenario":"4-fetch-and-failure","result":"OK","attempts":["quota-1","quota-2","quota-3","quota-4","quota-5","quota-6","quota-7","quota-8","quota-9","quota-10","quota-11","quota-12"],"analyses":["quota-1","quota-3","quota-4","quota-5","quota-6","quota-7","quota-8","quota-9","quota-10","quota-11","quota-12"],"screenshots":["docs/img/detail-panel/desktop-warning-full.png","docs/img/detail-panel/desktop-fetch-partial.png"],"screenshot":"docs/img/detail-panel/desktop-fetch-complete.png"}
+{"view":"desktop","scenario":"5-histogram","result":"OK","bins":[3,2,2,2,2],"screenshot":"docs/img/detail-panel/desktop-histogram.png"}
 {"view":"desktop","scenario":"6-sheet","result":"OK","screenshot":"docs/img/detail-panel/desktop-sheet-map.png"}
 {"view":"desktop","scenario":"7-attribution","result":"OK","screenshot":"docs/img/detail-panel/desktop-attribution.png"}
 {"view":"desktop","scenario":"8-search-map-size","result":"OK","before":11,"fullBounds":{"north":35.721000000000004,"south":35.70100000000001,"east":139.72199999999998,"west":139.7},"request":{"query":"resize","bounds":{"north":35.721000000000004,"south":35.70100000000001,"east":139.72199999999998,"west":139.7},"viewSize":{"width":880,"height":800},"zoom":11},"fit":{"before":11,"after":11,"width":880,"height":800},"after":11,"actualHeight":800,"screenshot":"docs/img/detail-panel/desktop-search-map-size.png"}

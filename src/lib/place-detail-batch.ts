@@ -1,5 +1,9 @@
 // Reserve attempts before any asynchronous work so double clicks and failures
 // cannot exceed the per-search allowance.
+export const INITIAL_DETAIL_COUNT = 5;
+export const DETAIL_BATCH_SIZE = 5;
+export const MAX_DETAILS_PER_SEARCH = 20;
+
 export class PlaceDetailBatch<T extends { place_id: string }> {
   private candidates: T[];
   requestedCount = 0;
@@ -13,7 +17,7 @@ export class PlaceDetailBatch<T extends { place_id: string }> {
         seen.add(candidate.place_id);
         return true;
       })
-      .slice(0, 10);
+      .slice(0, MAX_DETAILS_PER_SEARCH);
   }
 
   get remainingCount() {
@@ -25,7 +29,7 @@ export class PlaceDetailBatch<T extends { place_id: string }> {
     this.isBusy = true;
     const batch = this.candidates.slice(
       this.requestedCount,
-      this.requestedCount + 5,
+      this.requestedCount + DETAIL_BATCH_SIZE,
     );
     this.requestedCount += batch.length;
     return batch;

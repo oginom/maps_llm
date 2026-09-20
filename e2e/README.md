@@ -4,7 +4,7 @@
 
 ## ファイル
 
-- `maps-mock.js`: ページのスクリプトより先に `google.maps` を注入。Map / PlacesService / Marker / OverlayView を置換し、合成の候補12店を返す。実 Maps JS のダウンロードは発生しない。
+- `maps-mock.js`: ページのスクリプトより先に `google.maps` を注入。Map / PlacesService / Marker / OverlayView を置換し、既定で合成の候補12店を返す（上限シナリオは23店、部分バッチは7店に上書き）。実 Maps JS のダウンロードは発生しない。
 - `verify-fetch-limits.mjs`: Playwright のルーティングで `/api/generate-examples` と `/api/analyze-reviews` を応答し、他の API と外部 origin を遮断する。service worker も無効化する。
 - `results.json`: 最後の実行の検証値・通信監査・UI 座標。
 - `run.log`: 提出時のコンソール出力。再実行時は任意でリダイレクトして更新する。
@@ -41,12 +41,16 @@ mise exec node@24.6.0 -- node e2e/verify-fetch-limits.mjs
 
 `E2E_BASE_URL` でポートを変更できるが、接続先は `localhost` / `127.0.0.1` のみ許可する。通常ブラウザで実キーのサーバーを開く手順は不要。テスト終了後はターミナル1を Ctrl-C で停止する。
 
+実キーのサーバー（port 3000）が同じディレクトリで起動中の場合、Next.js の開発ロックが競合する。今回の再検証では `/private/tmp` の一時ディレクトリへ `src/`、`public/` と `package.json`、`next.config.js`、`tsconfig.json`、`next-env.d.ts`、`postcss.config.mjs`、`tailwind.config.ts` をコピーし、`node_modules` だけ元リポジトリへのシンボリックリンクにした（`.env*` はコピーしない）。上記の起動コマンドの `next dev` の直後にその一時ディレクトリを渡し、同じダミーキー・port 3107で実行する。テスト自体は元リポジトリから実行し、実キーのport 3000は使用・停止しない。
+
 この環境ではローカルポート作成と Chromium 起動にサンドボックス外実行の承認が必要だった。Next.js が開発起動時に CLAUDE.md へ自動追記する場合がある。今回の実行で増えた自動生成ブロックのみ、サーバー停止後に除去した。
+
+2026-09-20 の最大20試行対応後の実行結果: 取得制限12/12＋UI採取2/2、詳細パネル18/18成功（両方終了コード0）。外部通信試行・想定外API・ブラウザ例外はいずれも0。
 
 ## 判定とモックの範囲
 
 - 6シナリオ×2サイズをそれぞれ独立した BrowserContext で検証する。追加で各サイズの UI 座標と画像を採取する。`ui-observations` の `OK` は採取成功を意味し、UI の正常判定ではない。
-- 初期・追加の place ID と実呼び出し配列を照合し、DOM 化した Marker の `icon.fillColor` を検証する。候補7店の場合の 5→2 も確認する。
+- 初期・追加の place ID と実呼び出し配列を照合し、DOM 化した Marker の `icon.fillColor` を検証する。23候補で初期5→10→15→20試行、未取得3店を残して停止し、追加ボタン消失と「20 件 / 最大20件」を確認する。候補7店の場合の 5→追加2 も確認する。
 - 二重操作は Playwright のネイティブ `mouse.dblclick` と同一イベントループ内の `button.click()` 2回で検証する。
 - 詳細取得の失敗は `OVER_QUERY_LIMIT`。失敗後の追加取得まで含め、同じ ID が再要求されないことを確認する。完了後の追加観測時間は250ms。
 - 旧 Places `getDetails` コールバックを保留し、新検索完了後に返す。別の検索では旧分析の JSON 解決を保留し、AbortSignal 発火後にも意図的に解決させ、遅延結果破棄を検証する。
@@ -71,6 +75,7 @@ mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run
 ```
 
 9シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
+初期5件・追加5件・検索ごと最大20試行（失敗も含む）を前提にする。シナリオ4は12候補で、追加1回後の評価済み9・失敗1・未取得2を区別し、さらに2件取得後の評価済み11・失敗1・未取得0とボタン消失を確認する。分布は `[3,2,2,2,2]`。
 一覧の取得状態、選択・スクロール、画面外選択の panTo、各高さでの警告・追加ボタンの矩形とヒットテスト、分布、投稿者情報を確認する。
 モックは地図サイズ変更の次のフレームで適用済み寸法を更新し、getBounds / fitBounds の範囲・zoomを寸法から計算する。入力フォーカス後の検索で半分の地図寸法を使うこと、および任意のリサイズで選択ピンへ戻らないことも確認する。bounds.contains と panTo は簡略モデルであり、実 Google の投影検証ではない。
 `verify-fetch-limits.mjs` の6シナリオはそのまま残し、電話サイズのピン操作前にシートを縮小、旧分布メニューの採取を常設ヒストグラムの採取へ変更した。

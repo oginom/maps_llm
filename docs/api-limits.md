@@ -1,13 +1,13 @@
 # AI Map の API 利用制限
 
-2026-09-09 設定。対象の Google Cloud プロジェクトとアカウントは git 管理外の `CLAUDE.local.md` に記載している。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
+2026-09-09 設定、2026-09-20 に Places Legacy を 40 → 100 回 / 日、アプリ内の最大取得数を 10 → 20 店に変更。対象の Google Cloud プロジェクトとアカウントは git 管理外の `CLAUDE.local.md` に記載している。Cloud Run の自動停止はユーザーの希望により導入せず、最大インスタンス数 1 と既存の予算通知を維持する。
 
 ## Google 側の日次割当
 
 | API / 処理                          | 日次上限 | 対象の quota metric                                   |
 | ----------------------------------- | -------: | ----------------------------------------------------- |
 | Maps JavaScript の 2D 地図表示      |    50 回 | `maps-backend.googleapis.com/billable_default`        |
-| 現行 Places Legacy の検索・詳細合計 |    40 回 | `places-backend.googleapis.com/billable_default`      |
+| 現行 Places Legacy の検索・詳細合計 |   100 回 | `places-backend.googleapis.com/billable_default`      |
 | Places New の Text Search           |    10 回 | `places.googleapis.com/SearchTextRequest`             |
 | Places New の Place Details         |    30 回 | `places.googleapis.com/GetPlaceRequest`               |
 | Routes の経路計算                   |    20 回 | `routes.googleapis.com/compute_routes_requests`       |
@@ -17,7 +17,7 @@
 
 適用後、6 項目それぞれの `effectiveLimit` が表の値になったことを Service Usage API で確認した。
 
-**現行 Places Legacy では、検索 10 回 / 詳細 30 回を個別には強制できない。** 実際の API が公開する共通枠を合計 40 回に制限する。40 回の内訳次第で詳細取得が 30 回を超えることはある。個別の日次枠が必要な場合は Places New への移行時に上の 10 / 30 の割当を使う。ブラウザの localStorage をプロジェクト全体の上限として扱う実装はしていない。
+**現行 Places Legacy では、検索と詳細を個別には強制できない。** 実際の API が公開する共通枠を合計 100 回 / 日に制限する。口コミ付き詳細取得に加算される Atmosphere Data の無料枠は月 1,000 回なので、毎日上限まで使うと有料になる。日次上限は誤操作の抑止であり、月次の無料枠の保証ではない。個別の日次枠が必要な場合は Places New への移行時に上の 10 / 30 の割当を使う。ブラウザの localStorage をプロジェクト全体の上限として扱う実装はしていない。
 
 Places New と Routes は確認時点で無効のまま。今回は割当を事前設定するだけで API の有効化や機能追加は行わない。Nearby Search、写真、3D 地図等はこのアプリでは未使用で、上表の制限対象に含めていない。導入時には別の割当を確認する。
 
@@ -27,7 +27,7 @@ Places New と Routes は確認時点で無効のまま。今回は割当を事�
 
 - 1 回の検索操作は Text Search 1 回。ページ送り・自動再試行は行わない。
 - すべての候補を地図に表示し、初期の口コミ取得・AI 評価は先頭 5 店だけ行う。
-- 「次の 5 件を評価」で追加取得し、同じ検索では最大 10 店まで。少ない結果の場合は残り件数だけ取得する。
+- 「次の 5 件を評価」で追加取得し、同じ検索では最大 20 店まで。少ない結果の場合は残り件数だけ取得する。
 - 取得対象を同期的に予約してから通信し、二重クリックや失敗による上限超過を防ぐ。失敗も 1 回として消費し、自動で再試行しない。
 - 新しい検索を開始したら、前の検索の遅延結果を表示しない。開始済みの Google 呼び出し自体は取り消せず、その使用量は残る。
 - Google の割当超過は画面に表示する。上限到達中は追加取得や検索が失敗するため、割当のリセット後に再度利用する。
@@ -46,7 +46,7 @@ python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=YOUR_P
 python3 scripts/configure-maps-quotas.py --account=YOUR_ACCOUNT --project=YOUR_PROJECT --apply
 ```
 
-既存の割当がより厳しい場合、スクリプトは勝手に引き上げず停止する。最近の使用量より低い割当への変更も既定では停止する。その制限による利用停止を受け入れて設定する場合のみ `--allow-below-usage` を付ける。今回の Places Legacy は最近の使用量 74 回に対して 40 回への変更なので、このオプションを使用した。
+既存の割当がより厳しい場合、スクリプトは勝手に引き上げず停止する。最近の使用量より低い割当への変更も既定では停止する。その制限による利用停止を受け入れて設定する場合のみ `--allow-below-usage` を付ける。 既存のより厳しい割当を引き上げる場合も既定では停止するので、意図して引き上げるときだけ `--allow-raise` を付ける（2026-09-20 の 40 → 100 回はこのオプションで適用し、`effectiveLimit` 100 を確認した）。今回の Places Legacy は最近の使用量 74 回に対して 40 回への変更なので、このオプションを使用した。
 
 根拠: [Service Usage の consumer quota](https://docs.cloud.google.com/service-usage/docs/reference/rest/v1beta1/services.consumerQuotaMetrics/list)、[Places の割当](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing)、[Routes の課金単位](https://developers.google.com/maps/documentation/routes/usage-and-billing)。
 

@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PlaceDetailBatch } from "./place-detail-batch.ts";
 
-test("reserves five requests synchronously and never exceeds ten attempts", () => {
+test("reserves five requests synchronously and never exceeds twenty attempts", () => {
   const batch = new PlaceDetailBatch(
-    Array.from({ length: 20 }, (_, index) => ({ place_id: String(index) })),
+    Array.from({ length: 25 }, (_, index) => ({ place_id: String(index) })),
   );
   assert.equal(batch.take().length, 5);
   assert.deepEqual(batch.take(), []); // A second click while work is pending.
@@ -14,8 +14,15 @@ test("reserves five requests synchronously and never exceeds ten attempts", () =
     ["5", "6", "7", "8", "9"],
   );
   batch.finish();
+  assert.equal(batch.take().length, 5);
+  batch.finish();
+  assert.deepEqual(
+    batch.take().map((place) => place.place_id),
+    ["15", "16", "17", "18", "19"],
+  );
+  batch.finish();
   assert.deepEqual(batch.take(), []);
-  assert.equal(batch.requestedCount, 10);
+  assert.equal(batch.requestedCount, 20);
 });
 
 test("deduplicates places and handles a partial final batch", () => {

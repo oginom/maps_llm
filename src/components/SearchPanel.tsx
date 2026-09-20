@@ -3,6 +3,7 @@ import { Histogram } from "./Histogram";
 import { PlaceDetails } from "./PlaceDetails";
 import { ResultsList } from "./ResultsList";
 import { resultState, type SearchResult } from "@/lib/place-result";
+import { MAX_DETAILS_PER_SEARCH } from "@/lib/place-detail-batch";
 
 type Props = {
   searchTerm: string;
@@ -105,15 +106,15 @@ export function SearchPanel(props: Props) {
           <Typography variant="body2" sx={{ fontWeight: 600, fontSize: 12 }}>
             {props.isSearching
               ? "検索中..."
-              : `評価済み ${evaluated} 件 / 最大10件 · 追加可能 ${props.remainingDetails} 件 · 失敗 ${failures} 件${props.isLoadingDetails ? "・評価中..." : ""}`}
+              : `評価済み ${evaluated} 件 / 最大${MAX_DETAILS_PER_SEARCH}件 · 追加可能 ${props.remainingDetails} 件 · 失敗 ${failures} 件${props.isLoadingDetails ? "・評価中..." : ""}`}
           </Typography>
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ fontSize: 11 }}
           >
-            口コミ取得対象 {props.requestedDetails} 件 / 最大10件 · 候補{" "}
-            {results.length} 件
+            口コミ取得対象 {props.requestedDetails} 件 / 最大
+            {MAX_DETAILS_PER_SEARCH}件 · 候補 {results.length} 件
           </Typography>
         </Box>
         {props.searchError && (
@@ -146,7 +147,7 @@ export function SearchPanel(props: Props) {
           props.remainingDetails === 0 &&
           !props.isLoadingDetails && (
             <Typography variant="caption" color="text.secondary">
-              {props.requestedDetails >= 10
+              {props.requestedDetails >= MAX_DETAILS_PER_SEARCH
                 ? "この検索の取得上限に達しました（失敗も含む）。"
                 : "取得可能な候補をすべて確認しました。"}
             </Typography>

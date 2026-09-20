@@ -268,7 +268,11 @@
       Object.assign(location, {
         id,
         x: 0.16 + (i % 4) * 0.22,
-        y: 0.17 + Math.floor(i / 4) * 0.16,
+        // Preserve the default 12-pin layout while fitting larger cap fixtures.
+        y:
+          0.17 +
+          Math.floor(i / 4) *
+            Math.min(0.16, 0.64 / Math.max(1, Math.ceil(count / 4) - 1)),
       });
       return {
         place_id: id,

@@ -17,7 +17,7 @@ import urllib.request
 TARGETS = {
     "maps-backend.googleapis.com": {"billable_default": 50},
     # Legacy combines searches and details into one counter.
-    "places-backend.googleapis.com": {"billable_default": 40},
+    "places-backend.googleapis.com": {"billable_default": 100},
     "places.googleapis.com": {"SearchTextRequest": 10, "GetPlaceRequest": 30},
     "routes.googleapis.com": {
         "compute_routes_requests": 20,
@@ -34,6 +34,8 @@ def main():
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--allow-below-usage", action="store_true",
                         help="Allow a daily cap below recent usage; API access may stop until reset")
+    parser.add_argument("--allow-raise", action="store_true",
+                        help="Allow raising an existing stricter daily cap to the configured value")
     args = parser.parse_args()
     gcloud_flags = [f"--account={args.account}", f"--project={args.project}"]
     project_number = subprocess.check_output(
@@ -92,8 +94,8 @@ def main():
                 raise RuntimeError(f"Expected one project bucket for {metric_name}")
             bucket = buckets[0]
             current = int(bucket["effectiveLimit"])
-            if 0 <= current < target:
-                raise RuntimeError(f"Refusing to raise existing stricter limit for {metric_name}: {current}")
+            if 0 <= current < target and not args.allow_raise:
+                raise RuntimeError(f"Refusing to raise existing stricter limit for {metric_name}: {current} (pass --allow-raise)")
             plan.append((limit, bucket, target))
             print(json.dumps({"project": args.project, "metric": metric_name,
                               "current": current, "target": target}), flush=True)

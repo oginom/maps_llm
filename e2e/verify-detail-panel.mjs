@@ -173,7 +173,7 @@ try {
       );
       assert.match(
         await page.getByRole("status").textContent(),
-        /評価済み 5 件.*追加可能 5 件.*失敗 0 件/,
+        /評価済み 5 件.*追加可能 7 件.*失敗 0 件.*口コミ取得対象 5 件 \/ 最大20件/,
       );
       assert.equal(
         await page
@@ -296,15 +296,86 @@ try {
       );
       assert.match(
         await page.getByRole("status").textContent(),
-        /評価済み 9 件.*追加可能 0 件.*失敗 1 件/,
+        /評価済み 9 件.*追加可能 2 件.*失敗 1 件.*口コミ取得対象 10 件 \/ 最大20件/,
       );
-      return { screenshots, screenshot: await shot("fetch-complete") };
+      assert.equal(
+        await page.locator('[data-fetch-state="failed"]').count(),
+        1,
+      );
+      assert.equal(
+        await page
+          .locator('[data-result-id="quota-2"]')
+          .getAttribute("data-fetch-state"),
+        "failed",
+      );
+      assert.equal(
+        await page
+          .locator('[data-result-id="quota-12"]')
+          .getAttribute("data-fetch-state"),
+        "unfetched",
+      );
+      screenshots.push(await shot("fetch-partial"));
+      await page.evaluate(() => (window.__mock.config.holdDetails = false));
+      await page.getByRole("button", { name: "次の2件を評価" }).click();
+      await done(page);
+      assert.equal(
+        await page.locator('[data-fetch-state="evaluated"]').count(),
+        11,
+      );
+      assert.equal(
+        await page.locator('[data-fetch-state="failed"]').count(),
+        1,
+      );
+      assert.equal(
+        await page.locator('[data-fetch-state="unfetched"]').count(),
+        0,
+      );
+      assert.equal(
+        await page
+          .locator('[data-result-id="quota-2"]')
+          .getAttribute("data-fetch-state"),
+        "failed",
+      );
+      assert.equal(
+        await page
+          .locator('[data-result-id="quota-12"]')
+          .getAttribute("data-fetch-state"),
+        "evaluated",
+      );
+      assert.equal(
+        await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
+        0,
+      );
+      assert.match(
+        await page.getByRole("status").textContent(),
+        /評価済み 11 件.*追加可能 0 件.*失敗 1 件.*口コミ取得対象 12 件 \/ 最大20件/,
+      );
+      const attempts = await page.evaluate(() =>
+        window.__mock.details.filter((id) => id.startsWith("quota-")),
+      );
+      assert.deepEqual(
+        attempts,
+        Array.from({ length: 12 }, (_, i) => `quota-${i + 1}`),
+      );
+      const analyses = await page.evaluate(() =>
+        window.__mock.analyses.filter((id) => id.startsWith("quota-")),
+      );
+      assert.deepEqual(
+        analyses.slice().sort(),
+        attempts.filter((id) => id !== "quota-2").sort(),
+      );
+      return {
+        attempts,
+        analyses,
+        screenshots,
+        screenshot: await shot("fetch-complete"),
+      };
     });
     await check("5-histogram", async () => {
       const bins = await page
         .locator("[data-bin]")
         .evaluateAll((els) => els.map((el) => Number(el.dataset.count)));
-      assert.deepEqual(bins, [2, 1, 2, 2, 2]);
+      assert.deepEqual(bins, [3, 2, 2, 2, 2]);
       await visibleInside(page, "[data-histogram]");
       await visibleInside(page, 'aside [role="alert"]');
       return { bins, screenshot: await shot("histogram") };
