@@ -3,14 +3,26 @@ import OpenAI from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
 import { isClientAbort } from "./abort";
 import {
+  budgetErrorResponse,
   clientAbortedResponse,
   errorResponse,
   internalErrorResponse,
   logRoute,
 } from "./api-route";
+import { openAiCostMicros } from "./budget/config";
 
 export const OPENAI_QUOTA_MESSAGE =
   "OpenAI の利用上限に達しました。時間をおいて再試行してください。";
+
+// Actual cost of a completion in micro-USD from its usage; `undefined` when
+// the response carried no usage (the caller then settles at the estimate).
+export function completionCostMicros(
+  completion: ChatCompletion,
+): number | undefined {
+  const usage = completion.usage;
+  if (!usage) return undefined;
+  return openAiCostMicros(usage.prompt_tokens, usage.completion_tokens);
+}
 
 export function logCompletionUsage(
   route: string,
@@ -34,6 +46,8 @@ export function openAiErrorResponse(
 ) {
   if (error instanceof OpenAI.APIUserAbortError || isClientAbort(error, signal))
     return clientAbortedResponse(route, startedAt);
+  const budgetResponse = budgetErrorResponse(route, error, startedAt);
+  if (budgetResponse) return budgetResponse;
   if (error instanceof OpenAI.APIError) {
     if (error.status === 429 || error.code === "insufficient_quota") {
       logRoute(

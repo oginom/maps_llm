@@ -7,21 +7,31 @@
 - `maps-mock.js`: ページのスクリプトより先に `google.maps` を注入。Map / Marker / OverlayView・bounds・投影・リサイズを置換する。`google.maps.places` は定義せず、旧ライブラリの読み込みはエラーにする。実 Maps JS のダウンロードは発生しない。
 - `places-routes.mjs`: 両スイート共通の Playwright route モック。`POST /api/places/search` の本文（検索語・rectangle・任意フィールド）を検査して `{ places: PlaceSummary[] }` を返し、`GET /api/places/{placeId}` は `PlaceDetail` を返す。検索時は rating を含めない。既定12候補、部分バッチ7候補。上限の23候補は、サーバーの最大20候補を意図的に超える防御的なfixture。
 - `verify-fetch-limits.mjs` / `verify-detail-panel.mjs`: 上記2ルートと `/api/generate-examples`、`/api/analyze-reviews` を置換し、他の API と外部 origin を遮断する。service worker も無効化する。検索・詳細・分析の要求配列をJSONに保存し、ブラウザ側の記録とも照合する。地図用の合成配置情報はDTOの `{lat,lng}` に混ぜず、モックの座標台帳で管理する。
-- `results.json`: 最後の実行の検証値・通信監査・UI 座標。
+- `budget-scenarios.mjs`: 両スイート共通の予算エラー・停止表示・再試行なしの検証。SESSION / MONTH停止とGoogle割当の固定文言も確認する。
+- `results.json`: 最後の実行の検証値・通信監査・UI 座標。4ルートのsession/runヘッダーも保存する。
 - `run.log`: 提出時のコンソール出力。再実行時は任意でリダイレクトして更新する。
 - `../docs/img/detail-panel/fetch-limits/*.png`: パネル化後の回帰検証の証跡。旧 `img/fetch-limits/` の画像は初回の不具合記録として保持する。最新の判定は [詳細パネル検証報告](../docs/verification-detail-panel.md)。
 
 ## 実行
 
-リポジトリルートから、ターミナル1で専用ローカルサーバーを起動する。環境変数は `.env` の実キーを上書きするダミー値。
+リポジトリルートから、ターミナル1で専用ローカルサーバーを起動する。port 3000 の実キーの開発サーバーには触れず、毎回新しい一時コピーと台帳パスを使う。`.env*` はコピーしない。次のダミーキー4個と `LEDGER_BACKEND=file` / `LEDGER_FILE` を明示する。
 
 ```sh
+E2E_PROJECT_DIR=$(mktemp -d /private/tmp/maps-e2e-task5-XXXXXX)
+cp -R src public "$E2E_PROJECT_DIR/"
+cp package.json next.config.js tsconfig.json next-env.d.ts postcss.config.mjs tailwind.config.ts "$E2E_PROJECT_DIR/"
+ln -s "$PWD/node_modules" "$E2E_PROJECT_DIR/node_modules"
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=e2e-fake-key \
 NEXT_PUBLIC_GOOGLE_MAPS_ID=e2e-fake-map \
 GOOGLE_MAPS_SERVER_API_KEY=e2e-fake-key \
 OPENAI_API_KEY=e2e-fake-key \
-mise exec node@24.6.0 -- node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3107
+LEDGER_BACKEND=file \
+LEDGER_FILE="$E2E_PROJECT_DIR/ledger.json" \
+NEXT_TELEMETRY_DISABLED=1 \
+mise exec node@24.6.0 -- node node_modules/next/dist/bin/next dev "$E2E_PROJECT_DIR" --webpack --hostname 127.0.0.1 --port 3107
 ```
+
+全APIをブラウザでモックするため、台帳ファイルは通常作成されない。実台帳の予約・精算や短い上限の検証は単体テスト側の範囲で、ここでは `BUDGET_CAPS_JSON` は不要。
 
 ターミナル2で実行する。必要なツールは **Playwright と Chromium**。今回、既存キャッシュを利用したため、新規インストールも package.json / lockfile の変更もしていない。
 
@@ -43,15 +53,13 @@ mise exec node@24.6.0 -- node e2e/verify-fetch-limits.mjs
 
 `E2E_BASE_URL` でポートを変更できるが、接続先は `localhost` / `127.0.0.1` のみ許可する。通常ブラウザで実キーのサーバーを開く手順は不要。テスト終了後はターミナル1を Ctrl-C で停止する。
 
-実キーのサーバー（port 3000）が同じディレクトリで起動中の場合、Next.js の開発ロックが競合する。今回の再検証では `/private/tmp` の一時ディレクトリへ `src/`、`public/` と `package.json`、`next.config.js`、`tsconfig.json`、`next-env.d.ts`、`postcss.config.mjs`、`tailwind.config.ts` をコピーし、`node_modules` だけ元リポジトリへのシンボリックリンクにした（`.env*` はコピーしない）。上記の起動コマンドの `next dev` の直後にその一時ディレクトリを渡し、同じダミーキー・port 3107で実行する。テスト自体は元リポジトリから実行し、実キーのport 3000は使用・停止しない。
-
 この環境ではローカルポート作成と Chromium 起動にサンドボックス外実行の承認が必要だった。Next.js が開発起動時に CLAUDE.md へ自動追記する場合がある。今回の実行で増えた自動生成ブロックのみ、サーバー停止後に除去した。
 
 2026-09-21 Places New 移行後: 取得制限14/14＋UI採取2/2、詳細パネル20/20成功（両方終了コード0）。既存12件・18件に、それぞれ502のサーバーエラー表示を各画面1件ずつ追加。外部通信試行・想定外API・ブラウザ例外はいずれも0。429の固定文言については下記の別診断で不一致を確認した。
 
 ## 判定とモックの範囲
 
-- 7シナリオ×2サイズをそれぞれ独立した BrowserContext で検証する。追加で各サイズの UI 座標と画像を採取する。`ui-observations` の `OK` は採取成功を意味し、UI の正常判定ではない。
+- 13シナリオ×2サイズをそれぞれ独立した BrowserContext で検証する。追加で各サイズの UI 座標と画像を採取する。`ui-observations` の `OK` は採取成功を意味し、UI の正常判定ではない。
 - 初期・追加の place ID と実呼び出し配列を照合し、DOM 化した Marker の `icon.fillColor` を検証する。23候補で初期5→10→15→20試行、未取得3店を残して停止し、追加ボタン消失と「20 件 / 最大20件」を確認する。候補7店の場合の 5→追加2 も確認する。
 - 二重操作は Playwright のネイティブ `mouse.dblclick` と同一イベントループ内の `button.click()` 2回で検証する。
 - 詳細取得の失敗は HTTP 429 + `{ error: { code: "RESOURCE_EXHAUSTED", message: "Google Places の利用上限に達しました。時間をおいて再検索してください。" } }`。失敗後の追加取得まで含め、同じ ID が再要求されないことを確認する。完了後の追加観測時間は250ms。
@@ -76,7 +84,7 @@ E2E_CHROMIUM_PATH=/Users/ogino/Library/Caches/ms-playwright/chromium_headless_sh
 mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run.log
 ```
 
-10シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
+16シナリオ×2画面。結果は `detail-panel-results.json`、スクリーンショットは `docs/img/detail-panel/`。
 初期5件・追加5件・検索ごと最大20試行（失敗も含む）を前提にする。シナリオ4は12候補で、追加1回後の評価済み9・失敗1・未取得2を区別し、さらに2件取得後の評価済み11・失敗1・未取得0とボタン消失を確認する。分布は `[3,2,2,2,2]`。
 一覧の取得状態、選択・スクロール、画面外選択の panTo、各高さでの警告・追加ボタンの矩形とヒットテスト、分布、投稿者情報を確認する。
 モックは地図サイズ変更の次のフレームで適用済み寸法を更新し、getBounds / fitBounds の範囲・zoomを寸法から計算する。入力フォーカス後の検索で半分の地図寸法を使うこと、および任意のリサイズで選択ピンへ戻らないことも確認する。bounds.contains と panTo は簡略モデルであり、実 Google の投影検証ではない。
@@ -88,10 +96,23 @@ mise exec node@24.6.0 -- node e2e/verify-detail-panel.mjs > e2e/detail-panel-run
 mise exec node@24.6.0 -- node --test src/lib/place-detail-batch.test.mjs src/lib/review-match.test.mjs
 ```
 
-## Places New の追加表示と既知の不一致
+## Places New の追加表示と過去の不一致
 
 詳細fixtureは営業中／営業時間外、7曜日の営業時間、公式サイト、口コミごとのGoogleマップURL、投稿日時・星・投稿者名を持つ。5店目はGoogle評価と投稿者URL／写真を省略する。初期一覧で未取得の「Google ★ —」、評価済みの「Google ★ 4」、詳細取得済みでもratingなしの「—」を確認する。既存の帰属シナリオ内で、追加フィールドと欠落時の表示、各リンクへのスクロール・ヒットテストを確認する。
 
 証跡は `docs/img/detail-panel/{phone,desktop}-places-new-{1,4,5}-{hours,review}.png`、非割当エラーは `{phone,desktop}-server-error.png`。502は `error.message` の完全一致、詳細・分析の追加呼び出しがないことを検証する。
 
-**アプリの既知不一致（src/は変更していない）:** 429で `error.message` があれば、固定の割当文言よりその値が優先される。`page.tsx` の `readErrorMessage` がステータスに関係なく本文を返すため。既存の割当シナリオはサーバーが標準の日本語文言を返す経路を検証している。別診断で検索ルートに HTTP 429 / `RESOURCE_EXHAUSTED` / `message: "QUOTA_SENTINEL_FROM_SERVER"` を返すと、両画面でセンチネルがそのまま表示された（固定文言の期待には0/2）。[診断結果](quota-wording-results.json)・[検証報告](../docs/verification-detail-panel.md)。この診断は上記の回帰成功数には含めない。
+**Places New 移行時の過去の不一致（予算台帳導入後は解消を確認）:** 429で `error.message` があれば、固定の割当文言よりその値が優先される。`page.tsx` の `readErrorMessage` がステータスに関係なく本文を返すため。既存の割当シナリオはサーバーが標準の日本語文言を返す経路を検証している。別診断で検索ルートに HTTP 429 / `RESOURCE_EXHAUSTED` / `message: "QUOTA_SENTINEL_FROM_SERVER"` を返すと、両画面でセンチネルがそのまま表示された（固定文言の期待には0/2）。[診断結果](quota-wording-results.json)・[検証報告](../docs/verification-detail-panel.md)。この診断は上記の回帰成功数には含めない。
+
+## 予算台帳導入後の再検証
+
+2026-09-21: 取得制限 **26/26成功＋UI採取2/2成功**、詳細パネル **32/32成功**。各スイートへ6シナリオ×2画面を追加した。結果・画像・制限は [検証報告](../docs/verification-detail-panel.md#予算台帳導入後の再検証) を参照。
+
+- 共有モックが全4ルートの `X-Session-Id` / `X-Run-Id` をUUID v4として検証し、sessionStorageの `maps-llm-session-id` と照合する。同一タブでsessionを維持し、同じ検索と追加バッチでrunを共有する。次の検索では同じ検索語でも新しいrunになる。詳細パネルの追加シナリオ間のページ再読み込みでもsessionが維持される。
+- 詳細1店の429 `BUDGET_RUN_EXCEEDED`: サーバー文言と失敗行、残り4店の継続、追加バッチ後の評価済み9店、失敗IDの再取得なし、新検索のrun更新を確認。
+- 検索の429 `BUDGET_SESSION_EXCEEDED`: `[data-budget-stop]` と検索無効を確認。この経路は検索開始時に候補がクリアされるため追加ボタンは非表示。残り候補がある詳細のSESSION / MONTH拒否も別途検証し、検索と追加の両ボタンが無効になることを確認する。
+- 分析の503 `BUDGET_UNAVAILABLE`: 文言一致、5店とも失敗、分析要求が各ID1回・合計5回。完了後1,000msの観測で自動再試行なし。停止シナリオも無効ボタンクリックとフォーム送信を試し、1,000ms以内に追加要求0回を確認。
+- 停止文言とボタンは画面内の矩形を検証し、文言はヒットテストも行う。MUIの無効ボタンは `pointer-events: none` なので、ヒットしないことは表示不具合と扱わず、disabled属性と矩形を確認する。スマホ・PCの画像は `docs/img/detail-panel/{phone,desktop}-budget-*.png`、取得制限側はその `fetch-limits/` 配下。
+- 429 `RESOURCE_EXHAUSTED` にセンチネル文言を返しても、固定の日本語割当文言になることを両スイートで確認。過去の別診断JSON・不具合画像は当時の証拠であり、現在の判定は新しい `quota-fixed-wording` シナリオによる。
+
+実Google / OpenAI / Firestore呼び出しなし。外部通信試行・想定外API・ブラウザ例外・ヘッダー不一致はいずれも0。src/・依存・Gitのindex／ブランチ／commitは変更しない。

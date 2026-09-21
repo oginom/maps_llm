@@ -96,6 +96,10 @@ export type CallOptions = {
   signal?: AbortSignal;
   // Injected by unit tests; production uses the global fetch.
   fetchImplementation?: typeof fetch;
+  // Called right before the HTTP request to Google is sent. The budget
+  // ledger settles one unit from this point on regardless of the outcome;
+  // failures before it (missing key) release the reservation instead.
+  onRequestSent?: () => void;
 };
 
 function requireApiKey(): string {
@@ -246,11 +250,17 @@ async function callPlaces(
   options: CallOptions,
 ): Promise<unknown> {
   const fetchImplementation = options.fetchImplementation ?? fetch;
+  const apiKey = requireApiKey();
+  // An already-aborted request is never sent, so the budget reservation is
+  // released rather than settled.
+  if (options.signal?.aborted)
+    throw options.signal.reason ?? new DOMException("aborted", "AbortError");
+  options.onRequestSent?.();
   const response = await fetchImplementation(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-Goog-Api-Key": requireApiKey(),
+      "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask": fieldMask,
     },
     signal: options.signal,

@@ -4,6 +4,13 @@ import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { isClientAbort } from "./abort";
 import { formatIssues } from "./api-schemas";
+import {
+  BudgetExceededError,
+  LEDGER_UNAVAILABLE_MESSAGE,
+  LedgerUnavailableError,
+} from "./budget/errors";
+import type { BudgetRequestContext } from "./budget/ledger";
+import { parseBudgetContext } from "./budget/request-context";
 import { PlacesApiError } from "./places-new";
 
 export const CLIENT_ABORTED_STATUS = 499;
@@ -55,6 +62,47 @@ export async function parseJsonBody<Output>(
   return { ok: true, data: parsed.data };
 }
 
+// Every paid route needs the browser's session / run ids for the budget
+// ledger. Missing or malformed ids are a client error (400).
+export function requireBudgetContext(
+  request: Request,
+  route: string,
+  startedAt: number,
+):
+  | { ok: true; context: BudgetRequestContext }
+  | { ok: false; response: NextResponse } {
+  const parsed = parseBudgetContext(request.headers);
+  if (parsed.ok) return parsed;
+  logRoute(route, 400, startedAt, "invalid budget headers");
+  return {
+    ok: false,
+    response: errorResponse(400, "INVALID_ARGUMENT", parsed.message),
+  };
+}
+
+// Budget refusals: 429 with a `BUDGET_*` code (distinct from the upstream
+// `RESOURCE_EXHAUSTED`), and 503 when the ledger itself is unreachable so
+// no paid call starts without accounting (fail closed).
+export function budgetErrorResponse(
+  route: string,
+  error: unknown,
+  startedAt: number,
+): NextResponse | undefined {
+  if (error instanceof BudgetExceededError) {
+    logRoute(route, 429, startedAt, `budget=${error.code} type=${error.type}`);
+    return errorResponse(429, error.code, error.message);
+  }
+  if (error instanceof LedgerUnavailableError) {
+    console.error(
+      `[api/${route}] ledger unavailable: ${error.message}`,
+      error.cause ?? "",
+    );
+    logRoute(route, 503, startedAt, "ledger unavailable");
+    return errorResponse(503, "BUDGET_UNAVAILABLE", LEDGER_UNAVAILABLE_MESSAGE);
+  }
+  return undefined;
+}
+
 export function clientAbortedResponse(route: string, startedAt: number) {
   logRoute(route, CLIENT_ABORTED_STATUS, startedAt, "client aborted");
   return errorResponse(
@@ -83,6 +131,8 @@ export function placesErrorResponse(
 ) {
   if (isClientAbort(error, signal))
     return clientAbortedResponse(route, startedAt);
+  const budgetResponse = budgetErrorResponse(route, error, startedAt);
+  if (budgetResponse) return budgetResponse;
   if (error instanceof PlacesApiError) {
     logRoute(
       route,

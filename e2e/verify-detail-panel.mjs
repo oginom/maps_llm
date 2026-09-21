@@ -1,3 +1,4 @@
+import { budgetScenarios, verifyBudgetHeaders } from "./budget-scenarios.mjs";
 import {
   placesRoutes,
   serverErrorMessage,
@@ -121,6 +122,12 @@ try {
       if (url.pathname === "/api/analyze-reviews") {
         const review = req.postDataJSON().reviews;
         audit.analysisRequests.push(review.replace("REVIEW:", ""));
+        const config = await page.evaluate(() => window.__mock.config);
+        if (config.analysisError)
+          return route.fulfill({
+            status: config.analysisError.status,
+            json: { error: config.analysisError.error },
+          });
         const n = Number(review.split("-").at(-1));
         return route.fulfill({
           json: { value: ((n - 1) % 5) + 1, related_review: review },
@@ -711,6 +718,22 @@ try {
     assert.deepEqual(audit.external, []);
     assert.deepEqual(audit.unexpectedAPI, []);
     assert.deepEqual(audit.errors, []);
+    await verifyBudgetHeaders(page, audit);
+    for (const [name, scenario] of budgetScenarios) {
+      // Reload clears the terminal UI stop but preserves the tab session UUID.
+      await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`);
+      await page.waitForFunction(
+        () => !document.querySelector('[aria-label="search"]')?.disabled,
+      );
+      await check(name, async () => {
+        const result = await scenario({ page, audit, done, shot });
+        await verifyBudgetHeaders(page, audit);
+        assert.deepEqual(audit.external, []);
+        assert.deepEqual(audit.unexpectedAPI, []);
+        assert.deepEqual(audit.errors, []);
+        return result;
+      });
+    }
     await context.close();
   }
 } finally {

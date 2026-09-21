@@ -17,6 +17,9 @@ type Props = {
   requestedDetails: number;
   remainingDetails: number;
   searchError: string | null;
+  // Explanation shown when the month or session budget is exhausted; search
+  // and "next 5" stay disabled while it is set.
+  budgetStop: string | null;
   results: SearchResult[];
   selectedPlace: string | null;
   onSelect: (id: string) => void;
@@ -131,13 +134,27 @@ export function SearchPanel(props: Props) {
             {props.searchError}
           </Alert>
         )}
+        {props.budgetStop && (
+          <Typography
+            data-budget-stop
+            variant="caption"
+            color="error"
+            sx={{ display: "block", mt: 0.5, fontWeight: 600 }}
+          >
+            {props.budgetStop}
+          </Typography>
+        )}
         {props.remainingDetails > 0 && (
           <Button
             size="small"
             variant="outlined"
             fullWidth
             sx={{ mt: 0.75, minHeight: 36 }}
-            disabled={props.isSearching || props.isLoadingDetails}
+            disabled={
+              props.isSearching ||
+              props.isLoadingDetails ||
+              props.budgetStop !== null
+            }
             onClick={props.onMore}
           >
             次の{Math.min(5, props.remainingDetails)}件を評価

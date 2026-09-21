@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { formatIssues, placeIdSchema } from "@/lib/api-schemas";
-import { errorResponse, logRoute, placesErrorResponse } from "@/lib/api-route";
+import {
+  clientAbortedResponse,
+  errorResponse,
+  logRoute,
+  placesErrorResponse,
+  requireBudgetContext,
+} from "@/lib/api-route";
+import {
+  reserveBudget,
+  settleReservation,
+  type Reservation,
+  type SettleOutcome,
+} from "@/lib/budget/ledger";
 import { getPlace } from "@/lib/places-new";
 
 const ROUTE = "places/[placeId]";
@@ -10,6 +22,8 @@ export async function GET(
   context: { params: Promise<{ placeId: string }> },
 ) {
   const startedAt = Date.now();
+  const budget = requireBudgetContext(request, ROUTE, startedAt);
+  if (!budget.ok) return budget.response;
   const { placeId } = await context.params;
   const parsed = placeIdSchema.safeParse(placeId);
   if (!parsed.success) {
@@ -20,8 +34,17 @@ export async function GET(
       `入力が不正です: ${formatIssues(parsed.error)}`,
     );
   }
+  if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
+  let reservation: Reservation | undefined;
+  let outcome: SettleOutcome = { kind: "release" };
   try {
-    const place = await getPlace(parsed.data, { signal: request.signal });
+    reservation = await reserveBudget(budget.context, "places.details");
+    const place = await getPlace(parsed.data, {
+      signal: request.signal,
+      onRequestSent: () => {
+        outcome = { kind: "settle" };
+      },
+    });
     logRoute(
       ROUTE,
       200,
@@ -31,5 +54,7 @@ export async function GET(
     return NextResponse.json(place);
   } catch (error) {
     return placesErrorResponse(ROUTE, error, startedAt, request.signal);
+  } finally {
+    if (reservation) await settleReservation(reservation, outcome);
   }
 }

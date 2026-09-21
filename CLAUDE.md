@@ -26,7 +26,7 @@ Maps LLM is a Next.js application that provides a customized Google Maps interfa
 
 Node version is pinned to 24.20.0 via `.mise.toml` for local development. The Docker image uses `node:24-slim`. Node 22 or newer is required by the openai SDK 7.x.
 
-Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the TypeScript helpers directly). They cover the detail batch, review matching, the Places (New) DTO/error mapping and the zod request schemas. Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
+Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mjs` (Node 24 supports the TypeScript helpers directly). They cover the detail batch, review matching, the Places (New) DTO/error mapping, the zod request schemas and the budget ledger (protocol, Firestore REST store with a fake fetch, file store, header parsing). Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
 
 ## Architecture
 
@@ -52,6 +52,7 @@ Run the unit tests with `node --test src/lib/*.test.mjs` (Node 24 supports the T
 - `src/app/api/places/search/route.ts` (POST) and `src/app/api/places/[placeId]/route.ts` (GET): Places API (New) Text Search and Place Details, validated with zod (`src/lib/api-schemas.ts`) and mapped to the DTOs in `src/lib/place-dto.ts`. Google quota errors become 429, key/permission problems 502, bad input 400.
 - `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Body is zod-validated (`reviews`, `metric`, `examples`, `scale`). Returns `{ value, related_review }` as JSON. OpenAI 429 / `insufficient_quota` become 429, other API errors 502, and an empty or invalid model response 500. Usage tokens and duration are logged per call.
 - All API routes return `{ error: { code, message } }` on failure and pass the request's AbortSignal upstream.
+- `src/lib/budget/`: persistent cost / call ledger (`docs/budget-ledger.md`). Every paid route requires `X-Session-Id` / `X-Run-Id` (UUID v4, 400 otherwise), calls `reserveBudget` before the upstream request and `settleReservation` in `finally`. Caps per month / session / run live in `budget/config.ts`; a refused reservation is 429 `BUDGET_MONTH_EXCEEDED` / `BUDGET_SESSION_EXCEEDED` / `BUDGET_RUN_EXCEEDED`, an unreachable ledger is 503 `BUDGET_UNAVAILABLE` (fail closed). Backends: Firestore REST (`firestore-store.ts`, production), a JSON file (`file-store.ts`, development only) and memory (tests). The browser ids come from `src/lib/session-ids.ts`.
 - `src/app/api/generate-examples/route.ts`: OpenAI API endpoint for generating evaluation examples and an optimized search query. Returns `{ examples, searchQuery }` as JSON. The system prompt must keep its concrete 入力/出力 example; without it the model has returned a JSON string inside `examples`.
 - `src/app/layout.tsx`: Root layout with font configuration
 
@@ -77,6 +78,8 @@ The LLM prompts are written in Japanese and expect Japanese input.
 - `NEXT_PUBLIC_GOOGLE_MAPS_ID`: Google Maps ID for styling
 - `GOOGLE_MAPS_SERVER_API_KEY`: server-only key for Places API (New); never exposed to the browser
 - `OPENAI_API_KEY`: OpenAI API key for LLM analysis
+- `LEDGER_BACKEND`: `firestore` (production; also needs `LEDGER_PROJECT_ID`) or `file` (development, `LEDGER_FILE` defaults to `.ledger/ledger.json`). Unset in production makes every paid route answer 503; unset in development falls back to `file` with a log line.
+- `BUDGET_CAPS_JSON`: optional partial override of the budget caps, for verification only (logged when applied)
 
 See `.env.example`. `.env` and `.env.local` are gitignored.
 
@@ -85,7 +88,7 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - Docker containerization with multi-stage build, using the standalone Next.js output
 - Target: Google Cloud Run, service `mapsllm`, region `asia-northeast1`, image pushed to Artifact Registry (repository `docker`)
 - `deploy.sh` builds the image for `linux/amd64`, pushes it, and runs `gcloud run deploy`. It reads `PROJECT_ID` and the environment variables above from `.env`.
-- `deploy.sh` sets both the service-wide and per-revision maximum instance counts to 1 for personal use. This limits scaling, not monthly spending; persistent application budget enforcement is still planned.
+- `deploy.sh` sets both the service-wide and per-revision maximum instance counts to 1 for personal use and sets `LEDGER_BACKEND=firestore` / `LEDGER_PROJECT_ID`. The instance cap limits scaling; monthly spending is bounded by the budget ledger (`docs/budget-ledger.md`), which needs a Firestore database and `roles/datastore.user` on the Cloud Run service account.
 - Cloud Run automatic budget shutdown is intentionally not configured. Google API daily quotas and the scoped reapplication script are documented in `docs/api-limits.md`; current Places Legacy uses a shared 100 requests/day quota.
 - `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `OPENAI_API_KEY`.
 

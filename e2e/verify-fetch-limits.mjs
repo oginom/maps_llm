@@ -1,3 +1,4 @@
+import { budgetScenarios, verifyBudgetHeaders } from "./budget-scenarios.mjs";
 import { placesRoutes, serverErrorMessage } from "./places-routes.mjs";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -73,6 +74,12 @@ async function setup(viewport) {
     if (url.pathname === "/api/analyze-reviews") {
       const id = request.postDataJSON().reviews.replace("REVIEW:", "");
       audit.analysisRequests.push(id);
+      const config = await page.evaluate(() => window.__mock.config);
+      if (config.analysisError)
+        return route.fulfill({
+          status: config.analysisError.status,
+          json: { error: config.analysisError.error },
+        });
       const fulfill = () =>
         route.fulfill({
           json: {
@@ -163,6 +170,7 @@ async function check(view, scenario, run) {
       [],
       "Unexpected external browser request (blocked)",
     );
+    await verifyBudgetHeaders(env.page, env.audit);
     assert.deepEqual(env.audit.unexpectedAPI, []);
     assert.deepEqual(env.audit.pageErrors, []);
     assert.deepEqual(
@@ -198,6 +206,16 @@ async function check(view, scenario, run) {
 
 try {
   for (const view of Object.keys(viewports)) {
+    for (const [name, scenario] of budgetScenarios) {
+      await check(view, name, async ({ page, audit }) =>
+        scenario({
+          page,
+          audit,
+          done,
+          shot: (name) => shot(page, `${view}-${name}`),
+        }),
+      );
+    }
     await check(view, "1-initial", async ({ page }) => {
       await search(page, "initial");
       await done(page);

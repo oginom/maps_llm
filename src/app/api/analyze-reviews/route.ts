@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { analyzeReviewsRequestSchema } from "@/lib/api-schemas";
-import { errorResponse, logRoute, parseJsonBody } from "@/lib/api-route";
-import { logCompletionUsage, openAiErrorResponse } from "@/lib/openai-route";
+import {
+  clientAbortedResponse,
+  errorResponse,
+  logRoute,
+  parseJsonBody,
+  requireBudgetContext,
+} from "@/lib/api-route";
+import {
+  reserveBudget,
+  settleReservation,
+  type Reservation,
+  type SettleOutcome,
+} from "@/lib/budget/ledger";
+import {
+  completionCostMicros,
+  logCompletionUsage,
+  openAiErrorResponse,
+} from "@/lib/openai-route";
 
 const ROUTE = "analyze-reviews";
 
@@ -12,16 +28,25 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
+  const budget = requireBudgetContext(request, ROUTE, startedAt);
+  if (!budget.ok) return budget.response;
   const parsed = await parseJsonBody(request, analyzeReviewsRequestSchema);
   if (!parsed.ok) {
     logRoute(ROUTE, 400, startedAt, "invalid input");
     return parsed.response;
   }
   const { reviews, metric, scale, examples } = parsed.data;
+  if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
 
-  let completion;
+  let reservation: Reservation | undefined;
+  let outcome: SettleOutcome = { kind: "release" };
   try {
-    completion = await openai.chat.completions.create(
+    reservation = await reserveBudget(budget.context, "openai.analyze");
+    if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
+    // From here on the request is sent: the reservation is settled at the
+    // actual usage, or at the estimate when the call fails without usage.
+    outcome = { kind: "settle" };
+    const completion = await openai.chat.completions.create(
       {
         model: "gpt-5.6-luna",
         reasoning_effort: "none",
@@ -62,49 +87,52 @@ export async function POST(request: Request) {
       },
       { signal: request.signal },
     );
+    outcome = { kind: "settle", micros: completionCostMicros(completion) };
+    logCompletionUsage(ROUTE, completion, startedAt);
+
+    const finishReason = completion.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.error(`[api/${ROUTE}] output truncated at max_completion_tokens`);
+      return errorResponse(
+        500,
+        "OUTPUT_TRUNCATED",
+        "評価結果が長すぎて途中で切れました。もう一度お試しください。",
+      );
+    }
+
+    const content = completion.choices[0]?.message.content;
+    if (!content) {
+      console.error(
+        `[api/${ROUTE}] empty response content`,
+        JSON.stringify({ ...completion, choices: undefined }),
+      );
+      return errorResponse(
+        500,
+        "EMPTY_RESPONSE",
+        `Failed to analyze ${metric}: empty response from model`,
+      );
+    }
+
+    let result: { value: number; related_review: string };
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error(
+        `[api/${ROUTE}] failed to parse response content`,
+        parseError,
+        `length=${content.length} finish_reason=${finishReason}`,
+      );
+      return errorResponse(
+        500,
+        "INVALID_RESPONSE",
+        `Failed to analyze ${metric}: invalid JSON from model`,
+      );
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     return openAiErrorResponse(ROUTE, error, startedAt, request.signal);
+  } finally {
+    if (reservation) await settleReservation(reservation, outcome);
   }
-  logCompletionUsage(ROUTE, completion, startedAt);
-
-  const finishReason = completion.choices[0]?.finish_reason;
-  if (finishReason === "length") {
-    console.error(`[api/${ROUTE}] output truncated at max_completion_tokens`);
-    return errorResponse(
-      500,
-      "OUTPUT_TRUNCATED",
-      "評価結果が長すぎて途中で切れました。もう一度お試しください。",
-    );
-  }
-
-  const content = completion.choices[0]?.message.content;
-  if (!content) {
-    console.error(
-      `[api/${ROUTE}] empty response content`,
-      JSON.stringify({ ...completion, choices: undefined }),
-    );
-    return errorResponse(
-      500,
-      "EMPTY_RESPONSE",
-      `Failed to analyze ${metric}: empty response from model`,
-    );
-  }
-
-  let result: { value: number; related_review: string };
-  try {
-    result = JSON.parse(content);
-  } catch (parseError) {
-    console.error(
-      `[api/${ROUTE}] failed to parse response content`,
-      parseError,
-      `length=${content.length} finish_reason=${finishReason}`,
-    );
-    return errorResponse(
-      500,
-      "INVALID_RESPONSE",
-      `Failed to analyze ${metric}: invalid JSON from model`,
-    );
-  }
-
-  return NextResponse.json(result);
 }

@@ -19,10 +19,78 @@ export function placesRoutes(page, audit) {
   audit.searchRequests = [];
   audit.detailRequests = [];
   audit.analysisRequests ??= [];
+  audit.headerRequests = [];
+  audit.headerErrors = [];
+  const runs = new Map();
+  let currentRun;
+  const candidateRuns = new Map();
+  const uuidV4 =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const candidates = new Map();
   return async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (
+      path.startsWith("/api/places/") ||
+      path === "/api/generate-examples" ||
+      path === "/api/analyze-reviews"
+    ) {
+      const headers = await request.allHeaders();
+      const sessionId = headers["x-session-id"];
+      const runId = headers["x-run-id"];
+      audit.headerRequests.push({ path, sessionId, runId });
+      try {
+        assert.match(sessionId ?? "", uuidV4, `${path}: session UUID v4`);
+        assert.match(runId ?? "", uuidV4, `${path}: run UUID v4`);
+        audit.sessionId ??= sessionId;
+        assert.equal(
+          sessionId,
+          audit.sessionId,
+          "Session must remain stable in this tab",
+        );
+        assert.equal(
+          sessionId,
+          await page.evaluate(() =>
+            sessionStorage.getItem("maps-llm-session-id"),
+          ),
+        );
+        if (path === "/api/generate-examples") {
+          assert.ok(
+            !runs.has(runId),
+            "Every search must create a new run UUID",
+          );
+          runs.set(runId, request.postDataJSON().searchTerm);
+          currentRun = runId;
+        } else {
+          assert.ok(
+            runs.has(runId),
+            `${path}: run must start with generate-examples`,
+          );
+          if (path === "/api/places/search") {
+            assert.equal(
+              runId,
+              currentRun,
+              "Search must reuse its generate-examples run",
+            );
+            assert.equal(request.postDataJSON().textQuery, runs.get(runId));
+          } else {
+            const id =
+              path === "/api/analyze-reviews"
+                ? request.postDataJSON().reviews.replace("REVIEW:", "")
+                : decodeURIComponent(path.split("/").at(-1));
+            assert.equal(
+              runId,
+              candidateRuns.get(id),
+              `${id}: must reuse its search run, including extra batches`,
+            );
+          }
+        }
+      } catch (error) {
+        audit.headerErrors.push(error.message);
+        await route.abort();
+        return true;
+      }
+    }
     if (!path.startsWith("/api/places/")) return false;
     const config = await page.evaluate(() => window.__mock.config);
     if (path === "/api/places/search") {
@@ -59,7 +127,10 @@ export function placesRoutes(page, audit) {
         location: { lat: 35.7 + i * 0.001, lng: 139.7 + i * 0.001 },
         googleMapsUri: "https://example.invalid/mock-place",
       }));
-      places.forEach((place) => candidates.set(place.placeId, place));
+      places.forEach((place) => {
+        candidates.set(place.placeId, place);
+        candidateRuns.set(place.placeId, request.headers()["x-run-id"]);
+      });
       await page.evaluate((places) => {
         places.forEach((place, i) => {
           window.__mock.positions[
@@ -84,7 +155,12 @@ export function placesRoutes(page, audit) {
       const id = decodeURIComponent(path.split("/").at(-1));
       audit.detailRequests.push(id);
       assert.ok(candidates.has(id), `Unknown candidate ${id}`);
-      if (config.fail.includes(id)) {
+      if (config.detailErrors?.[id]) {
+        await route.fulfill({
+          status: config.detailErrors[id].status,
+          json: { error: config.detailErrors[id].error },
+        });
+      } else if (config.fail.includes(id)) {
         await route.fulfill({
           status: 429,
           json: {

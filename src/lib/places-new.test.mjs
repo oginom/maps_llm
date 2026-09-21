@@ -305,3 +305,63 @@ test("fails clearly when the server key is missing", async () => {
       process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
   }
 });
+
+test("onRequestSent fires only once the Google request is sent", async () => {
+  const previous = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+  try {
+    delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    let sent = 0;
+    await assert.rejects(
+      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+        fetchImplementation: async () => new Response("{}", { status: 200 }),
+        onRequestSent: () => {
+          sent += 1;
+        },
+      }),
+      (error) =>
+        error instanceof PlacesApiError &&
+        error.googleStatus === "MISSING_API_KEY",
+    );
+    assert.equal(sent, 0, "no request is sent without a key");
+
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-key";
+    await assert.rejects(
+      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+        fetchImplementation: async () =>
+          new Response(
+            JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }),
+            {
+              status: 429,
+            },
+          ),
+        onRequestSent: () => {
+          sent += 1;
+        },
+      }),
+      (error) => error instanceof PlacesApiError && error.httpStatus === 429,
+    );
+    assert.equal(sent, 1, "a failed request still counts as sent");
+
+    const controller = new AbortController();
+    controller.abort();
+    let fetched = 0;
+    await assert.rejects(
+      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+        signal: controller.signal,
+        fetchImplementation: async () => {
+          fetched += 1;
+          return new Response("{}", { status: 200 });
+        },
+        onRequestSent: () => {
+          sent += 1;
+        },
+      }),
+      (error) => error?.name === "AbortError",
+    );
+    assert.equal(sent, 1, "an already-aborted request is not sent");
+    assert.equal(fetched, 0);
+  } finally {
+    if (previous === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
+  }
+});

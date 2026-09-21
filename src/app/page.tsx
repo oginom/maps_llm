@@ -23,6 +23,7 @@ import {
   type PlaceSearchResponse,
 } from "@/lib/place-dto";
 import { viewportToRectangle } from "@/lib/viewport";
+import { budgetHeaders, newRunId } from "@/lib/session-ids";
 
 const defaultCenter = {
   lat: 35.7,
@@ -35,24 +36,58 @@ type SearchSession = {
   controller: AbortController;
   batch: PlaceDetailBatch<SearchResult>;
   evaluation: string;
+  // Budget run id: one per search, shared by its "next 5" batches.
+  runId: string;
 };
 
-// Every API route answers failures with `{ error: { code, message } }`. Quota
-// errors (429) keep the fixed wording the panel already shows; other errors
-// surface the server message when there is one.
-async function readErrorMessage(
+class ApiRequestError extends Error {
+  readonly code: string | undefined;
+
+  constructor(message: string, code: string | undefined) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.code = code;
+  }
+}
+
+// Month and session budget refusals end the session's paid calls; run
+// refusals only end the current search.
+const BUDGET_STOP_CODES = new Set([
+  "BUDGET_MONTH_EXCEEDED",
+  "BUDGET_SESSION_EXCEEDED",
+]);
+
+function isBudgetStop(error: unknown): error is ApiRequestError {
+  return (
+    error instanceof ApiRequestError &&
+    error.code !== undefined &&
+    BUDGET_STOP_CODES.has(error.code)
+  );
+}
+
+// Every API route answers failures with `{ error: { code, message } }`.
+// Upstream quota errors (429 `RESOURCE_EXHAUSTED`) keep the fixed wording the
+// panel already shows; app budget refusals (429 `BUDGET_*`), the ledger
+// outage (503 `BUDGET_UNAVAILABLE`) and other errors surface the server
+// message when there is one.
+async function readApiError(
   response: Response,
   fallback: string,
-): Promise<string> {
-  if (response.status === 429) return fallback;
+): Promise<ApiRequestError> {
+  let code: string | undefined;
+  let message: string | undefined;
   try {
     const data = await response.json();
-    const message = data?.error?.message;
-    if (typeof message === "string" && message) return message;
+    if (typeof data?.error?.code === "string") code = data.error.code;
+    if (typeof data?.error?.message === "string" && data.error.message)
+      message = data.error.message;
   } catch {
     // Non-JSON error body: use the fallback.
   }
-  return fallback;
+  const isBudgetError = code?.startsWith("BUDGET_") ?? false;
+  if (response.status === 429 && !isBudgetError)
+    return new ApiRequestError(fallback, code);
+  return new ApiRequestError(message ?? fallback, code);
 }
 
 function MapContent() {
@@ -75,6 +110,9 @@ function MapContent() {
   const [requestedDetails, setRequestedDetails] = useState(0);
   const [remainingDetails, setRemainingDetails] = useState(0);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Set when the month or session budget is exhausted: no further searches
+  // or "next 5" batches until a new session (tab) or month.
+  const [budgetStop, setBudgetStop] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<{
     [key: string]: SearchResult;
   }>({});
@@ -174,6 +212,12 @@ function MapContent() {
         return { ...previous, [placeId]: { ...previous[placeId], ...update } };
       });
     };
+    const reportError = (error: unknown, fallback: string) => {
+      const message = error instanceof Error ? error.message : fallback;
+      if (isBudgetStop(error)) setBudgetStop(message);
+      else setSearchError(message);
+      return message;
+    };
 
     try {
       await Promise.all(
@@ -183,16 +227,17 @@ function MapContent() {
           try {
             const detailResponse = await fetch(
               `/api/places/${encodeURIComponent(placeId)}`,
-              { signal: session.controller.signal },
+              {
+                signal: session.controller.signal,
+                headers: budgetHeaders(session.runId),
+              },
             );
             if (!detailResponse.ok)
-              throw new Error(
-                await readErrorMessage(
-                  detailResponse,
-                  detailResponse.status === 429
-                    ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
-                    : "一部の店舗の口コミを取得できませんでした。",
-                ),
+              throw await readApiError(
+                detailResponse,
+                detailResponse.status === 429
+                  ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
+                  : "一部の店舗の口コミを取得できませんでした。",
               );
             const details: PlaceDetail = await detailResponse.json();
             if (!isCurrent()) return;
@@ -218,7 +263,10 @@ function MapContent() {
             try {
               const response = await fetch("/api/analyze-reviews", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  ...budgetHeaders(session.runId),
+                },
                 signal: session.controller.signal,
                 body: JSON.stringify({
                   reviews: reviews
@@ -231,13 +279,11 @@ function MapContent() {
                 }),
               });
               if (!response.ok)
-                throw new Error(
-                  await readErrorMessage(
-                    response,
-                    response.status === 429
-                      ? "レビュー分析の利用上限に達しました。"
-                      : "レビューの分析中にエラーが発生しました。",
-                  ),
+                throw await readApiError(
+                  response,
+                  response.status === 429
+                    ? "レビュー分析の利用上限に達しました。"
+                    : "レビューの分析中にエラーが発生しました。",
                 );
               const data = await response.json();
               updateResult(placeId, {
@@ -247,25 +293,20 @@ function MapContent() {
               });
             } catch (error) {
               if (!isCurrent()) return;
-              const message =
-                error instanceof Error
-                  ? error.message
-                  : "レビューの分析中にエラーが発生しました。";
+              const message = reportError(
+                error,
+                "レビューの分析中にエラーが発生しました。",
+              );
               updateResult(placeId, {
                 analysis: message,
                 analysisError: true,
                 analysisStatus: { isAnalyzing: false, isQueued: false },
               });
-              setSearchError(message);
             }
           } catch (error) {
             if (!isCurrent()) return;
             updateResult(placeId, { detailsStatus: "error" });
-            setSearchError(
-              error instanceof Error
-                ? error.message
-                : "口コミを取得できませんでした。",
-            );
+            reportError(error, "口コミを取得できませんでした。");
           }
         }),
       );
@@ -276,12 +317,13 @@ function MapContent() {
   };
 
   const handleSearch = async () => {
-    if (!map || searchInProgress.current) return;
+    if (!map || searchInProgress.current || budgetStop) return;
     searchInProgress.current = true;
     searchController.current?.abort();
     layoutController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
+    const runId = newRunId();
     activeSession.current = null;
     const isCurrent = () =>
       searchController.current === controller && !controller.signal.aborted;
@@ -305,18 +347,19 @@ function MapContent() {
       if (!isCurrent()) return;
       const response = await fetch("/api/generate-examples", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...budgetHeaders(runId),
+        },
         signal: controller.signal,
         body: JSON.stringify({ searchTerm, evaluation }),
       });
       if (!response.ok)
-        throw new Error(
-          await readErrorMessage(
-            response,
-            response.status === 429
-              ? "検索の利用上限に達しました。"
-              : "検索の準備に失敗しました。時間をおいて再検索してください。",
-          ),
+        throw await readApiError(
+          response,
+          response.status === 429
+            ? "検索の利用上限に達しました。"
+            : "検索の準備に失敗しました。時間をおいて再検索してください。",
         );
       const { examples, searchQuery } = await response.json();
       if (!isCurrent()) return;
@@ -330,18 +373,19 @@ function MapContent() {
       };
       const searchResponse = await fetch("/api/places/search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...budgetHeaders(runId),
+        },
         signal: controller.signal,
         body: JSON.stringify(searchRequest),
       });
       if (!searchResponse.ok)
-        throw new Error(
-          await readErrorMessage(
-            searchResponse,
-            searchResponse.status === 429
-              ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
-              : "場所の検索に失敗しました。",
-          ),
+        throw await readApiError(
+          searchResponse,
+          searchResponse.status === 429
+            ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
+            : "場所の検索に失敗しました。",
         );
       const { places }: PlaceSearchResponse = await searchResponse.json();
       if (!isCurrent()) return;
@@ -371,16 +415,20 @@ function MapContent() {
         controller,
         batch: new PlaceDetailBatch(candidates),
         evaluation,
+        runId,
       };
       activeSession.current = session;
       if (candidates.length === 0)
         setSearchError("条件に合う場所が見つかりませんでした。");
       void loadNextDetails(session);
     } catch (error) {
-      if (isCurrent())
-        setSearchError(
-          error instanceof Error ? error.message : "検索に失敗しました。",
-        );
+      if (isCurrent()) {
+        if (isBudgetStop(error)) setBudgetStop(error.message);
+        else
+          setSearchError(
+            error instanceof Error ? error.message : "検索に失敗しました。",
+          );
+      }
     } finally {
       if (isCurrent()) {
         searchInProgress.current = false;
@@ -490,12 +538,13 @@ function MapContent() {
           evaluation={evaluation}
           setEvaluation={setEvaluation}
           onSearch={handleSearch}
-          searchDisabled={isSearching || !map}
+          searchDisabled={isSearching || !map || budgetStop !== null}
           isSearching={isSearching}
           isLoadingDetails={isLoadingDetails}
           requestedDetails={requestedDetails}
           remainingDetails={remainingDetails}
           searchError={searchError}
+          budgetStop={budgetStop}
           results={results}
           selectedPlace={selectedPlace}
           onSelect={selectPlace}
@@ -507,7 +556,7 @@ function MapContent() {
             void changeSheetHeight("full");
           }}
           onMore={() => {
-            if (activeSession.current)
+            if (activeSession.current && !budgetStop)
               void loadNextDetails(activeSession.current);
           }}
         />

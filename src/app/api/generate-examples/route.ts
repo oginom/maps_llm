@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { generateExamplesRequestSchema } from "@/lib/api-schemas";
-import { errorResponse, logRoute, parseJsonBody } from "@/lib/api-route";
-import { logCompletionUsage, openAiErrorResponse } from "@/lib/openai-route";
+import {
+  clientAbortedResponse,
+  errorResponse,
+  logRoute,
+  parseJsonBody,
+  requireBudgetContext,
+} from "@/lib/api-route";
+import {
+  reserveBudget,
+  settleReservation,
+  type Reservation,
+  type SettleOutcome,
+} from "@/lib/budget/ledger";
+import {
+  completionCostMicros,
+  logCompletionUsage,
+  openAiErrorResponse,
+} from "@/lib/openai-route";
 
 const ROUTE = "generate-examples";
 
@@ -12,16 +28,25 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
+  const budget = requireBudgetContext(request, ROUTE, startedAt);
+  if (!budget.ok) return budget.response;
   const parsed = await parseJsonBody(request, generateExamplesRequestSchema);
   if (!parsed.ok) {
     logRoute(ROUTE, 400, startedAt, "invalid input");
     return parsed.response;
   }
   const { searchTerm, evaluation } = parsed.data;
+  if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
 
-  let completion;
+  let reservation: Reservation | undefined;
+  let outcome: SettleOutcome = { kind: "release" };
   try {
-    completion = await openai.chat.completions.create(
+    reservation = await reserveBudget(budget.context, "openai.examples");
+    if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
+    // From here on the request is sent: the reservation is settled at the
+    // actual usage, or at the estimate when the call fails without usage.
+    outcome = { kind: "settle" };
+    const completion = await openai.chat.completions.create(
       {
         model: "gpt-5.6-luna",
         reasoning_effort: "none",
@@ -68,49 +93,52 @@ export async function POST(request: Request) {
       },
       { signal: request.signal },
     );
+    outcome = { kind: "settle", micros: completionCostMicros(completion) };
+    logCompletionUsage(ROUTE, completion, startedAt);
+
+    const finishReason = completion.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.error(`[api/${ROUTE}] output truncated at max_completion_tokens`);
+      return errorResponse(
+        500,
+        "OUTPUT_TRUNCATED",
+        "生成結果が長すぎて途中で切れました。もう一度お試しください。",
+      );
+    }
+
+    const content = completion.choices[0]?.message.content;
+    if (!content) {
+      console.error(
+        `[api/${ROUTE}] empty response content`,
+        JSON.stringify({ ...completion, choices: undefined }),
+      );
+      return errorResponse(
+        500,
+        "EMPTY_RESPONSE",
+        "Failed to generate examples: empty response from model",
+      );
+    }
+
+    let response: { examples: string; searchQuery: string };
+    try {
+      response = JSON.parse(content);
+    } catch (parseError) {
+      console.error(
+        `[api/${ROUTE}] failed to parse response content`,
+        parseError,
+        `length=${content.length} finish_reason=${finishReason}`,
+      );
+      return errorResponse(
+        500,
+        "INVALID_RESPONSE",
+        "Failed to generate examples: invalid JSON from model",
+      );
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     return openAiErrorResponse(ROUTE, error, startedAt, request.signal);
+  } finally {
+    if (reservation) await settleReservation(reservation, outcome);
   }
-  logCompletionUsage(ROUTE, completion, startedAt);
-
-  const finishReason = completion.choices[0]?.finish_reason;
-  if (finishReason === "length") {
-    console.error(`[api/${ROUTE}] output truncated at max_completion_tokens`);
-    return errorResponse(
-      500,
-      "OUTPUT_TRUNCATED",
-      "生成結果が長すぎて途中で切れました。もう一度お試しください。",
-    );
-  }
-
-  const content = completion.choices[0]?.message.content;
-  if (!content) {
-    console.error(
-      `[api/${ROUTE}] empty response content`,
-      JSON.stringify({ ...completion, choices: undefined }),
-    );
-    return errorResponse(
-      500,
-      "EMPTY_RESPONSE",
-      "Failed to generate examples: empty response from model",
-    );
-  }
-
-  let response: { examples: string; searchQuery: string };
-  try {
-    response = JSON.parse(content);
-  } catch (parseError) {
-    console.error(
-      `[api/${ROUTE}] failed to parse response content`,
-      parseError,
-      `length=${content.length} finish_reason=${finishReason}`,
-    );
-    return errorResponse(
-      500,
-      "INVALID_RESPONSE",
-      "Failed to generate examples: invalid JSON from model",
-    );
-  }
-
-  return NextResponse.json(response);
 }

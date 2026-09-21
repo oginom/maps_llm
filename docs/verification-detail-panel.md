@@ -113,3 +113,30 @@ node e2e/verify-fetch-limits.mjs
 **発見したアプリ不具合1件（未修正）:** HTTP 429でも本文に `error.message` があると固定の割当文言を表示しない。`src/app/page.tsx` の `readErrorMessage` が本文を優先するため、検索ルートが `{ error: { code: "RESOURCE_EXHAUSTED", message: "QUOTA_SENTINEL_FROM_SERVER" } }` を429で返す別診断では、スマホ・PCとも `QUOTA_SENTINEL_FROM_SERVER` が表示された。期待は「Google Places の検索上限に達しました。時間をおいて再検索してください。」。この追加診断は **0/2成功（同一不具合を2画面で再現）** で、上記の回帰成功数とは別。[診断JSON](../e2e/quota-wording-results.json)、[スマホ](img/detail-panel/phone-quota-wording-bug.png)、[PC](img/detail-panel/desktop-quota-wording-bug.png)。既存の詳細割当シナリオはサーバー自身が標準文言を返すため成功する。src/変更禁止の指示に従い、修正は行っていない。 その後、`readErrorMessage` が 429 では本文を読まずに固定文言を返すよう修正した（コミット時点。診断スクリプトの再実行は未実施）。
 
 画面画像は営業時間部分と口コミ部分をそれぞれスクロールして採取し、スマホ・PCで目視確認した。モックによる画面と呼出し制御の検証であり、実アダプターの外部接続・課金・Googleの応答内容は検証していない。
+
+## 予算台帳導入後の再検証
+
+2026-09-21（JST）。全4ルートの共有ヘッダー検証と `budget-scenarios.mjs` を追加し、390×844 / 1280×800で実行した。取得制限 **26/26成功＋UI採取2/2成功**、詳細パネル **32/32成功**、両コマンドの終了コード0。変更したE2Eの4ファイルはESLintも終了コード0。各スイートの既存シナリオを維持し、6シナリオ×2画面を追加した。
+
+- 全API要求の `X-Session-Id` / `X-Run-Id` がUUID v4であること、sessionStorageの `maps-llm-session-id` と一致することを検証。同じタブのsessionはページ再読み込み後も維持し、同じ検索の4ルートと追加バッチはrunを共有する。次の検索は、同じ検索語であっても新しいrunになる。従来の古い応答破棄・fetch中断でもヘッダーを検証した。
+- 詳細1店の429 `BUDGET_RUN_EXCEEDED` はサーバー文言を表示し、その店だけ失敗、他4店は評価を完了。追加バッチ後は評価済み9件になり、失敗IDを再取得しない。次の検索も開始できる。
+- 分析の503 `BUDGET_UNAVAILABLE` は文言を表示し、5店とも失敗。完了後1,000msを観測し、分析要求は各店1回、合計5回のままで自動再試行なし。
+- 検索の429 `BUDGET_SESSION_EXCEEDED` は `[data-budget-stop]` と検索ボタン無効を確認。検索開始時に候補がクリアされる実装のため、追加ボタンは無効表示ではなく**非表示**になる。残り候補を持つ詳細のSESSION / MONTH拒否も追加し、検索と「次の5件を評価」の両方が無効になることを確認した。無効ボタンのclickとフォームsubmitを試しても、完了後1,000ms以内の追加API要求は0回。
+- `RESOURCE_EXHAUSTED` に `QUOTA_SENTINEL_FROM_SERVER` を返す追加シナリオは両画面・両スイートで成功。Google割当の固定文言を表示し、上記Places New移行時の不一致は解消を確認した。
+
+| 追加証跡                            | スマホ                                                         | PC                                                               |
+| ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| RUN拒否・他店の継続                 | [画像](img/detail-panel/phone-budget-run-detail.png)           | [画像](img/detail-panel/desktop-budget-run-detail.png)           |
+| 台帳障害503                         | [画像](img/detail-panel/phone-budget-unavailable-analysis.png) | [画像](img/detail-panel/desktop-budget-unavailable-analysis.png) |
+| 検索のSESSION停止                   | [画像](img/detail-panel/phone-budget-session-search.png)       | [画像](img/detail-panel/desktop-budget-session-search.png)       |
+| 候補ありのSESSION停止・両ボタン無効 | [画像](img/detail-panel/phone-budget-session-details.png)      | [画像](img/detail-panel/desktop-budget-session-details.png)      |
+| 候補ありのMONTH停止・両ボタン無効   | [画像](img/detail-panel/phone-budget-month-details.png)        | [画像](img/detail-panel/desktop-budget-month-details.png)        |
+| Google割当の固定文言                | [画像](img/detail-panel/phone-quota-fixed-wording.png)         | [画像](img/detail-panel/desktop-quota-fixed-wording.png)         |
+
+停止文言とボタンの矩形が画面内に収まることを検証し、文言にはヒットテストを実施。MUIの無効ボタンは `pointer-events: none` のため、disabled属性・表示矩形・要求抑止を確認した。停止画面は両サイズで目視確認した。取得制限側の同シナリオ画像は `img/detail-panel/fetch-limits/` に保存した。
+
+通信監査は取得制限が準備42・検索42・詳細254・分析234（計572要求）、詳細パネルが準備22・検索22・詳細104・分析96（計244要求）。全要求をモックで処理し、ヘッダー不一致・外部origin試行・想定外API・ブラウザ例外はいずれも0。実 Google / OpenAI / Firestore 呼び出しなし。
+
+サーバーは `.env*` を含まない `/private/tmp/maps-e2e-task5-vuuj4et_` のコピー、ダミーキー4個、port 3107、`LEDGER_BACKEND=file` / `LEDGER_FILE=/private/tmp/maps-e2e-task5-vuuj4et_/ledger.json` で実行。APIをブラウザで置換するため台帳ファイルは作成されず、実台帳の予約・精算は今回のE2Eの対象外。検証後にport 3107のサーバーを停止し、一時コピーのCLAUDE.mdにNext.jsが追加したagent-rules参照を除去した。port 3000には触れていない。この作業ではsrc/・依存・Gitのindex／ブランチ／commitを変更していない。並行作業によるサーバー側ソースの更新を検知したが、検証対象のpage・components・session-idsは実行時コピーと一致している。
+
+**新たなアプリ不具合は検出しなかった。** 検索拒否で追加ボタンが非表示になる点は上記のとおり記録した。再試行なしの確認は1,000msの観測範囲。実サービスの課金・台帳の永続化・実機キーボードは検証していない。[取得制限JSON](../e2e/results.json)・[ログ](../e2e/run.log)、[詳細パネルJSON](../e2e/detail-panel-results.json)・[ログ](../e2e/detail-panel-run.log)、[再実行手順](../e2e/README.md)。

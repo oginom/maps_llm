@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T16:07:39.775Z",
+  "generatedAt": "2026-09-21T01:21:48.862Z",
   "browser": "Chromium 149.0.7827.55 (Playwright)",
   "viewports": {
     "phone": {
@@ -12,6 +12,165 @@
     }
   },
   "results": [
+    {
+      "viewport": "phone",
+      "scenario": "budget-run-detail",
+      "result": "OK",
+      "message": "この検索の予算上限に達しました。別の検索を開始してください。",
+      "failedPlace": "budget-run-2",
+      "evaluatedAfterExtraBatch": 9,
+      "newRunOnRepeatedQuery": true,
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-budget-run-detail.png"
+    },
+    {
+      "viewport": "phone",
+      "scenario": "budget-unavailable-analysis",
+      "result": "OK",
+      "message": "予算台帳に接続できません。しばらくしてからお試しください。",
+      "analysisCalls": 5,
+      "callsPerPlace": 1,
+      "observationMs": 1000,
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-budget-unavailable-analysis.png"
+    },
+    {
+      "viewport": "phone",
+      "scenario": "quota-fixed-wording",
+      "result": "OK",
+      "message": "Google Places の検索上限に達しました。時間をおいて再検索してください。",
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-quota-fixed-wording.png"
+    },
+    {
+      "viewport": "phone",
+      "scenario": "budget-session-search",
+      "result": "OK",
+      "message": "このセッションの予算上限に達しました。検索を停止しました。",
+      "fetchMore": "absent (no candidates)",
+      "boxes": {
+        "stop": {
+          "x": 12,
+          "y": 599.15625,
+          "right": 378,
+          "bottom": 619.0625,
+          "width": 366,
+          "height": 19.90625,
+          "viewport": [390, 844],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 314,
+          "y": 506,
+          "right": 378,
+          "bottom": 546,
+          "width": 64,
+          "height": 40,
+          "viewport": [390, 844],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-budget-session-search.png"
+    },
+    {
+      "viewport": "phone",
+      "scenario": "budget-session-details",
+      "result": "OK",
+      "message": "このセッションの予算上限に達しました。追加取得を停止しました。",
+      "fetchMore": "disabled",
+      "boxes": {
+        "stop": {
+          "x": 12,
+          "y": 599.15625,
+          "right": 378,
+          "bottom": 638.96875,
+          "width": 366,
+          "height": 39.8125,
+          "viewport": [390, 844],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 314,
+          "y": 506,
+          "right": 378,
+          "bottom": 546,
+          "width": 64,
+          "height": 40,
+          "viewport": [390, 844],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        },
+        "more": {
+          "x": 12,
+          "y": 644.96875,
+          "right": 378,
+          "bottom": 680.96875,
+          "width": 366,
+          "height": 36,
+          "viewport": [390, 844],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-budget-session-details.png"
+    },
+    {
+      "viewport": "phone",
+      "scenario": "budget-month-details",
+      "result": "OK",
+      "message": "今月の予算上限に達しました。来月まで検索と追加取得を停止します。",
+      "fetchMore": "disabled",
+      "boxes": {
+        "stop": {
+          "x": 12,
+          "y": 599.15625,
+          "right": 378,
+          "bottom": 638.96875,
+          "width": 366,
+          "height": 39.8125,
+          "viewport": [390, 844],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 314,
+          "y": 506,
+          "right": 378,
+          "bottom": 546,
+          "width": 64,
+          "height": 40,
+          "viewport": [390, 844],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        },
+        "more": {
+          "x": 12,
+          "y": 644.96875,
+          "right": 378,
+          "bottom": 680.96875,
+          "width": 366,
+          "height": 36,
+          "viewport": [390, 844],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/phone-budget-month-details.png"
+    },
     {
       "viewport": "phone",
       "scenario": "1-initial",
@@ -1182,6 +1341,165 @@
       },
       "screenshot": "docs/img/detail-panel/fetch-limits/phone-overlay.png",
       "distributionScreenshot": "docs/img/detail-panel/fetch-limits/phone-distribution.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "budget-run-detail",
+      "result": "OK",
+      "message": "この検索の予算上限に達しました。別の検索を開始してください。",
+      "failedPlace": "budget-run-2",
+      "evaluatedAfterExtraBatch": 9,
+      "newRunOnRepeatedQuery": true,
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-budget-run-detail.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "budget-unavailable-analysis",
+      "result": "OK",
+      "message": "予算台帳に接続できません。しばらくしてからお試しください。",
+      "analysisCalls": 5,
+      "callsPerPlace": 1,
+      "observationMs": 1000,
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-budget-unavailable-analysis.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "quota-fixed-wording",
+      "result": "OK",
+      "message": "Google Places の検索上限に達しました。時間をおいて再検索してください。",
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-quota-fixed-wording.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "budget-session-search",
+      "result": "OK",
+      "message": "このセッションの予算上限に達しました。検索を停止しました。",
+      "fetchMore": "absent (no candidates)",
+      "boxes": {
+        "stop": {
+          "x": 892,
+          "y": 157.15625,
+          "right": 1268,
+          "bottom": 177.0625,
+          "width": 376,
+          "height": 19.90625,
+          "viewport": [1280, 800],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 1204,
+          "y": 64,
+          "right": 1268,
+          "bottom": 104,
+          "width": 64,
+          "height": 40,
+          "viewport": [1280, 800],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-budget-session-search.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "budget-session-details",
+      "result": "OK",
+      "message": "このセッションの予算上限に達しました。追加取得を停止しました。",
+      "fetchMore": "disabled",
+      "boxes": {
+        "stop": {
+          "x": 892,
+          "y": 157.15625,
+          "right": 1268,
+          "bottom": 196.96875,
+          "width": 376,
+          "height": 39.8125,
+          "viewport": [1280, 800],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 1204,
+          "y": 64,
+          "right": 1268,
+          "bottom": 104,
+          "width": 64,
+          "height": 40,
+          "viewport": [1280, 800],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        },
+        "more": {
+          "x": 892,
+          "y": 202.96875,
+          "right": 1268,
+          "bottom": 238.96875,
+          "width": 376,
+          "height": 36,
+          "viewport": [1280, 800],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-budget-session-details.png"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "budget-month-details",
+      "result": "OK",
+      "message": "今月の予算上限に達しました。来月まで検索と追加取得を停止します。",
+      "fetchMore": "disabled",
+      "boxes": {
+        "stop": {
+          "x": 892,
+          "y": 157.15625,
+          "right": 1268,
+          "bottom": 196.96875,
+          "width": 376,
+          "height": 39.8125,
+          "viewport": [1280, 800],
+          "hit": true,
+          "disabled": false,
+          "pointerEvents": "auto"
+        },
+        "search": {
+          "x": 1204,
+          "y": 64,
+          "right": 1268,
+          "bottom": 104,
+          "width": 64,
+          "height": 40,
+          "viewport": [1280, 800],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        },
+        "more": {
+          "x": 892,
+          "y": 202.96875,
+          "right": 1268,
+          "bottom": 238.96875,
+          "width": 376,
+          "height": 36,
+          "viewport": [1280, 800],
+          "hit": false,
+          "disabled": true,
+          "pointerEvents": "none"
+        }
+      },
+      "observationMs": 1000,
+      "callsAfterStop": 0,
+      "screenshot": "docs/img/detail-panel/fetch-limits/desktop-budget-month-details.png"
     },
     {
       "viewport": "desktop",
@@ -2360,6 +2678,601 @@
       "externalBlocked": [],
       "unexpectedAPI": [],
       "analysisRequests": [
+        "budget-run-1",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5",
+        "budget-run-6",
+        "budget-run-7",
+        "budget-run-8",
+        "budget-run-9",
+        "budget-run-10",
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-run",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        },
+        {
+          "textQuery": "budget-run",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5",
+        "budget-run-6",
+        "budget-run-7",
+        "budget-run-8",
+        "budget-run-9",
+        "budget-run-10",
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-1",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-2",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-3",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-4",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-5",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-6",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-7",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-8",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-9",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/places/budget-run-10",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "ac0df02a-2aef-43dc-889e-f93f081cc964"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/budget-run-1",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/budget-run-2",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/budget-run-3",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/budget-run-4",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/places/budget-run-5",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f",
+          "runId": "71f71503-4d8d-47c3-8a1c-267821fb75e2"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "10aea78d-32a7-49c0-b246-d88e5cb7ae2f"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-unavailable-1",
+        "budget-unavailable-2",
+        "budget-unavailable-3",
+        "budget-unavailable-4",
+        "budget-unavailable-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-unavailable",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-unavailable-1",
+        "budget-unavailable-2",
+        "budget-unavailable-3",
+        "budget-unavailable-4",
+        "budget-unavailable-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/budget-unavailable-1",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/budget-unavailable-2",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/budget-unavailable-3",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/budget-unavailable-4",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/places/budget-unavailable-5",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3",
+          "runId": "8be2b657-fba5-44ab-b484-36bbdb345a26"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "86db90c8-8fa8-460c-aae9-8bf0d8723dc3"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "quota-wording",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "0665a8bc-ebed-4921-9002-373531115a1b",
+          "runId": "262aeb06-985c-4692-ae29-102d1333f262"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "0665a8bc-ebed-4921-9002-373531115a1b",
+          "runId": "262aeb06-985c-4692-ae29-102d1333f262"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "0665a8bc-ebed-4921-9002-373531115a1b"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-session-search",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "ccdde54b-e145-4f15-8157-de7c1b38d869",
+          "runId": "9e46ffdd-2174-423c-a620-5b40f97015a1"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "ccdde54b-e145-4f15-8157-de7c1b38d869",
+          "runId": "9e46ffdd-2174-423c-a620-5b40f97015a1"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "ccdde54b-e145-4f15-8157-de7c1b38d869"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-session-1",
+        "budget-session-3",
+        "budget-session-4",
+        "budget-session-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-session",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-session-1",
+        "budget-session-2",
+        "budget-session-3",
+        "budget-session-4",
+        "budget-session-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/budget-session-1",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/budget-session-2",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/budget-session-3",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/budget-session-4",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/places/budget-session-5",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39",
+          "runId": "14f26d99-4514-4698-85ad-1a8d1297da94"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "78413a30-bf69-4e16-bab1-a4d692a60d39"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-month-1",
+        "budget-month-3",
+        "budget-month-4",
+        "budget-month-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-month",
+          "rectangle": {
+            "low": {
+              "lat": 35.68945,
+              "lng": 139.69025
+            },
+            "high": {
+              "lat": 35.710550000000005,
+              "lng": 139.70974999999999
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-month-1",
+        "budget-month-2",
+        "budget-month-3",
+        "budget-month-4",
+        "budget-month-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/budget-month-1",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/budget-month-2",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/budget-month-3",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/budget-month-4",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/places/budget-month-5",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e",
+          "runId": "8a189c42-cc5d-49b9-9ad5-3001930f6052"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "4a3c575b-33d8-4a86-85f5-b9997d78bc3e"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
         "initial-1",
         "initial-2",
         "initial-3",
@@ -2389,7 +3302,71 @@
         "initial-3",
         "initial-4",
         "initial-5"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/initial-1",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/initial-2",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/initial-3",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/initial-4",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/places/initial-5",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7",
+          "runId": "11908434-171c-4822-b154-e624c1225470"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "1729dae1-33d0-4ec5-8319-4e523c460ec7"
     },
     {
       "externalBlocked": [],
@@ -2481,7 +3458,301 @@
         "partial-5",
         "partial-6",
         "partial-7"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-1",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-2",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-3",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-4",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-5",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-6",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-7",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-8",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-9",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-10",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-11",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-12",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-13",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-14",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-15",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-16",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-17",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-18",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-19",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/places/cap-20",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "b46cb15c-2172-410b-9669-cd25aeeb3c60"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-1",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-2",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-3",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-4",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-5",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-6",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/places/partial-7",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402",
+          "runId": "d1c1baba-5960-4001-8332-10d1d04d29de"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "18e653d7-d11b-4760-b46f-97d508a98402"
     },
     {
       "externalBlocked": [],
@@ -2559,7 +3830,231 @@
         "sync-8",
         "sync-9",
         "sync-10"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-1",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-2",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-3",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-4",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-5",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-6",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-7",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-8",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-9",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/places/double-10",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "319cc5ba-8eb5-449f-812d-c33ead66237e"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-1",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-2",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-3",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-4",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-5",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-6",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-7",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-8",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-9",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/places/sync-10",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e",
+          "runId": "ccc0aaf2-e719-4d11-9d90-40ae3e935cb0"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "ea94dba1-e00e-4c76-a08d-3ca74934ae9e"
     },
     {
       "externalBlocked": [],
@@ -2603,7 +4098,116 @@
         "failure-8",
         "failure-9",
         "failure-10"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-1",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-2",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-3",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-4",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-5",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-6",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-7",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-8",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-9",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/places/failure-10",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1",
+          "runId": "b72d1341-9ebc-45aa-a4a5-6253bf5c2082"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "ee911d37-74a9-4a0c-9f4f-75c92d51d3a1"
     },
     {
       "externalBlocked": [],
@@ -2702,7 +4306,226 @@
         "new-json-3",
         "new-json-4",
         "new-json-5"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/old-details-1",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/old-details-2",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/old-details-3",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/old-details-4",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/places/old-details-5",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "2b6347c8-8d41-4bce-9c77-78900501bc4f"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/new-details-1",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/new-details-2",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/new-details-3",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/new-details-4",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/places/new-details-5",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "f3f8b5d4-e20e-4a21-b9a7-401bf2fa64f2"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/old-json-1",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/old-json-2",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/old-json-3",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/old-json-4",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/places/old-json-5",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "68fcb04e-5a80-49e7-a158-d68c0394228d"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/new-json-1",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/new-json-2",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/new-json-3",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/new-json-4",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/places/new-json-5",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01",
+          "runId": "16cd59a0-8bb8-4a38-9ec5-6e9439a71760"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "e56fe73e-240a-4082-8edc-ada8730b8f01"
     },
     {
       "externalBlocked": [],
@@ -2782,7 +4605,131 @@
         "abort-new-4",
         "abort-new-5"
       ],
-      "holdAnalysis": false
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/abort-old-1",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/abort-old-2",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/abort-old-3",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/abort-old-4",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/places/abort-old-5",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "89bd21ea-c580-4c7b-a2a1-318fe017e9cc"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/abort-new-1",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/abort-new-2",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/abort-new-3",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/abort-new-4",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/places/abort-new-5",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3",
+          "runId": "ffcd1434-e1fa-4123-b7fd-90b5412c79be"
+        }
+      ],
+      "headerErrors": [],
+      "holdAnalysis": false,
+      "sessionId": "fa0f8eb3-4bc3-4612-aec5-fdc1c88d30c3"
     },
     {
       "externalBlocked": [],
@@ -2805,7 +4752,21 @@
           }
         }
       ],
-      "detailRequests": []
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "42643d97-10e7-496b-83aa-c9d0aaaf3a12",
+          "runId": "8f1e4ae2-680e-4fa7-8582-78e18f713d30"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "42643d97-10e7-496b-83aa-c9d0aaaf3a12",
+          "runId": "8f1e4ae2-680e-4fa7-8582-78e18f713d30"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "42643d97-10e7-496b-83aa-c9d0aaaf3a12"
     },
     {
       "externalBlocked": [],
@@ -2828,7 +4789,661 @@
           }
         }
       ],
-      "detailRequests": ["ux-1", "ux-2", "ux-3", "ux-4", "ux-5"]
+      "detailRequests": ["ux-1", "ux-2", "ux-3", "ux-4", "ux-5"],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/ux-1",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/ux-2",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/ux-3",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/ux-4",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/places/ux-5",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764",
+          "runId": "a6e7c1a8-b6f7-4e59-8ef7-c5571c8031b0"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "91d8cb2c-bda0-4db9-a08a-c869cee76764"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-run-1",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5",
+        "budget-run-6",
+        "budget-run-7",
+        "budget-run-8",
+        "budget-run-9",
+        "budget-run-10",
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-run",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        },
+        {
+          "textQuery": "budget-run",
+          "rectangle": {
+            "low": {
+              "lat": 35.690000000000005,
+              "lng": 139.689
+            },
+            "high": {
+              "lat": 35.71,
+              "lng": 139.71099999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5",
+        "budget-run-6",
+        "budget-run-7",
+        "budget-run-8",
+        "budget-run-9",
+        "budget-run-10",
+        "budget-run-1",
+        "budget-run-2",
+        "budget-run-3",
+        "budget-run-4",
+        "budget-run-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-1",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-2",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-3",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-4",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-5",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-6",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-7",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-8",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-9",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/places/budget-run-10",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "9473b118-87ec-40df-888d-c51a662c98bf"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/budget-run-1",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/budget-run-2",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/budget-run-3",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/budget-run-4",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/places/budget-run-5",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373",
+          "runId": "e7c2be20-09c0-4862-87a3-a9ce934c53c4"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "d5359360-9d55-4369-a698-ba9b49eb9373"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-unavailable-1",
+        "budget-unavailable-2",
+        "budget-unavailable-3",
+        "budget-unavailable-4",
+        "budget-unavailable-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-unavailable",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-unavailable-1",
+        "budget-unavailable-2",
+        "budget-unavailable-3",
+        "budget-unavailable-4",
+        "budget-unavailable-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/budget-unavailable-1",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/budget-unavailable-2",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/budget-unavailable-3",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/budget-unavailable-4",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/places/budget-unavailable-5",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1",
+          "runId": "d269fbf1-b125-4d7e-b0f9-1e16b52311da"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "7cb9b3c6-4a28-4a2c-beba-25a9ccec05f1"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "quota-wording",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "2954c364-f3d9-4ac2-b668-4f3969953860",
+          "runId": "fd3fe488-fb96-4c86-a626-8a9cdca28bd2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "2954c364-f3d9-4ac2-b668-4f3969953860",
+          "runId": "fd3fe488-fb96-4c86-a626-8a9cdca28bd2"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "2954c364-f3d9-4ac2-b668-4f3969953860"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-session-search",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "0dd4b708-26e3-4b81-93de-a0abaf2a7446",
+          "runId": "99c348ef-9ac6-4172-9e8f-6775e67430b2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "0dd4b708-26e3-4b81-93de-a0abaf2a7446",
+          "runId": "99c348ef-9ac6-4172-9e8f-6775e67430b2"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "0dd4b708-26e3-4b81-93de-a0abaf2a7446"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-session-1",
+        "budget-session-3",
+        "budget-session-4",
+        "budget-session-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-session",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-session-1",
+        "budget-session-2",
+        "budget-session-3",
+        "budget-session-4",
+        "budget-session-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/budget-session-1",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/budget-session-2",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/budget-session-3",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/budget-session-4",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/places/budget-session-5",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f",
+          "runId": "72ea3c47-e101-4239-bd09-f4f2308a54f2"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "236393eb-ff5a-41a5-b6c9-149565b0621f"
+    },
+    {
+      "externalBlocked": [],
+      "unexpectedAPI": [],
+      "analysisRequests": [
+        "budget-month-1",
+        "budget-month-3",
+        "budget-month-4",
+        "budget-month-5"
+      ],
+      "failedRequests": [],
+      "pageErrors": [],
+      "searchRequests": [
+        {
+          "textQuery": "budget-month",
+          "rectangle": {
+            "low": {
+              "lat": 35.68,
+              "lng": 139.678
+            },
+            "high": {
+              "lat": 35.720000000000006,
+              "lng": 139.72199999999998
+            }
+          }
+        }
+      ],
+      "detailRequests": [
+        "budget-month-1",
+        "budget-month-2",
+        "budget-month-3",
+        "budget-month-4",
+        "budget-month-5"
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/budget-month-1",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/budget-month-2",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/budget-month-3",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/budget-month-4",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/places/budget-month-5",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b",
+          "runId": "1f31d6c6-da5b-4ff8-846a-ee76a5ef532d"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "8f9c0999-877e-4d2e-b087-60290f83ee4b"
     },
     {
       "externalBlocked": [],
@@ -2863,7 +5478,71 @@
         "initial-3",
         "initial-4",
         "initial-5"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/initial-1",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/initial-2",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/initial-3",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/initial-4",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/places/initial-5",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693",
+          "runId": "82bee484-82c8-4f03-9fc7-36a0a49e1758"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "c1733408-96bd-4b8f-806c-a857a5b8a693"
     },
     {
       "externalBlocked": [],
@@ -2955,7 +5634,301 @@
         "partial-5",
         "partial-6",
         "partial-7"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-1",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-2",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-3",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-4",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-5",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-6",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-7",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-8",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-9",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-10",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-11",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-12",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-13",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-14",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-15",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-16",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-17",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-18",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-19",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/places/cap-20",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "db76707a-69f8-4bf4-bd9f-aaaedb1c60a0"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-1",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-2",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-3",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-4",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-5",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-6",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/places/partial-7",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47",
+          "runId": "9166c5bf-2e1a-46e1-9085-c39ca3d992ba"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "1afa7ecb-b695-4459-bbb7-0de0e20dca47"
     },
     {
       "externalBlocked": [],
@@ -3033,7 +6006,231 @@
         "sync-8",
         "sync-9",
         "sync-10"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-1",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-2",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-3",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-4",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-5",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-6",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-7",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-8",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-9",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/places/double-10",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "979a8440-9929-43f4-a612-dfbbe9d86da2"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-1",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-2",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-3",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-4",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-5",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-6",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-7",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-8",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-9",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/places/sync-10",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc",
+          "runId": "fed64cc9-501d-41db-8b30-9c934f5ed63f"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "5c496941-8f27-4a74-8a4a-203d25e26dbc"
     },
     {
       "externalBlocked": [],
@@ -3077,7 +6274,116 @@
         "failure-8",
         "failure-9",
         "failure-10"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-1",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-2",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-3",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-4",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-5",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-6",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-7",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-8",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-9",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/places/failure-10",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404",
+          "runId": "f10b5c2a-6611-4ab7-9871-e15a636e6322"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "c0ccd965-0e7b-4761-bb30-edf3d3e2a404"
     },
     {
       "externalBlocked": [],
@@ -3176,7 +6482,226 @@
         "new-json-3",
         "new-json-4",
         "new-json-5"
-      ]
+      ],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/old-details-1",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/old-details-2",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/old-details-3",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/old-details-4",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/places/old-details-5",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "d3bba3b4-c02f-44c5-8115-f789ec1c872a"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/new-details-1",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/new-details-2",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/new-details-3",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/new-details-4",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/places/new-details-5",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "5ec5b05b-15ac-4dea-8fdb-e2289066a162"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/old-json-1",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/old-json-2",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/old-json-3",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/old-json-4",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/places/old-json-5",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "70bae84e-9bec-4483-8075-6648ef564ca8"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/new-json-1",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/new-json-2",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/new-json-3",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/new-json-4",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/places/new-json-5",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2",
+          "runId": "0cad8e54-0f0a-407f-847b-bb708b2fca6a"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "dbaebabf-cd1f-4f50-b468-62d7fcf12fd2"
     },
     {
       "externalBlocked": [],
@@ -3256,7 +6781,131 @@
         "abort-new-4",
         "abort-new-5"
       ],
-      "holdAnalysis": false
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/abort-old-1",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/abort-old-2",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/abort-old-3",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/abort-old-4",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/places/abort-old-5",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "dfcd545b-a10a-4439-a436-783ab2334f9a"
+        },
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/abort-new-1",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/abort-new-2",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/abort-new-3",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/abort-new-4",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/places/abort-new-5",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d",
+          "runId": "94de432e-8630-45dd-ad84-bfb69be47d0c"
+        }
+      ],
+      "headerErrors": [],
+      "holdAnalysis": false,
+      "sessionId": "a933d4bb-d858-44d9-8400-c5503fe17b0d"
     },
     {
       "externalBlocked": [],
@@ -3279,7 +6928,21 @@
           }
         }
       ],
-      "detailRequests": []
+      "detailRequests": [],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "17a6c2ae-5504-47ae-a701-64a6bc6243a2",
+          "runId": "abbccac4-a607-4d65-b993-7d326186b45e"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "17a6c2ae-5504-47ae-a701-64a6bc6243a2",
+          "runId": "abbccac4-a607-4d65-b993-7d326186b45e"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "17a6c2ae-5504-47ae-a701-64a6bc6243a2"
     },
     {
       "externalBlocked": [],
@@ -3302,7 +6965,66 @@
           }
         }
       ],
-      "detailRequests": ["ux-1", "ux-2", "ux-3", "ux-4", "ux-5"]
+      "detailRequests": ["ux-1", "ux-2", "ux-3", "ux-4", "ux-5"],
+      "headerRequests": [
+        {
+          "path": "/api/generate-examples",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/search",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/ux-1",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/ux-2",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/ux-3",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/ux-4",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/places/ux-5",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        },
+        {
+          "path": "/api/analyze-reviews",
+          "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa",
+          "runId": "0c49f481-fe7e-48ba-b212-5b4b89f056fb"
+        }
+      ],
+      "headerErrors": [],
+      "sessionId": "610f6bc0-4e7c-47bf-9a45-66526b6870fa"
     }
   ]
 }

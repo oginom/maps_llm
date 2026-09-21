@@ -43,3 +43,6 @@ next-env.d.ts
 
 # personal Claude Code instructions
 CLAUDE.local.md
+
+# local budget ledger (LEDGER_BACKEND=file)
+.ledger/
