@@ -37,6 +37,7 @@ import {
 import { MapChatTransport } from "@/lib/chat-transport";
 import { viewportToRectangle } from "@/lib/viewport";
 import { budgetHeaders, newRunId } from "@/lib/session-ids";
+import { usePlaceQuestions } from "@/lib/use-place-questions";
 
 const defaultCenter = {
   lat: 35.7,
@@ -129,6 +130,14 @@ function MapContent() {
   const [searchResults, setSearchResults] = useState<{
     [key: string]: SearchResult;
   }>({});
+  const placeQuestions = usePlaceQuestions(
+    selectedPlace ? searchResults[selectedPlace] : undefined,
+    budgetStop !== null,
+    readApiError,
+    (error) => {
+      if (isBudgetStop(error)) setBudgetStop(error.message);
+    },
+  );
   // Chat: the transport holds the request snapshot taken at send time; the
   // run's controller finishes the run when the stream ends.
   const [chatTransport] = useState(() => new MapChatTransport());
@@ -293,6 +302,7 @@ function MapContent() {
   // Common start of a manual search or a chat message: abort the previous
   // run, reset the results and hand out the new controller and budget run id.
   const beginRun = () => {
+    placeQuestions.reset();
     searchInProgress.current = true;
     searchController.current?.abort();
     layoutController.current?.abort();
@@ -561,6 +571,7 @@ function MapContent() {
   };
 
   const selectPlace = (placeId: string) => {
+    if (placeId !== selectedPlace) placeQuestions.cancel();
     setSelectedPlace(placeId);
     void changeSheetHeight("full", placeId, true);
   };
@@ -658,8 +669,10 @@ function MapContent() {
           budgetStop={budgetStop}
           results={results}
           selectedPlace={selectedPlace}
+          questions={placeQuestions.questions}
           onSelect={selectPlace}
           onClose={() => {
+            placeQuestions.cancel();
             layoutController.current?.abort();
             setSelectedPlace(null);
           }}

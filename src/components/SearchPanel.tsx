@@ -9,6 +9,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { Histogram } from "./Histogram";
 import { PlaceDetails } from "./PlaceDetails";
+import type { PlaceQuestionsProps } from "./PlaceQuestions";
 import { ResultsList } from "./ResultsList";
 import { resultState, type SearchResult } from "@/lib/place-result";
 import { MAX_EVALUATIONS_PER_SEARCH } from "@/lib/place-detail-batch";
@@ -34,6 +35,7 @@ type Props = {
   budgetStop: string | null;
   results: SearchResult[];
   selectedPlace: string | null;
+  questions: PlaceQuestionsProps["questions"];
   onSelect: (id: string) => void;
   onClose: () => void;
   onInputFocus: () => void;
@@ -56,6 +58,7 @@ export function SearchPanel(props: Props) {
       <Box
         data-panel-header
         sx={{
+          display: selected ? "none" : "block",
           flexShrink: 0,
           maxHeight: "100%",
           overflowY: "auto",
@@ -213,7 +216,11 @@ export function SearchPanel(props: Props) {
               />
             </Box>
             {selected && (
-              <PlaceDetails result={selected} onClose={props.onClose} />
+              <PlaceDetails
+                result={selected}
+                onClose={props.onClose}
+                questions={props.questions}
+              />
             )}
             <Histogram results={results} />
           </>

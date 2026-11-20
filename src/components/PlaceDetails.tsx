@@ -1,4 +1,6 @@
-import { Avatar, Box, Button, Link, Typography } from "@mui/material";
+import { Box, Button, Link, Typography } from "@mui/material";
+import { ReviewEvidence } from "./ReviewEvidence";
+import { PlaceQuestions, type PlaceQuestionsProps } from "./PlaceQuestions";
 import {
   getRatingColor,
   resultState,
@@ -9,18 +11,15 @@ import {
 export function PlaceDetails({
   result,
   onClose,
+  questions,
 }: {
   result: SearchResult;
   onClose: () => void;
+  questions: PlaceQuestionsProps["questions"];
 }) {
   const state = resultState(result);
   const selectedReviews =
-    state === "evaluated"
-      ? (result.reviewNumbers ?? []).map((number) => ({
-          number,
-          review: result.reviews[number - 1],
-        }))
-      : [];
+    state === "evaluated" ? (result.reviewNumbers ?? []) : [];
   return (
     <Box
       component="section"
@@ -44,8 +43,8 @@ export function PlaceDetails({
           flexShrink: 0,
         }}
       >
-        <Typography variant="caption" color="primary">
-          選択中の店舗
+        <Typography data-attribution variant="caption" color="primary">
+          選択中の店舗 · Google Maps
         </Typography>
         <Button size="small" onClick={onClose}>
           一覧に戻る
@@ -60,6 +59,7 @@ export function PlaceDetails({
           overscrollBehavior: "contain",
           overflowWrap: "anywhere",
           minHeight: 0,
+          flex: "1 1 120px",
         }}
       >
         <Typography variant="h6" sx={{ fontSize: 17, fontWeight: 700 }}>
@@ -126,65 +126,10 @@ export function PlaceDetails({
             <Typography variant="subtitle2" sx={{ mt: 1.5 }}>
               関連する口コミ
             </Typography>
-            {selectedReviews.map(({ number, review }) => (
-              <Box key={number} sx={{ my: 1 }}>
-                <Typography
-                  variant="body2"
-                  sx={{ whiteSpace: "pre-wrap", my: 1 }}
-                >
-                  {review.text}
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    my: 0.75,
-                  }}
-                >
-                  <Avatar
-                    src={review.author.photoUri}
-                    alt={review.author.name || "投稿者"}
-                    sx={{ width: 28, height: 28 }}
-                  />
-                  <Box sx={{ minWidth: 0 }}>
-                    {review.author.uri ? (
-                      <Link
-                        href={review.author.uri}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                      >
-                        {review.author.name || "投稿者プロフィール"}
-                      </Link>
-                    ) : (
-                      <Typography variant="body2">
-                        {review.author.name || "投稿者情報なし"}
-                      </Typography>
-                    )}
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block" }}
-                    >
-                      {review.relativePublishTimeDescription}
-                      {review.googleMapsUri && (
-                        <>
-                          {" · "}
-                          <Link
-                            href={review.googleMapsUri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Google マップで口コミを見る
-                          </Link>
-                        </>
-                      )}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            ))}
+            <ReviewEvidence
+              reviews={result.reviews}
+              numbers={selectedReviews}
+            />
           </Box>
         )}
         <Link
@@ -197,6 +142,11 @@ export function PlaceDetails({
           Google マップで開く
         </Link>
       </Box>
+      <PlaceQuestions
+        key={result.placeId}
+        result={result}
+        questions={questions}
+      />
     </Box>
   );
 }

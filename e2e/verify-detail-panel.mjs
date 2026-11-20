@@ -291,6 +291,7 @@ try {
       return { screenshot: await shot("offscreen-row") };
     });
     await check("4-fetch-and-failure", async () => {
+      await page.getByRole("button", { name: "一覧に戻る" }).click();
       await page.evaluate(() => (window.__mock.config.fail = ["quota-2"]));
       await page.getByPlaceholder("Enter search term").fill("quota");
       await page.getByRole("button", { name: "search", exact: true }).click();
@@ -416,8 +417,8 @@ try {
     });
     await check("7-attribution", async () => {
       if (view === "phone") await height(page, "full");
-      await page.locator('[data-result-id="quota-1"]').click();
       await page.getByPlaceholder("Enter evaluation").fill("編集後の条件");
+      await page.locator('[data-result-id="quota-1"]').click();
       const detail = page.locator("[data-place-details]");
       assert.match(await detail.textContent(), /条件「電源がある」/);
       assert.equal(
@@ -442,7 +443,7 @@ try {
           .evaluate((el) => el.complete && el.naturalWidth > 0),
         true,
       );
-      await visibleInside(page, "[data-attribution]");
+      await visibleInside(page, "[data-place-details] [data-attribution]");
       await detail
         .locator("[data-detail-scroll]")
         .evaluate((el) => (el.scrollTop = el.scrollHeight));
@@ -549,6 +550,7 @@ try {
       return { screenshots };
     });
     await check("8-search-map-size", async () => {
+      await page.getByRole("button", { name: "一覧に戻る" }).click();
       await page.evaluate(() => {
         window.__mock.config.holdDetails = false;
         window.__mock.config.fail = [];
@@ -672,6 +674,9 @@ try {
       return { screenshot: await shot("explicit-selection") };
     });
     await check("10-server-error", async () => {
+      if (view === "phone") await height(page, "full");
+      if (await page.getByRole("button", { name: "一覧に戻る" }).isVisible())
+        await page.getByRole("button", { name: "一覧に戻る" }).click();
       const before = {
         details: audit.detailRequests.length,
         analyses: audit.analysisRequests.length,
