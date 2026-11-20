@@ -34,13 +34,15 @@ await runSuite({
       });
     const handle = page.locator("[data-sheet-handle]");
     if (view === "phone") {
-      // Focusing an input no longer changes the map. Expand explicitly to
-      // exercise the transition from a full sheet to the search viewport.
+      // Submit with the full sheet; fitting results uses the half sheet later.
       await handle.press("ArrowUp");
       await page.waitForFunction(
         () => window.__mock.map.appliedSize.height < 100,
       );
     }
+    const submitted = await page.evaluate(() =>
+      window.__mock.map.getBounds().toJSON(),
+    );
     await manual(page)
       .getByRole("button", { name: "検索", exact: true })
       .click();
@@ -62,15 +64,8 @@ await runSuite({
         lng: 139.7 + i * 0.001,
       })),
     );
-    assert.equal(state.fit.height, state.request.viewSize.height);
+    assert.deepEqual(state.request.bounds, submitted);
     assert.ok(state.fit.height >= 350);
-    const { bounds, zoom, viewSize } = state.request;
-    assert.ok(
-      Math.abs(
-        (bounds.north - bounds.south) * 20000 * 2 ** (zoom - 10) -
-          viewSize.height,
-      ) < 0.001,
-    );
     const run = requests("/api/generate-examples")[0].run;
     assert.equal(requests("/api/places/search")[0].run, run);
     assert.ok(requests(analysisPath).every((call) => call.run === run));

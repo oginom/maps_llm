@@ -107,7 +107,7 @@
           state.markers
             .filter((marker) => marker.map === this)
             .forEach((marker) => marker.render());
-          event.trigger(this, "idle");
+          if (!this.pendingBounds) event.trigger(this, "idle");
         });
       }).observe(div);
     }
@@ -135,6 +135,7 @@
       return 0;
     }
     getBounds() {
+      if (this.pendingBounds) return this.pendingBounds;
       // Deliberately use the last APPLIED size, not a fresh DOM measurement:
       // callers reading before the resize frame get the previous thin bounds.
       const { width, height } = this.appliedSize;
@@ -150,6 +151,20 @@
       bounds.viewSize = { width, height };
       bounds.zoom = this.zoom;
       return bounds;
+    }
+    // A gesture changes the camera before Maps publishes its new bounds.
+    beginCameraGesture(center, zoom) {
+      this.pendingBounds = this.getBounds();
+      this.setCenter(new LatLng(center));
+      this.setZoom(zoom);
+      event.trigger(this, "center_changed");
+      event.trigger(this, "zoom_changed");
+    }
+    finishCameraGesture() {
+      this.pendingBounds = null;
+      event.trigger(this, "bounds_changed");
+      event.trigger(this, "idle");
+      return this.getBounds().toJSON();
     }
     setOptions(options) {
       Object.assign(this.options, options);
