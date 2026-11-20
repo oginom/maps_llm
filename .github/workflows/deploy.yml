@@ -49,4 +49,6 @@ jobs:
         run: chmod +x deploy.sh
 
       - name: Deploy to Cloud Run
+        env:
+          GOOGLE_ROUTES_SERVER_API_KEY: ${{ secrets.GOOGLE_ROUTES_SERVER_API_KEY }}
         run: ./deploy.sh

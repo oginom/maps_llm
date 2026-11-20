@@ -3,6 +3,7 @@
 import type { BudgetScope, BudgetType } from "./config.ts";
 
 const TYPE_LABELS: Record<BudgetType, string> = {
+  "routes.matrixElement": "徒歩時間の比較",
   "places.search": "場所の検索",
   "places.details": "口コミの取得",
   "openai.analyze": "AI 評価",

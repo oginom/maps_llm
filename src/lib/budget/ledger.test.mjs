@@ -46,6 +46,56 @@ test("price constants match the design", () => {
   assert.equal(GOOGLE_LIST_PRICE_MICROS["places.details"], 25_000);
 });
 
+test("a matrix pair extends preexisting ledger documents without resetting counters or pending work", async () => {
+  const { ledger, store } = createLedger();
+  const context = { sessionId: SESSION, runId: RUN_A };
+  const legacySearch = await ledger.reserve(context, "places.search");
+  await ledger.settle(legacySearch, { kind: "settle" });
+  const pending = await ledger.reserve(context, "openai.chat");
+  const before = store.get(sessionDocId(SESSION)).data;
+  assert.equal(before.counts["routes.matrixElement"], undefined);
+  const pair = await ledger.reserve(context, "routes.matrixElement");
+  assert.equal(pair.count, 2);
+  const reserved = store.get(sessionDocId(SESSION)).data;
+  assert.deepEqual(reserved.pending[pending.id], before.pending[pending.id]);
+  assert.equal(reserved.run.reservedCounts["routes.matrixElement"], 2);
+  await ledger.settle(pair, { kind: "settle" });
+  for (const scope of [
+    store.get(monthDocId(pair.monthId)).data,
+    store.get(sessionDocId(SESSION)).data,
+    store.get(sessionDocId(SESSION)).data.run,
+  ]) {
+    assert.equal(scope.counts["places.search"], 1);
+    assert.equal(scope.counts["routes.matrixElement"], 2);
+    assert.equal(scope.reservedCounts["routes.matrixElement"], 0);
+    assert.equal(scope.reservedMicros, pending.micros);
+  }
+  assert.equal(store.get(monthDocId(pair.monthId)).data.listPriceMicros, 50000);
+});
+
+for (const scope of ["run", "session", "month"])
+  test(`matrix pair reservation is all-or-nothing at the ${scope} cap`, async () => {
+    const { ledger, store } = createLedger({
+      caps: caps({ [scope]: { "routes.matrixElement": 3 } }),
+    });
+    const context = { sessionId: SESSION, runId: RUN_A };
+    const reservations = await Promise.allSettled([
+      ledger.reserve(context, "routes.matrixElement"),
+      ledger.reserve(context, "routes.matrixElement"),
+    ]);
+    assert.equal(reservations[0].status, "fulfilled");
+    assert.equal(
+      reservations[1].reason.code,
+      `BUDGET_${scope.toUpperCase()}_EXCEEDED`,
+    );
+    assert.equal(store.commitCount, 1);
+    await ledger.settle(reservations[0].value, { kind: "release" });
+    assert.equal(
+      (await ledger.reserve(context, "routes.matrixElement")).count,
+      2,
+    );
+  });
+
 test("BUDGET_CAPS_JSON overrides merge over the defaults and reject junk", () => {
   const merged = resolveBudgetCaps('{"run":{"places.details":3}}');
   assert.equal(merged.run["places.details"], 3);

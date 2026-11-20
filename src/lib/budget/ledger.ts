@@ -456,6 +456,9 @@ export class Ledger {
       const isStaleRun =
         context.runId !== session.run.runId &&
         context.runId === session.previousRunId;
+      // The old run's remaining matrix allowance is no longer knowable.
+      if (isStaleRun && type === "routes.matrixElement")
+        throw new BudgetExceededError("run", type);
       if (context.runId !== session.run.runId && !isStaleRun) {
         session.previousRunId = session.run.runId;
         session.run = newRun(context.runId);

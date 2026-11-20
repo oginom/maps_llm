@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 export type BudgetType =
+  | "routes.matrixElement"
   | "places.search"
   | "places.details"
   | "openai.analyze"
@@ -10,6 +11,7 @@ export type BudgetType =
   | "openai.chat";
 
 export const BUDGET_TYPES: readonly BudgetType[] = [
+  "routes.matrixElement",
   "places.search",
   "places.details",
   "openai.analyze",
@@ -32,6 +34,7 @@ export const BUDGET_SCOPES: readonly BudgetScope[] = [
 // against the micro-USD cap and, additionally, against a step count so a tool
 // loop cannot spend a run's budget on repeated model calls.
 export type ScopeCaps = {
+  "routes.matrixElement": number;
   openaiMicros: number;
   "places.search": number;
   "places.details": number;
@@ -42,18 +45,21 @@ export type BudgetCaps = Record<BudgetScope, ScopeCaps>;
 
 export const DEFAULT_BUDGET_CAPS: BudgetCaps = {
   month: {
+    "routes.matrixElement": 40,
     openaiMicros: 750_000,
     "places.search": 60,
     "places.details": 300,
     "openai.chat": 500,
   },
   session: {
+    "routes.matrixElement": 8,
     openaiMicros: 200_000,
     "places.search": 10,
     "places.details": 60,
     "openai.chat": 100,
   },
   run: {
+    "routes.matrixElement": 4,
     openaiMicros: 50_000,
     "places.search": 2,
     "places.details": 20,
@@ -90,9 +96,10 @@ export const OPENAI_RESERVE_MICROS: Record<OpenAiBudgetType, number> = {
 // (Text Search Enterprise + Atmosphere $40 / 1,000, historical Place Details Enterprise + Atmosphere
 // $25 / 1,000). Enforcement of the Google types is on units.
 export const GOOGLE_LIST_PRICE_MICROS: Record<
-  "places.search" | "places.details",
+  "places.search" | "places.details" | "routes.matrixElement",
   number
 > = {
+  "routes.matrixElement": 5_000, // Compute Route Matrix Essentials, per element
   "places.search": 40_000,
   "places.details": 25_000,
 };
@@ -112,13 +119,14 @@ export function isOpenAiType(type: BudgetType): type is OpenAiBudgetType {
 // Types whose calls are also limited by count (Google units, chat steps).
 export type CountCappedBudgetType = Extract<
   BudgetType,
-  "places.search" | "places.details" | "openai.chat"
+  "places.search" | "places.details" | "routes.matrixElement" | "openai.chat"
 >;
 
 export function isCountCappedType(
   type: BudgetType,
 ): type is CountCappedBudgetType {
   return (
+    type === "routes.matrixElement" ||
     type === "places.search" ||
     type === "places.details" ||
     type === "openai.chat"
@@ -127,8 +135,12 @@ export function isCountCappedType(
 
 export function isGoogleType(
   type: BudgetType,
-): type is "places.search" | "places.details" {
-  return type === "places.search" || type === "places.details";
+): type is "places.search" | "places.details" | "routes.matrixElement" {
+  return (
+    type === "places.search" ||
+    type === "places.details" ||
+    type === "routes.matrixElement"
+  );
 }
 
 // Amount reserved before a call of the given type: one unit, plus the
@@ -138,7 +150,7 @@ export function reserveAmount(type: BudgetType): {
   micros: number;
 } {
   return {
-    count: 1,
+    count: type === "routes.matrixElement" ? 2 : 1,
     micros: isOpenAiType(type) ? OPENAI_RESERVE_MICROS[type] : 0,
   };
 }
@@ -146,6 +158,7 @@ export function reserveAmount(type: BudgetType): {
 const nonNegativeInteger = z.number().int().min(0);
 const scopeCapsOverrideSchema = z
   .object({
+    "routes.matrixElement": nonNegativeInteger.optional(),
     openaiMicros: nonNegativeInteger.optional(),
     "places.search": nonNegativeInteger.optional(),
     "places.details": nonNegativeInteger.optional(),
