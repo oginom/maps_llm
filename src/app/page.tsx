@@ -913,7 +913,7 @@ function MapContent() {
         onCompare={compare}
         onCancelComparison={cancelComparison}
         onStop={handleStopChat}
-        onInputFocus={() => void changeSheetHeight("full")}
+        onInputFocus={() => layoutController.current?.abort()}
       />
     </BottomSheet>
   );

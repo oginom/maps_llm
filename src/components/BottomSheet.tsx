@@ -40,28 +40,79 @@ export function BottomSheet({
   }, []);
   useEffect(() => {
     const viewport = window.visualViewport;
+    const element = root.current;
+    if (!element) return;
+    let baseline: { height: number; width: number } | null = null;
+    let frame = 0;
+    const rememberViewport = (event: FocusEvent) => {
+      if (
+        !baseline &&
+        event.target instanceof HTMLInputElement &&
+        window.matchMedia("(max-width: 899.95px)").matches
+      ) {
+        baseline = {
+          height: element.getBoundingClientRect().height,
+          width: window.innerWidth,
+        };
+      }
+    };
     const resize = () => {
-      root.current?.style.setProperty(
+      frame = 0;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+      const top = viewport?.offsetTop ?? 0;
+      if (baseline?.width !== window.innerWidth) baseline = null;
+      const keyboard = baseline && visibleHeight < baseline.height - 1;
+      // Keep the map's normal layout/bounds. Only the sheet follows the
+      // visual viewport as the keyboard animates or Safari scrolls it.
+      element.toggleAttribute("data-keyboard", Boolean(keyboard));
+      element.style.setProperty(
         "--viewport-height",
-        `${viewport?.height ?? window.innerHeight}px`,
+        `${keyboard ? baseline!.height : visibleHeight}px`,
       );
-      root.current?.style.setProperty(
-        "--viewport-top",
-        `${viewport?.offsetTop ?? 0}px`,
+      element.style.setProperty("--viewport-top", `${keyboard ? 0 : top}px`);
+      element.style.setProperty("--visible-height", `${visibleHeight}px`);
+      element.style.setProperty(
+        "--keyboard-bottom",
+        `${keyboard ? baseline!.height - visibleHeight - top : 0}px`,
       );
+      if (!keyboard && !(document.activeElement instanceof HTMLInputElement))
+        baseline = null;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(resize);
     };
     resize();
-    viewport?.addEventListener("resize", resize);
-    viewport?.addEventListener("scroll", resize);
+    element.addEventListener("focusin", rememberViewport);
+    element.addEventListener("focusout", schedule);
+    window.addEventListener("resize", schedule);
+    viewport?.addEventListener("resize", schedule);
+    viewport?.addEventListener("scroll", schedule);
     return () => {
-      viewport?.removeEventListener("resize", resize);
-      viewport?.removeEventListener("scroll", resize);
+      cancelAnimationFrame(frame);
+      element.removeEventListener("focusin", rememberViewport);
+      element.removeEventListener("focusout", schedule);
+      window.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
     };
   }, []);
   return (
     <Box
       ref={root}
       sx={{
+        "--sheet-height": `min(calc(100% - 64px), var(--drag-height, ${
+          height === "collapsed"
+            ? `${headerHeight + 32}px`
+            : height === "half"
+              ? `max(${headerHeight + 140}px, 50%)`
+              : "90%"
+        }))`,
+        "&[data-keyboard] aside": {
+          bottom: "var(--keyboard-bottom)",
+          height: "calc(var(--visible-height) - min(32px, 5%))",
+          maxHeight: "none",
+        },
+        "&[data-keyboard] aside [data-panel-body]": { display: "flex" },
         position: "fixed",
         top: "var(--viewport-top, 0px)",
         left: 0,
@@ -75,7 +126,12 @@ export function BottomSheet({
     >
       <Box
         data-map-region
-        sx={{ flex: 1, minWidth: 0, minHeight: 64, order: { xs: 0, md: 1 } }}
+        sx={{
+          flex: { xs: "0 0 calc(100% - var(--sheet-height))", md: 1 },
+          minWidth: 0,
+          minHeight: 64,
+          order: { xs: 0, md: 1 },
+        }}
       >
         {map}
       </Box>
@@ -91,14 +147,10 @@ export function BottomSheet({
           order: { xs: 1, md: 0 },
           flexShrink: 0,
           minHeight: 0,
+          position: { xs: "absolute", md: "static" },
+          bottom: 0,
           height: {
-            xs: `var(--drag-height, ${
-              height === "collapsed"
-                ? `${headerHeight + 32}px`
-                : height === "half"
-                  ? `max(${headerHeight + 140}px, 50%)`
-                  : "90%"
-            })`,
+            xs: "var(--sheet-height)",
             md: "100%",
           },
           maxHeight: { xs: "calc(100% - 64px)", md: "100%" },
@@ -146,7 +198,7 @@ export function BottomSheet({
               viewportHeight - 64,
             );
             const minHeight = Math.min(headerHeight + 32, maxHeight);
-            sheet.current?.style.setProperty(
+            root.current.style.setProperty(
               "--drag-height",
               `${Math.max(minHeight, Math.min(maxHeight, current.startHeight + delta))}px`,
             );
@@ -166,18 +218,18 @@ export function BottomSheet({
                 ],
               );
             drag.current = null;
-            sheet.current?.style.removeProperty("--drag-height");
+            root.current?.style.removeProperty("--drag-height");
           }}
           onPointerCancel={() => {
             drag.current = null;
             dragged.current = false;
-            sheet.current?.style.removeProperty("--drag-height");
+            root.current?.style.removeProperty("--drag-height");
           }}
           onLostPointerCapture={() => {
             if (!drag.current) return;
             drag.current = null;
             dragged.current = false;
-            sheet.current?.style.removeProperty("--drag-height");
+            root.current?.style.removeProperty("--drag-height");
           }}
           onKeyDown={(event) => {
             if (event.key === "ArrowUp" || event.key === "ArrowDown") {
