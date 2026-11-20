@@ -21,7 +21,12 @@ export function BottomSheet({
   onHeightChange: (height: SheetHeight) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const drag = useRef<number | null>(null);
+  const sheet = useRef<HTMLElement>(null);
+  const drag = useRef<{
+    pointerId: number;
+    startY: number;
+    startHeight: number;
+  } | null>(null);
   const dragged = useRef(false);
   const [headerHeight, setHeaderHeight] = useState(180);
   useEffect(() => {
@@ -72,6 +77,7 @@ export function BottomSheet({
         {map}
       </Box>
       <Paper
+        ref={sheet}
         component="aside"
         aria-label="検索と店舗情報"
         data-sheet-height={height}
@@ -82,12 +88,13 @@ export function BottomSheet({
           flexShrink: 0,
           minHeight: 0,
           height: {
-            xs:
+            xs: `var(--drag-height, ${
               height === "collapsed"
                 ? `${headerHeight + 32}px`
                 : height === "half"
                   ? `max(${headerHeight + 140}px, 50%)`
-                  : "90%",
+                  : "90%"
+            })`,
             md: "100%",
           },
           maxHeight: { xs: "calc(100% - 64px)", md: "100%" },
@@ -108,15 +115,44 @@ export function BottomSheet({
           disabled={isSearching}
           data-sheet-handle
           onPointerDown={(event) => {
-            drag.current = event.clientY;
+            if (!event.isPrimary || event.button !== 0 || !sheet.current)
+              return;
+            drag.current = {
+              pointerId: event.pointerId,
+              startY: event.clientY,
+              startHeight: sheet.current.getBoundingClientRect().height,
+            };
             dragged.current = false;
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
+          onPointerMove={(event) => {
+            const current = drag.current;
+            if (
+              !current ||
+              current.pointerId !== event.pointerId ||
+              !root.current
+            )
+              return;
+            const delta = current.startY - event.clientY;
+            if (Math.abs(delta) <= 5 && !dragged.current) return;
+            dragged.current = true;
+            const viewportHeight = root.current.getBoundingClientRect().height;
+            const maxHeight = Math.min(
+              viewportHeight * 0.9,
+              viewportHeight - 64,
+            );
+            const minHeight = Math.min(headerHeight + 32, maxHeight);
+            sheet.current?.style.setProperty(
+              "--drag-height",
+              `${Math.max(minHeight, Math.min(maxHeight, current.startHeight + delta))}px`,
+            );
+          }}
           onPointerUp={(event) => {
-            if (drag.current === null) return;
-            const delta = drag.current - event.clientY;
-            dragged.current = Math.abs(delta) > 25;
-            if (dragged.current)
+            const current = drag.current;
+            if (!current || current.pointerId !== event.pointerId) return;
+            const delta = current.startY - event.clientY;
+            if (Math.abs(delta) > 25) dragged.current = true;
+            if (Math.abs(delta) > 25)
               onHeightChange(
                 heights[
                   Math.max(
@@ -126,9 +162,18 @@ export function BottomSheet({
                 ],
               );
             drag.current = null;
+            sheet.current?.style.removeProperty("--drag-height");
           }}
           onPointerCancel={() => {
             drag.current = null;
+            dragged.current = false;
+            sheet.current?.style.removeProperty("--drag-height");
+          }}
+          onLostPointerCapture={() => {
+            if (!drag.current) return;
+            drag.current = null;
+            dragged.current = false;
+            sheet.current?.style.removeProperty("--drag-height");
           }}
           onKeyDown={(event) => {
             if (event.key === "ArrowUp" || event.key === "ArrowDown") {
