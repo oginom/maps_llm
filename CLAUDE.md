@@ -51,7 +51,7 @@ Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mj
 ### Key Components Structure
 
 - `src/app/page.tsx`: Main map interface. Owns the search / fetch / analysis flow, search sessions, selection and URL state, and composes the UI components.
-- `src/components/`: `BottomSheet` (PC right side panel of 400px at widths of 900px and above, phone bottom sheet with collapsed / half / full heights), `SearchPanel` (form, status line, warnings), `ResultsList`, `PlaceDetails` (score, original cited reviews with their respective reviewer attribution, Google Maps link) and `Histogram`.
+- `src/components/MapConversationPanel.tsx` renders the root page's single scoped composer, ranked candidates, branch details and walking comparison inside `BottomSheet`. The props and scope types live in `src/lib/map-conversation.ts`. `/prototype` is a separate fictional design reference.
 - `src/lib/place-result.ts` (score colours and result state), `src/lib/review-evidence.ts` (`prepareReviewTexts` for request construction and `parseReviewAnalysis(data, reviewCount, scale)` for validating scores and evidence), `src/lib/map-layout.ts` (waits for the map container resize to settle before reading bounds).
 - `src/app/api/places/search/route.ts` (POST): manual Places Text Search, validated with zod and mapped to the DTOs in `src/lib/place-dto.ts`. There is no standalone Place Details route or detail ledger charge. Google quota errors become 429, key/permission problems 502, bad input 400.
 - `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Body is zod-validated (`reviews: string[]`, `metric`, `examples`, `scale`). Returns `{ value: number | null, reviewNumbers: number[] }`. A score requires 1–3 unique, 1-based positions in the submitted array. Insufficient evidence returns `{ value: null, reviewNumbers: [] }`. OpenAI 429 / `insufficient_quota` become 429, other API errors 502, and an empty or invalid model response 500. Usage tokens and duration are logged per call.
@@ -59,7 +59,8 @@ Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mj
 - `src/lib/budget/`: persistent cost / call ledger (`docs/budget-ledger.md`). Every paid route requires `X-Session-Id` / `X-Run-Id` (UUID v4, 400 otherwise), calls `reserveBudget` before the upstream request and `settleReservation` in `finally`. Caps per month / session / run live in `budget/config.ts`; a refused reservation is 429 `BUDGET_MONTH_EXCEEDED` / `BUDGET_SESSION_EXCEEDED` / `BUDGET_RUN_EXCEEDED`, an unreachable ledger is 503 `BUDGET_UNAVAILABLE` (fail closed). Backends: Firestore REST (`firestore-store.ts`, production), a JSON file (`file-store.ts`, development only) and memory (tests). The browser ids come from `src/lib/session-ids.ts`.
 - `src/app/api/generate-examples/route.ts`: OpenAI API endpoint for generating evaluation examples and an optimized search query. Returns `{ examples, searchQuery }` as JSON. The system prompt must keep its concrete 入力/出力 example; without it the model has returned a JSON string inside `examples`.
 - `src/app/api/chat/route.ts`: chat endpoint (`docs/chat-minimal-flow.md`). Validates `{ messages, viewport, selectedPlaceId? }`, reserves the first model step on the ledger (429 / 503 before streaming), then streams `createAgentUIStreamResponse`. The agent lives in `src/lib/chat-agent.ts`, the tool contract and message type in `src/lib/chat-contract.ts`, the per-step budget middleware in `src/lib/chat-budget-middleware.ts`, and stream error mapping in `src/lib/chat-stream-error.ts`. Errors after the stream started are `error` chunks whose `errorText` is the same `{ error: { code, message } }` JSON as the HTTP bodies.
-- `src/components/ChatPanel.tsx` and `src/lib/chat-transport.ts`: chat box above the manual form (which collapses once the chat has messages) and the `useChat` transport that adds budget headers, the viewport and the selected place, and hands each `search_places` result to `page.tsx` as soon as its chunk arrives.
+- `src/lib/chat-transport.ts`: area-search transport used by `useChat` in `page.tsx`. Adds budget headers and viewport; the browser applies bundled candidates as soon as the tool result arrives.
+- `POST /api/walking-comparison`: accepts `{ origin: { lat, lng }, placeIds: [id1, id2] }` for two distinct candidates. `src/lib/walking-comparison.ts` calls Routes Compute Route Matrix (`WALK`) from the map center captured at comparison start. Budget type `routes.matrixElement` reserves two elements, not one HTTP call. Missing routes return `durationSeconds: null`; errors never produce estimated times.
 - `src/app/layout.tsx`: Root layout with font configuration
 
 ### LLM Integration Flow
@@ -72,7 +73,7 @@ Manual form:
 2. `/api/generate-examples` creates evaluation scale examples and an optimized search query
 3. `/api/places/search` runs the bundled Text Search in the current viewport; ratings, hours and reviews are included when available.
 
-Chat:
+Map-scoped chat:
 
 1. User types a request such as 「渋谷で電源があるカフェ」; the browser starts a new run (new `X-Run-Id`, previous run aborted, results cleared) and posts the conversation plus the viewport to `/api/chat`
 2. The agent decides `textQuery`, `evaluation` and `examples`, calls `search_places` in the current viewport and answers in Japanese. A locality is optional; ask what to search for only when the intent cannot be inferred.
@@ -88,7 +89,7 @@ The LLM prompts are written in Japanese and expect Japanese input.
 ### State Management
 
 - Uses React hooks for state management (no external state library)
-- Analysis requests are scoped to each search and have bounded concurrency. New searches and chat messages abort old analysis requests and ignore old results; `page.tsx` shares `beginRun` / `applyCandidates` between the manual form and the chat tool result.
+- Analysis requests have bounded concurrency. A new area search replaces the candidate set; a candidate-scoped rerank starts a fresh run, discards old scores and evidence, and analyzes the original bundled reviews without calling Places or changing pin identities. A branch-scoped question preserves the candidate set and scores.
 - Chat messages live only in `useChat` memory (no persistence).
 - URL state persistence for map position (`lat`, `lng`, `zoom`) and search parameters (`searchTerm`, `evaluation`)
 
@@ -97,6 +98,7 @@ The LLM prompts are written in Japanese and expect Japanese input.
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Google Maps JavaScript API key
 - `NEXT_PUBLIC_GOOGLE_MAPS_ID`: Google Maps ID for styling
 - `GOOGLE_MAPS_SERVER_API_KEY`: server-only key for Places API (New); never exposed to the browser
+- `GOOGLE_ROUTES_SERVER_API_KEY`: optional, dedicated server-only Routes API key for walking comparisons. Missing configuration returns 503 `ROUTES_UNAVAILABLE`; do not reuse a Places or browser key.
 - `OPENAI_API_KEY`: OpenAI API key for LLM analysis
 - `LEDGER_BACKEND`: `firestore` (production; also needs `LEDGER_PROJECT_ID`) or `file` (development, `LEDGER_FILE` defaults to `.ledger/ledger.json`). Unset in production makes every paid route answer 503; unset in development falls back to `file` with a log line.
 - `BUDGET_CAPS_JSON`: optional partial override of the budget caps, for verification only (logged when applied)
@@ -110,15 +112,15 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - `deploy.sh` builds the image for `linux/amd64`, pushes it, and runs `gcloud run deploy`. It reads `PROJECT_ID` and the environment variables above from `.env`.
 - `deploy.sh` sets both the service-wide and per-revision maximum instance counts to 1 for personal use and sets `LEDGER_BACKEND=firestore` / `LEDGER_PROJECT_ID`. The instance cap limits scaling; monthly spending is bounded by the budget ledger (`docs/budget-ledger.md`), which needs a Firestore database and `roles/datastore.user` on the Cloud Run service account.
 - Cloud Run automatic budget shutdown is intentionally not configured. Google API daily quotas and the scoped reapplication script are documented in `docs/api-limits.md`. The application uses Places API (New).
-- `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `GOOGLE_MAPS_SERVER_API_KEY`, `OPENAI_API_KEY`.
+- `.github/workflows/deploy.yml` runs `deploy.sh` automatically on every push to `main` (and on manual dispatch), authenticating to Google Cloud via Workload Identity Federation. Secrets used: `PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_ID`, `GOOGLE_MAPS_SERVER_API_KEY`, `OPENAI_API_KEY`; `GOOGLE_ROUTES_SERVER_API_KEY` enables walking comparison.
 
 ### Key Features
 
 - Real-time geolocation detection (used as the initial map center when no `lat`/`lng` is in the URL)
 - Batch processing of review analysis to avoid API rate limits
-- Place details, results list and histogram in a side panel (PC) or bottom sheet (phone); no map-anchored info window
+- Scoped chat, ranked results, cited branch answers and walking comparison in a side panel (PC) or bottom sheet (phone)
 - Color-coded markers based on evaluation scores (blue=high score, red=low score)
-- Histogram visualization of result distribution
+- Stable numbered pins link ranked candidates to the map
 - URL state persistence for sharing locations
 
 <!-- BEGIN:nextjs-agent-rules -->

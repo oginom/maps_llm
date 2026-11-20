@@ -2,7 +2,7 @@
 
 作成: 2026-09-21。引き継ぎ項目 5「アプリ側の費用・呼出し制御」の設計と実装記録。実装は `src/lib/budget/`、route 連携は `src/lib/api-route.ts` と `src/lib/openai-route.ts`、ブラウザ側は `src/lib/session-ids.ts` と `src/app/page.tsx`。
 
-旧検索方式では本番 Firestore への精算を確認済み。一括検索版は実 Google / OpenAI API では未検証。
+旧検索方式では本番 Firestore への精算を確認済み。一括検索の[過去の計測](verification-bundled-search.md)と徒歩比較の運用確認は別。
 
 ## 1. 目的と前提
 
@@ -16,6 +16,7 @@
 | 種別              | 単位              | 予約額（呼び出し前）              | 精算額（呼び出し後）                                                                                    |
 | ----------------- | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `places.search`   | 回数              | 1 回                              | 送信済みなら 1 回。口コミ付き Text Search の定価参考額 $0.040。候補数による加算なし |
+| `routes.matrixElement` | 要素数 | 2 要素（1 出発地 × 2 店） | 送信済みなら 2 要素。台帳の参考額は $0.005 / 要素、$0.010 / 比較 |
 | `openai.analyze`  | micro-USD（整数） | 2,800（8,000 入力 + 1,000 出力）  | `usage` の実費。usage が無い失敗は予約額                                                                |
 | `openai.examples` | micro-USD（整数） | 1,560（600 入力 + 1,200 出力）    | 同上                                                                                                    |
 | `openai.chat`     | micro-USD と回数  | 6,400（20,000 入力 + 2,000 出力） | `usage` の実費。加えて回数上限（月 500 / セッション 100 / 実行 4）。[チャット](chat-minimal-flow.md) |
@@ -24,11 +25,11 @@ OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.
 
 上限（`src/lib/budget/config.ts` の `DEFAULT_BUDGET_CAPS`）:
 
-| 範囲 | 定義 | OpenAI micro-USD | `places.search` |
-| --- | --- | ---: | ---: |
-| `month` | UTC の暦月 | 750,000（$0.75） | 60 |
-| `session` | ブラウザのタブ | 200,000（$0.20） | 10 |
-| `run` | 1 回の検索と後続の採点 | 50,000（$0.05） | 2 |
+| 範囲 | 定義 | OpenAI micro-USD | `places.search` | `routes.matrixElement` |
+| --- | --- | ---: | ---: | ---: |
+| `month` | UTC の暦月 | 750,000（$0.75） | 60 | 40 |
+| `session` | ブラウザのタブ | 200,000（$0.20） | 10 | 8 |
+| `run` | 1 回の実行 | 50,000（$0.05） | 2 | 4 |
 
 手動検索・チャットともに一括検索 1 回を予約し、店舗別の Place Details 予約・精算はない。Google の詳細 100 回 / 日はプロジェクトの設定で、アプリの上限や消費回数ではない。
 
@@ -38,7 +39,7 @@ OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.
 
 ## 3. 識別子
 
-ブラウザが `X-Session-Id`（タブごと、`sessionStorage` に保存）と `X-Run-Id`（検索ごとに生成、追加取得も同じ値）を 4 つの API すべてに付ける。どちらも UUID v4 で、`crypto.randomUUID` が使えない非セキュアコンテキストでは `getRandomValues` ベースの v4 を生成する。サーバーは zod で形式を検証し、欠落・不正は 400 `INVALID_ARGUMENT`（Google は呼ばない）。
+ブラウザは有料 API に `X-Session-Id`（タブごと、`sessionStorage` に保存）と `X-Run-Id`（実行単位）を付ける。どちらも UUID v4。サーバーは形式を検証し、欠落・不正は 400 `INVALID_ARGUMENT`（Google は呼ばない）。
 
 これらは相関 ID であり認証ではない。タブを開き直せばセッション上限は新しく始まるが、月上限が全体を抑える。IP 別の制限と署名付き ID は今回は導入しない（§9）。
 
@@ -49,7 +50,7 @@ Firestore（Native モード、`(default)` データベース）に 2 つのコ�
 `budget_months/{YYYY-MM}`
 
 ```
-counts         { "places.search": n, "openai.analyze": n, "openai.examples": n, "openai.chat": n }
+counts         { "places.search": n, "routes.matrixElement": n, "openai.analyze": n, "openai.examples": n, "openai.chat": n }
 reservedCounts { 同上 }
 settledMicros  整数（OpenAI 実費の累計）
 reservedMicros 整数（未精算の予約額）
@@ -84,7 +85,7 @@ pending       { reservationId: { type, count, micros, month, runId, at } }
 
 `settleReservation(reservation, outcome)`（`finally` で必ず await する）
 
-- Google: `onRequestSent` が呼ばれた（HTTP 要求を送った）なら結果にかかわらず 1 回を精算し、`listPriceMicros` に定価を足す。送る前に失敗した場合（`GOOGLE_MAPS_SERVER_API_KEY` 未設定、送信直前にすでに中断済み）は予約を解放するだけ。
+- Google: HTTP 要求を送ったら結果にかかわらず、Places 検索なら 1 回、徒歩比較なら 2 要素を精算し、`listPriceMicros` に参考定価を足す。送信前の失敗では計上しない。
 - OpenAI: `openai.chat.completions.create` を呼んだ時点から「送信済み」。呼ぶ直前に中断済みなら呼ばず 499 で解放する。応答の `usage` から実費を精算し、usage の無い失敗（接続エラー、中断、429）は予約額で精算する。
 - `reserved` から引き、`counts` / `settledMicros` に足し、`pending` から消す。すでに `pending` に無ければ（掃除済み・二重精算）何もしない。
 - 精算の失敗はログに残すだけで応答は変えない。未精算の予約は次回の予約時に掃除で回収される。
