@@ -1,753 +1,214 @@
-import { budgetScenarios, verifyBudgetHeaders } from "./budget-scenarios.mjs";
+import assert from "node:assert/strict";
+import { analysisPath, button, input, row, runSuite } from "./root-fixture.mjs";
 import {
-  analysisFailure,
-  placesRoutes,
+  registerPlaces,
   serverErrorMessage,
   weekdayDescriptions,
 } from "./places-routes.mjs";
-import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-const { chromium } = await import(
-  process.env.PLAYWRIGHT_MODULE || "playwright"
-);
-const baseURL = process.env.E2E_BASE_URL || "http://127.0.0.1:3107";
-const origin = new URL(baseURL).origin;
-assert.ok(["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname));
-const root = fileURLToPath(new URL("../", import.meta.url));
-const evidence = `${root}docs/img/detail-panel`;
-await mkdir(evidence, { recursive: true });
-const browser = await chromium.launch({
-  headless: true,
-  executablePath: process.env.E2E_CHROMIUM_PATH,
-});
-const results = [];
-const audits = [];
-const viewports = {
-  phone: { width: 390, height: 844 },
-  desktop: { width: 1280, height: 800 },
-};
-async function visibleInside(page, selector) {
-  const boxes = await page.locator(selector).evaluateAll((els) =>
-    els.map((el) => {
-      const r = el.getBoundingClientRect();
-      const cx = r.x + r.width / 2,
-        cy = r.y + r.height / 2;
-      const hit = document.elementFromPoint(cx, cy);
-      return {
-        width: r.width,
-        height: r.height,
-        x: r.x,
-        y: r.y,
-        right: r.right,
-        bottom: r.bottom,
-        viewport: [innerWidth, innerHeight],
-        hit: el === hit || el.contains(hit),
-      };
-    }),
-  );
-  assert.ok(boxes.length);
-  for (const b of boxes) {
+
+const manual = (page) => page.locator("[data-manual-search-form]");
+async function openManual(page, config) {
+  const toggle = page.getByText("手動で検索", { exact: true });
+  await toggle.click();
+  config.handlers["/api/generate-examples"] = (route, body) =>
+    route.fulfill({
+      json: {
+        examples: "1 ... なし, 5 ... あり",
+        searchQuery: body.searchTerm,
+      },
+    });
+  await manual(page).getByLabel("検索ワード").fill("quota");
+  await manual(page).getByLabel("評価条件").fill("電源");
+}
+await runSuite({
+  async "manual search, fit bounds, pins, detail attribution and sheet"({
+    page,
+    view,
+    config,
+    requests,
+  }) {
+    await openManual(page, config);
+    config.handlers["/api/places/search"] = async (route, body) =>
+      route.fulfill({
+        json: { places: await registerPlaces(page, body.textQuery, 5) },
+      });
+    const handle = page.locator("[data-sheet-handle]");
+    if (view === "phone")
+      await page.waitForFunction(
+        () => window.__mock.map.appliedSize.height < 100,
+      );
+    await manual(page)
+      .getByRole("button", { name: "検索", exact: true })
+      .click();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll('[data-fetch-state="evaluated"]').length ===
+        4,
+    );
+    const state = await page.evaluate(() => ({
+      request: window.__mock.searchRequests.at(-1),
+      fit: window.__mock.fits.at(-1),
+      points: window.__mock.map.bounds.points,
+    }));
+    assert.equal(state.request.query, "quota");
+    assert.deepEqual(
+      state.points,
+      Array.from({ length: 5 }, (_, i) => ({
+        lat: 35.7 + i * 0.001,
+        lng: 139.7 + i * 0.001,
+      })),
+    );
+    assert.equal(state.fit.height, state.request.viewSize.height);
+    assert.ok(state.fit.height >= 350);
+    const { bounds, zoom, viewSize } = state.request;
     assert.ok(
-      b.width > 0 &&
-        b.height > 0 &&
-        b.x >= 0 &&
-        b.y >= 0 &&
-        b.right <= b.viewport[0] + 1 &&
-        b.bottom <= b.viewport[1] + 1,
-      JSON.stringify(b),
+      Math.abs(
+        (bounds.north - bounds.south) * 20000 * 2 ** (zoom - 10) -
+          viewSize.height,
+      ) < 0.001,
     );
-    assert.ok(b.hit, `Covered: ${selector} ${JSON.stringify(b)}`);
-  }
-}
-async function done(page) {
-  await page.waitForFunction(
-    () =>
-      /評価試行/.test(document.querySelector('[role="status"]').textContent) &&
-      !/評価中|検索中/.test(
-        document.querySelector('[role="status"]').textContent,
-      ),
-  );
-}
-async function height(page, name) {
-  for (let i = 0; i < 3; i++) {
-    if (
-      (await page.locator("aside").getAttribute("data-sheet-height")) === name
-    )
-      return;
-    await page.locator("[data-sheet-handle]").click();
-  }
-  assert.equal(
-    await page.locator("aside").getAttribute("data-sheet-height"),
-    name,
-  );
-}
-async function drag(page, delta) {
-  const b = await page.locator("[data-sheet-handle]").boundingBox();
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 + delta, {
-    steps: 8,
-  });
-  await page.mouse.up();
-}
-try {
-  for (const [view, viewport] of Object.entries(viewports)) {
-    const context = await browser.newContext({
-      viewport,
-      serviceWorkers: "block",
-    });
-    const page = await context.newPage();
-    page.setDefaultTimeout(15000);
-    const audit = { view, external: [], unexpectedAPI: [], errors: [] };
-    audits.push(audit);
-    page.on("pageerror", (e) => audit.errors.push(e.message));
-    const handlePlaces = placesRoutes(page, audit);
-    await context.route("**/*", async (route) => {
-      const req = route.request(),
-        url = new URL(req.url());
-      if (url.origin !== origin) {
-        audit.external.push(url.href);
-        return route.abort();
-      }
-      if (await handlePlaces(route)) return;
-      if (url.pathname === "/api/generate-examples")
-        return route.fulfill({
-          json: {
-            examples: "1:低、5:高",
-            searchQuery: req.postDataJSON().searchTerm,
-          },
-        });
-      if (url.pathname === "/api/analyze-reviews") {
-        const { reviews } = req.postDataJSON();
-        const [review] = reviews;
-        if (review === "REVIEW:quota-3") audit.evidenceRequest = reviews;
-        audit.analysisRequests.push(review.replace("REVIEW:", ""));
-        const config = await page.evaluate(() => window.__mock.config);
-        const failure = analysisFailure(config, review.replace("REVIEW:", ""));
-        if (failure)
-          return route.fulfill({
-            status: failure.status,
-            json: { error: failure.error },
-          });
-        const n = Number(review.split("-").at(-1));
-        return route.fulfill({
-          json:
-            review === "REVIEW:quota-6"
-              ? { value: null, reviewNumbers: [] }
-              : {
-                  value: ((n - 1) % 5) + 1,
-                  reviewNumbers: review === "REVIEW:quota-3" ? [3, 1] : [1],
-                },
-        });
-      }
-      if (url.pathname.startsWith("/api/")) {
-        audit.unexpectedAPI.push(url.pathname);
-        return route.abort();
-      }
-      return route.continue();
-    });
-    await context.addInitScript({ path: `${root}e2e/maps-mock.js` });
-    await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-    await page.waitForFunction(() =>
-      document.querySelector('[aria-label="search"]:enabled'),
-    );
-    const shot = async (name) => {
-      const path = `${view}-${name}.png`;
-      await page.screenshot({ path: `${evidence}/${path}` });
-      return `docs/img/detail-panel/${path}`;
-    };
-    const check = async (scenario, fn) => {
-      try {
-        const extra = await fn();
-        results.push({ view, scenario, result: "OK", ...extra });
-      } catch (error) {
-        results.push({
-          view,
-          scenario,
-          result: "NG",
-          error: error.message,
-          screenshot: await shot(`${scenario}-failure`),
-        });
-      }
-      console.log(JSON.stringify(results.at(-1)));
-    };
-    await page.getByPlaceholder("Enter search term").fill("panel");
-    await page.getByRole("button", { name: "search", exact: true }).click();
-    await page.waitForFunction(() => window.__mock.analyses.length >= 5);
-    await done(page);
-    await check("1-initial", async () => {
-      assert.equal(await page.locator("[data-result-id]").count(), 12);
-      assert.equal(
-        await page.locator('ul[aria-label="候補一覧"] > li > button').count(),
-        12,
-      );
-      assert.equal(
-        await page.getByRole("status").getAttribute("aria-live"),
-        "polite",
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="evaluated"]').count(),
-        12,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="unevaluated"]').count(),
-        0,
-      );
-      assert.match(
-        await page.getByRole("status").textContent(),
-        /評価済み 12 件.*失敗 0 件.*評価試行 12 件 \/ 最大20件/,
-      );
-      assert.equal(
-        await page
-          .locator('[data-place-id]:not([data-color="#ffffff"])')
-          .count(),
-        12,
-      );
-      assert.match(
-        await page.locator('[data-result-id="panel-6"]').textContent(),
-        /評価済み · Google ★ 4/,
-      );
-      assert.match(
-        await page.locator('[data-result-id="panel-1"]').textContent(),
-        /評価済み · Google ★ 4/,
-      );
-      assert.match(
-        await page.locator('[data-result-id="panel-5"]').textContent(),
-        /評価済み · Google ★ —/,
-      );
-      assert.equal(audit.searchRequests.length, 1);
-      assert.equal(audit.detailRequests.length, 0);
-      assert.equal(audit.analysisRequests.length, 12);
-      return { screenshot: await shot("initial") };
-    });
-    await check("2-edge-pin", async () => {
-      if (view === "phone") await height(page, "collapsed");
-      await page.evaluate(() => {
-        const m = window.__mock.markers.find(
-          (m) => m.options.position.id === "panel-4",
-        );
-        m.options.position.x = 0.95;
-        m.options.position.y = 0.25;
-        m.render();
-      });
+    const run = requests("/api/generate-examples")[0].run;
+    assert.equal(requests("/api/places/search")[0].run, run);
+    assert.ok(requests(analysisPath).every((call) => call.run === run));
+    assert.equal(
       await page
-        .getByRole("button", { name: "mock pin panel-4", exact: true })
-        .click();
-      await visibleInside(page, "[data-place-details]");
-      await visibleInside(page, '[data-result-id="panel-4"]');
-      assert.equal(
-        await page
-          .locator('[data-result-id="panel-4"]')
-          .getAttribute("aria-pressed"),
-        "true",
-      );
-      assert.equal(
-        await page
-          .locator('[data-place-id="panel-4"]')
-          .getAttribute("data-selected"),
-        "true",
-      );
+        .locator('[data-place-id="quota-3"]')
+        .getAttribute("data-color"),
+      "#ffffff",
+    );
+    assert.notEqual(
       await page
-        .locator("[data-detail-scroll]")
-        .evaluate((el) => (el.scrollTop = el.scrollHeight));
-      // New hours make details scrollable: verify every link can be reached.
-      for (const link of await page.locator("[data-place-details] a").all()) {
-        await link.scrollIntoViewIfNeeded();
-        await visibleInside(
-          page,
-          `[data-place-details] a[href="${await link.getAttribute("href")}"]`,
-        );
-      }
-      return { screenshot: await shot("edge-details") };
-    });
-    await check("3-offscreen-row", async () => {
-      await page.getByRole("button", { name: "一覧に戻る" }).click();
-      await page.evaluate(() => {
-        const m = window.__mock.markers.find(
-          (m) => m.options.position.id === "panel-12",
-        );
-        m.options.position.x = 1.5;
-        m.render();
-      });
-      await page.locator('[data-result-id="panel-12"]').click();
-      await page.waitForFunction(() => window.__mock.pans.includes("panel-12"));
-      assert.deepEqual(await page.evaluate(() => window.__mock.pans), [
-        "panel-12",
-      ]);
-      assert.equal(
-        await page
-          .locator('[data-place-id="panel-12"]')
-          .getAttribute("data-selected"),
-        "true",
-      );
-      assert.match(
-        await page.locator("[data-place-details]").textContent(),
-        /panel-12 詳細店舗/,
-      );
-      return { screenshot: await shot("offscreen-row") };
-    });
-    await check("4-fetch-and-failure", async () => {
-      await page.getByRole("button", { name: "一覧に戻る" }).click();
-      await page.evaluate(() => (window.__mock.config.fail = ["quota-2"]));
-      await page.getByPlaceholder("Enter search term").fill("quota");
-      await page.getByRole("button", { name: "search", exact: true }).click();
-      await page.waitForFunction(() =>
-        window.__mock.analyses.includes("quota-5"),
-      );
-      await done(page);
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-2"]')
-          .getAttribute("data-fetch-state"),
-        "failed",
-      );
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-12"]')
-          .getAttribute("data-fetch-state"),
-        "evaluated",
-      );
-      const screenshots = [];
-      for (const size of view === "phone"
-        ? ["collapsed", "half", "full"]
-        : ["full"]) {
-        if (view === "phone") await height(page, size);
-        await visibleInside(page, 'aside [role="alert"]');
-        screenshots.push(await shot(`warning-${size}`));
-      }
-      assert.equal(
-        await page.locator('[data-fetch-state="evaluated"]').count(),
-        10,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="failed"]').count(),
-        1,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="unevaluated"]').count(),
-        0,
-      );
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-2"]')
-          .getAttribute("data-fetch-state"),
-        "failed",
-      );
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-12"]')
-          .getAttribute("data-fetch-state"),
-        "evaluated",
-      );
-      assert.equal(
-        await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
-        0,
-      );
-      assert.match(
-        await page.getByRole("status").textContent(),
-        /評価済み 10 件.*失敗 1 件.*評価試行 12 件 \/ 最大20件/,
-      );
-      const analyses = await page.evaluate(() =>
-        window.__mock.analyses.filter((id) => id.startsWith("quota-")),
-      );
-      assert.deepEqual(
-        analyses,
-        Array.from({ length: 12 }, (_, i) => `quota-${i + 1}`),
-      );
-      return {
-        analyses,
-        screenshots,
-        screenshot: await shot("fetch-complete"),
-      };
-    });
-    await check("5-histogram", async () => {
-      const bins = await page
-        .locator("[data-bin]")
-        .evaluateAll((els) => els.map((el) => Number(el.dataset.count)));
-      assert.deepEqual(bins, [2, 2, 2, 2, 2]);
-      await visibleInside(page, "[data-histogram]");
-      await visibleInside(page, 'aside [role="alert"]');
-      return { bins, screenshot: await shot("histogram") };
-    });
-    await check("6-sheet", async () => {
-      if (view === "phone") {
-        await height(page, "collapsed");
-        await drag(page, -90);
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "half",
-        );
-        await drag(page, -90);
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "full",
-        );
-        await drag(page, 90);
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "half",
-        );
-        await drag(page, 90);
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "collapsed",
-        );
-        await page
-          .getByRole("button", { name: "mock pin quota-1", exact: true })
-          .click();
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "full",
-        );
-        await page.getByRole("button", { name: "一覧に戻る" }).click();
-        await height(page, "collapsed");
-      }
-      assert.equal(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        true,
-      );
-      await visibleInside(page, "[data-map-region]");
-      return { screenshot: await shot("sheet-map") };
-    });
-    await check("7-attribution", async () => {
-      if (view === "phone") await height(page, "full");
-      await page.getByPlaceholder("Enter evaluation").fill("編集後の条件");
-      await page.locator('[data-result-id="quota-1"]').click();
-      const detail = page.locator("[data-place-details]");
-      assert.match(await detail.textContent(), /条件「電源がある」/);
-      assert.equal(
-        await detail.getByText("REVIEW:quota-1", { exact: true }).textContent(),
-        "REVIEW:quota-1",
-      );
-      assert.equal(
-        await detail
-          .getByRole("link", { name: "投稿者 quota-1", exact: true })
-          .getAttribute("href"),
-        "https://example.invalid/author/quota-1",
-      );
-      assert.equal(
-        await detail
-          .getByRole("link", { name: "Google マップで開く" })
-          .getAttribute("href"),
-        "https://example.invalid/mock-place",
-      );
-      assert.equal(
-        await detail
-          .getByRole("img", { name: "投稿者 quota-1", exact: true })
-          .evaluate((el) => el.complete && el.naturalWidth > 0),
-        true,
-      );
-      await visibleInside(page, "[data-place-details] [data-attribution]");
-      await detail
-        .locator("[data-detail-scroll]")
-        .evaluate((el) => (el.scrollTop = el.scrollHeight));
-      const screenshots = [await shot("attribution")];
-      await page.getByRole("button", { name: "一覧に戻る" }).click();
-      await page.locator('[data-result-id="quota-6"]').click();
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-6"]')
-          .getAttribute("data-fetch-state"),
-        "unknown",
-      );
-      assert.equal(
-        await page
-          .locator('[data-place-id="quota-6"]')
-          .getAttribute("data-color"),
-        "#ffffff",
-      );
-      assert.equal(
-        await detail.getByText("関連する口コミ", { exact: true }).count(),
-        0,
-      );
-      assert.doesNotMatch(await detail.textContent(), /REVIEW:|投稿者 quota-6/);
-      assert.equal(await detail.locator('a[href*="/review/"]').count(), 0);
-      await page.getByRole("button", { name: "一覧に戻る" }).click();
-      await page.locator('[data-result-id="quota-3"]').click();
-      assert.deepEqual(audit.evidenceRequest, [
-        "REVIEW:quota-3",
-        "根拠 2: quota-3",
-        "根拠 3: quota-3",
-      ]);
-      const evidenceText = await detail.textContent();
-      assert.match(
-        evidenceText,
-        /根拠 3: quota-3[\s\S]*投稿者 quota-3\/3[\s\S]*REVIEW:quota-3[\s\S]*投稿者 quota-3/,
-      );
-      assert.doesNotMatch(evidenceText, /根拠 2: quota-3|投稿者 quota-3\/2/);
-      for (const kind of ["review", "author"]) {
-        const base = `https://example.invalid/${kind}/quota-3`;
-        assert.deepEqual(
-          await detail
-            .locator(`a[href^="${base}"]`)
-            .evaluateAll((links) => links.map((link) => link.href)),
-          [`${base}/3`, base],
-        );
-      }
-      for (const n of [1, 4, 5]) {
-        await page.getByRole("button", { name: "一覧に戻る" }).click();
-        await page.locator(`[data-result-id="quota-${n}"]`).click();
-        const current = page.locator("[data-place-details]");
-        const open = current.getByText(n % 2 ? "営業中" : "営業時間外", {
-          exact: true,
-        });
-        await open.scrollIntoViewIfNeeded();
-        for (const line of weekdayDescriptions)
-          assert.equal(
-            await current.getByText(line, { exact: true }).count(),
-            1,
-          );
-        assert.equal(
-          await current
-            .getByRole("link", { name: "公式サイト" })
-            .getAttribute("href"),
-          `https://example.invalid/site/quota-${n}`,
-        );
-        assert.match(
-          await current.textContent(),
-          n === 5 ? /Google 評価: —\/5/ : /Google 評価: 4\/5/,
-        );
-        await visibleInside(page, "[data-place-details] ul");
-        screenshots.push(await shot(`places-new-${n}-hours`));
-        const reviewLink = current.getByRole("link", {
-          name: "Google マップで口コミを見る",
-        });
-        assert.equal(
-          await reviewLink.getAttribute("href"),
-          `https://example.invalid/review/quota-${n}`,
-        );
-        await reviewLink.scrollIntoViewIfNeeded();
-        await visibleInside(
-          page,
-          `[data-place-details] a[href="https://example.invalid/review/quota-${n}"]`,
-        );
-        if (n === 5) {
-          assert.equal(
-            await current.getByText("投稿者 quota-5", { exact: true }).count(),
-            1,
-          );
-          assert.equal(
-            await current
-              .getByRole("link", { name: "投稿者 quota-5", exact: true })
-              .count(),
-            0,
-          );
-          assert.equal(
-            await current
-              .getByRole("img", { name: "投稿者 quota-5", exact: true })
-              .count(),
-            0,
-          );
-        }
-        screenshots.push(await shot(`places-new-${n}-review`));
-      }
-      return { screenshots };
-    });
-    await check("8-search-map-size", async () => {
-      await page.getByRole("button", { name: "一覧に戻る" }).click();
-      await page.evaluate(() => {
-        window.__mock.config.holdDetails = false;
-        window.__mock.config.fail = [];
-      });
-      if (view === "phone") await height(page, "half");
-      const before = await page.evaluate(() => window.__mock.map.getZoom());
-      await page.getByPlaceholder("Enter search term").fill("resize");
-      if (view === "phone") {
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "full",
-        );
-        await page.waitForFunction(
-          () => window.__mock.map.appliedSize.height < 100,
-        );
-      }
-      const fullBounds = await page.evaluate(() =>
-        window.__mock.map.getBounds().toJSON(),
-      );
-      // Exercise the accepted plain-Enter path, including focus expansion.
-      await page.getByPlaceholder("Enter search term").press("Enter");
-      await page.waitForFunction(() =>
-        window.__mock.analyses.includes("resize-5"),
-      );
-      await done(page);
-      const measured = await page.evaluate(() => ({
-        request: window.__mock.searchRequests.at(-1),
-        fit: window.__mock.fits.at(-1),
-        after: window.__mock.map.getZoom(),
-        actualHeight: window.__mock.map.getDiv().clientHeight,
-      }));
-      assert.equal(measured.request.query, "resize");
-      assert.ok(
-        measured.after >= before,
-        JSON.stringify({ before, ...measured }),
-      );
-      if (view === "phone") {
-        assert.equal(
-          await page.locator("aside").getAttribute("data-sheet-height"),
-          "half",
-        );
-        assert.ok(
-          measured.request.viewSize.height >= 350,
-          JSON.stringify(measured),
-        );
-        assert.ok(measured.fit.height >= 350, JSON.stringify(measured));
-        assert.ok(
-          measured.request.bounds.north - measured.request.bounds.south >
-            3 * (fullBounds.north - fullBounds.south),
-        );
-        assert.equal(
-          await page
-            .getByRole("button", { name: "さらに広げる", exact: true })
-            .getAttribute("aria-expanded"),
-          "true",
-        );
-      }
-      return {
-        before,
-        fullBounds,
-        ...measured,
-        screenshot: await shot("search-map-size"),
-      };
-    });
-    await check("9-explicit-selection-only", async () => {
-      await page.locator('[data-result-id="resize-1"]').click();
-      // Let the explicit selection settle before simulating a deliberate pan away.
-      await page.evaluate(
-        () =>
-          new Promise((resolve) =>
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() => requestAnimationFrame(resolve)),
-            ),
-          ),
-      );
-      const before = await page.evaluate(() => {
-        const marker = window.__mock.markers.find(
-          (m) => m.options.position.id === "resize-1",
-        );
-        marker.options.position.x = 1.5;
-        marker.render();
-        return {
-          pans: window.__mock.pans.length,
-          resizes: window.__mock.resizes.length,
-        };
-      });
-      await page.setViewportSize({
-        width: viewport.width,
-        height: viewport.height - 80,
-      });
-      await page.waitForFunction(
-        (count) => window.__mock.resizes.length > count,
-        before.resizes,
-      );
-      await page.evaluate(
-        () =>
-          new Promise((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(resolve)),
-          ),
-      );
-      assert.equal(
-        await page.evaluate(() => window.__mock.pans.length),
-        before.pans,
-        "window resize must not undo a deliberate pan",
-      );
-      // An explicit handle action (phone) or new selection (PC) may recenter.
-      if (view === "phone") await height(page, "collapsed");
-      else await page.locator('[data-result-id="resize-1"]').click();
-      await page.waitForFunction(
-        (count) => window.__mock.pans.length === count + 1,
-        before.pans,
-      );
-      if (view === "phone")
-        assert.equal(
-          await page
-            .getByRole("button", { name: "広げる", exact: true })
-            .getAttribute("aria-expanded"),
-          "false",
-        );
-      await page.setViewportSize(viewport);
-      return { screenshot: await shot("explicit-selection") };
-    });
-    await check("10-server-error", async () => {
-      if (view === "phone") await height(page, "full");
-      if (await page.getByRole("button", { name: "一覧に戻る" }).isVisible())
-        await page.getByRole("button", { name: "一覧に戻る" }).click();
-      const before = {
-        details: audit.detailRequests.length,
-        analyses: audit.analysisRequests.length,
-      };
-      await page.evaluate((message) => {
-        window.__mock.config.searchError = {
-          status: 502,
-          error: { code: "UPSTREAM_ERROR", message },
-        };
-      }, serverErrorMessage);
-      await page.getByPlaceholder("Enter search term").fill("server-error");
-      await page.getByRole("button", { name: "search", exact: true }).click();
-      await page
-        .getByRole("alert")
-        .getByText(serverErrorMessage, { exact: true })
-        .waitFor();
-      assert.equal(
-        await page.locator("aside").getByRole("alert").textContent(),
-        serverErrorMessage,
-      );
-      await visibleInside(page, 'aside [role="alert"]');
-      assert.equal(audit.detailRequests.length, before.details);
-      assert.equal(audit.analysisRequests.length, before.analyses);
-      return { screenshot: await shot("server-error") };
-    });
-    assert.deepEqual(
-      audit.searchRequests.map((body) => body.textQuery),
-      await page.evaluate(() => window.__mock.searches),
+        .locator('[data-place-id="quota-1"]')
+        .getAttribute("data-color"),
+      "#ffffff",
     );
-    assert.deepEqual(
-      audit.detailRequests.slice().sort(),
-      await page.evaluate(() => window.__mock.details.slice().sort()),
-    );
-    assert.deepEqual(
-      audit.analysisRequests.slice().sort(),
-      await page.evaluate(() => window.__mock.analyses.slice().sort()),
-    );
-    assert.deepEqual(audit.external, []);
-    assert.deepEqual(audit.unexpectedAPI, []);
-    assert.deepEqual(audit.errors, []);
-    await verifyBudgetHeaders(page, audit);
-    for (const [name, scenario] of budgetScenarios) {
-      // Reload clears the terminal UI stop but preserves the tab session UUID.
-      await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-      await page.waitForFunction(() =>
-        document.querySelector('[aria-label="search"]:enabled'),
+    if (view === "phone") {
+      assert.equal(
+        await page.locator("aside").getAttribute("data-sheet-height"),
+        "half",
       );
-      await check(name, async () => {
-        const result = await scenario({ page, audit, done, shot });
-        await verifyBudgetHeaders(page, audit);
-        assert.deepEqual(audit.external, []);
-        assert.deepEqual(audit.unexpectedAPI, []);
-        assert.deepEqual(audit.errors, []);
-        return result;
-      });
+      const box = await handle.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(
+        box.x + box.width / 2,
+        box.y + box.height / 2 + 100,
+        { steps: 8 },
+      );
+      await page.mouse.up();
+      await page.locator('aside[data-sheet-height="collapsed"]').waitFor();
+      assert.ok(await input(page).isVisible());
+      await handle.press("ArrowUp");
+      await page.locator('aside[data-sheet-height="half"]').waitFor();
     }
-    await context.unrouteAll({ behavior: "wait" });
-    await context.close();
-  }
-} finally {
-  await browser.close();
-  await writeFile(
-    `${root}e2e/detail-panel-results.json`,
-    JSON.stringify(
-      { generatedAt: new Date().toISOString(), results, audits },
-      null,
-      2,
-    ) + "\n",
-  );
-}
-if (results.some((r) => r.result === "NG")) process.exitCode = 1;
+    await button(page, "mock pin quota-1").click();
+    const detail = page.locator("[data-place-details]");
+    await detail.getByRole("heading", { name: /quota-1/ }).waitFor();
+    assert.match(await detail.innerText(), /Google 評価 4/);
+    await detail.getByText(/評価の根拠となる口コミ/).click();
+    assert.ok(
+      await detail.getByText("REVIEW:quota-1", { exact: true }).isVisible(),
+    );
+    assert.equal(
+      await detail
+        .getByRole("link", { name: "投稿者 quota-1" })
+        .getAttribute("href"),
+      "https://example.invalid/author/quota-1",
+    );
+    assert.equal(
+      await detail
+        .getByRole("link", { name: "公式サイト" })
+        .getAttribute("href"),
+      "https://example.invalid/site/quota-1",
+    );
+    assert.equal(
+      await detail
+        .getByRole("link", { name: "Google マップで開く" })
+        .getAttribute("href"),
+      "https://example.invalid/mock-place",
+    );
+    await detail.getByText("営業時間", { exact: true }).click();
+    for (const line of weekdayDescriptions)
+      assert.ok(await detail.getByText(line, { exact: true }).isVisible());
+    await button(page, /候補一覧へ/).click();
+    await page.evaluate(() => {
+      window.__mock.positions[`${35.7 + 0.004},${139.7 + 0.004}`].x = 1.5;
+    });
+    await row(page, "quota-5").click();
+    await page.waitForFunction(() => window.__mock.pans.includes("quota-5"));
+    await detail.getByText(/評価の根拠となる口コミ/).click();
+    assert.ok(
+      await detail.getByText("投稿者 quota-5", { exact: true }).isVisible(),
+    );
+    assert.equal(
+      await detail.getByRole("link", { name: "投稿者 quota-5" }).count(),
+      0,
+    );
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    // After an explicit selection the user may pan away; a viewport resize
+    // alone must not move the map back to the selected branch.
+    const pans = await page.evaluate(() => {
+      window.__mock.positions[`${35.7 + 0.004},${139.7 + 0.004}`].x = 1.5;
+      return window.__mock.pans.length;
+    });
+    const viewport = page.viewportSize();
+    await page.setViewportSize({ ...viewport, height: viewport.height - 80 });
+    await page.waitForFunction(
+      () =>
+        window.__mock.map.appliedSize.height ===
+        window.__mock.map.div.clientHeight,
+    );
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
+    assert.equal(await page.evaluate(() => window.__mock.pans.length), pans);
+  },
+  async "manual search quota, upstream error and session refusal"({
+    page,
+    config,
+    requests,
+  }) {
+    await openManual(page, config);
+    for (const [status, code, message, expected] of [
+      [
+        429,
+        "RESOURCE_EXHAUSTED",
+        "sentinel",
+        "Google Places の検索上限に達しました。時間をおいて再検索してください。",
+      ],
+      [502, "PLACES_UPSTREAM_ERROR", serverErrorMessage, serverErrorMessage],
+      [
+        429,
+        "BUDGET_SESSION_EXCEEDED",
+        "このセッションの検索上限です。",
+        "このセッションの検索上限です。",
+      ],
+    ]) {
+      config.handlers["/api/places/search"] = (route) =>
+        route.fulfill({ status, json: { error: { code, message } } });
+      await manual(page)
+        .getByRole("button", { name: "検索", exact: true })
+        .click();
+      const alert = page.getByRole("alert").filter({ hasText: expected });
+      await alert.waitFor();
+      assert.equal(await alert.innerText(), expected);
+    }
+    assert.ok(
+      await manual(page)
+        .getByRole("button", { name: "検索", exact: true })
+        .isDisabled(),
+    );
+    assert.equal(requests(analysisPath).length, 0);
+    assert.equal(
+      new Set(requests("/api/places/search").map((c) => c.run)).size,
+      3,
+    );
+  },
+});

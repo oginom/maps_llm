@@ -228,16 +228,19 @@
       const { position, icon, label } = this.options;
       const point = this.map.project(position);
       Object.assign(this.element.style, {
-        left: `${point.x}px`,
-        top: `${point.y}px`,
-        background: icon.fillColor,
-        borderWidth: `${icon.strokeWeight}px`,
-        borderColor: icon.strokeColor,
+        left: Number.isFinite(point.x) ? `${point.x}px` : "50%",
+        top: Number.isFinite(point.y) ? `${point.y}px` : "50%",
+        background: icon?.fillColor ?? "#53657a",
+        borderWidth: `${icon?.strokeWeight ?? 1}px`,
+        borderColor: icon?.strokeColor ?? "#333",
       });
-      this.element.dataset.placeId = position.id;
-      this.element.dataset.color = icon.fillColor;
-      this.element.dataset.selected = String(icon.strokeWeight === 4);
-      this.element.setAttribute("aria-label", `mock pin ${position.id}`);
+      if (icon) this.element.dataset.placeId = position.id;
+      this.element.dataset.color = icon?.fillColor ?? "";
+      this.element.dataset.selected = String(icon?.strokeWeight === 4);
+      this.element.setAttribute(
+        "aria-label",
+        icon ? `mock pin ${position.id}` : this.options.title,
+      );
       this.element.textContent = label.text;
     }
   }

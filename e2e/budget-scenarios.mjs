@@ -1,297 +1,57 @@
 import assert from "node:assert/strict";
+import { analysisPath, button, input, send } from "./root-fixture.mjs";
 
-const refusal = (code, message, status = 429) => ({
-  status,
-  error: { code, message },
-});
-const searchButton = (page) =>
-  page.getByRole("button", { name: "search", exact: true });
-const moreButton = (page) =>
-  page.getByRole("button", { name: /次の.*件を評価/ });
-const observationMs = 1000;
-
-export async function verifyBudgetHeaders(page, audit) {
-  assert.deepEqual(audit.headerErrors, []);
-  assert.deepEqual(
-    audit.detailRequests,
-    [],
-    "Bundled search must not call Place Details",
-  );
-  assert.ok(audit.headerRequests.length > 0);
-  assert.equal(
-    audit.sessionId,
-    await page.evaluate(() => sessionStorage.getItem("maps-llm-session-id")),
-  );
-  assert.equal(
-    audit.headerRequests.filter((r) => r.path === "/api/places/search").length,
-    audit.searchRequests.length,
-  );
-  assert.equal(
-    audit.headerRequests.filter(
-      (r) =>
-        r.path.startsWith("/api/places/") && r.path !== "/api/places/search",
-    ).length,
-    audit.detailRequests.length,
-  );
-  assert.equal(
-    audit.headerRequests.filter((r) => r.path === "/api/analyze-reviews")
-      .length,
-    audit.analysisRequests.length,
-  );
-}
-
-async function start(page, name, config = {}) {
-  await page.evaluate(
-    (config) => Object.assign(window.__mock.config, config),
-    config,
-  );
-  await page.getByPlaceholder("Enter search term").fill(name);
-  const before = await page.evaluate(() => window.__mock.searches.length);
-  await searchButton(page).click();
-  await page.waitForFunction(
-    ({ name, before }) =>
-      window.__mock.searches.length > before &&
-      window.__mock.searches.at(-1) === name,
-    { name, before },
-  );
-}
-
-async function screenBox(locator) {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const hit = document.elementFromPoint(
-      r.x + r.width / 2,
-      r.y + r.height / 2,
-    );
-    return {
-      x: r.x,
-      y: r.y,
-      right: r.right,
-      bottom: r.bottom,
-      width: r.width,
-      height: r.height,
-      viewport: [innerWidth, innerHeight],
-      hit: el === hit || el.contains(hit),
-      disabled: el.disabled === true,
-      pointerEvents: getComputedStyle(el).pointerEvents,
-    };
-  });
-  assert.ok(
-    box.width > 0 &&
-      box.height > 0 &&
-      box.x >= 0 &&
-      box.y >= 0 &&
-      box.right <= box.viewport[0] + 1 &&
-      box.bottom <= box.viewport[1] + 1 &&
-      (box.hit || (box.disabled && box.pointerEvents === "none")),
-    JSON.stringify(box),
-  );
-  return box;
-}
-
-async function stopCheck({ page, audit, shot }, message, hasCandidates, name) {
-  const stop = page.locator("[data-budget-stop]");
-  assert.equal(await stop.textContent(), message);
-  assert.equal(await searchButton(page).isDisabled(), true);
-  assert.equal(await moreButton(page).count(), 0);
-  if (!hasCandidates) {
-    assert.equal(await page.locator("[data-result-id]").count(), 0);
-  }
-  const boxes = {
-    stop: await screenBox(stop),
-    search: await screenBox(searchButton(page)),
-  };
-  const before = audit.headerRequests.length;
-  await page.locator("[data-manual-search-form]").evaluate((form) => {
-    form.querySelector('button[type="submit"]').click();
-    form.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-  });
-  await page.waitForTimeout(observationMs);
-  assert.equal(
-    audit.headerRequests.length,
-    before,
-    "Stopped controls must not send any API requests",
-  );
-  await stop.scrollIntoViewIfNeeded();
-  return {
-    message,
-    fetchMore: "absent",
-    boxes,
-    observationMs,
-    callsAfterStop: 0,
-    screenshot: await shot(name),
-  };
-}
-
-export const budgetScenarios = [
+export const budgetScenarios = Object.fromEntries(
   [
-    "budget-run-analysis",
-    async ({ page, audit, done, shot }) => {
-      const name = "budget-run",
-        failed = `${name}-2`;
-      const message =
-        "この検索の予算上限に達しました。別の検索を開始してください。";
-      const beforeAnalysis = audit.analysisRequests.length;
-      await start(page, name, {
-        analysisErrors: { [failed]: refusal("BUDGET_RUN_EXCEEDED", message) },
-      });
-      await done(page);
-      assert.equal(
-        await page.locator("aside").getByRole("alert").textContent(),
-        message,
+    "BUDGET_RUN_EXCEEDED",
+    "BUDGET_SESSION_EXCEEDED",
+    "BUDGET_MONTH_EXCEEDED",
+    "BUDGET_UNAVAILABLE",
+  ].map((code) => [
+    code,
+    async ({ page, config, requests }) => {
+      config.count = 12;
+      const message = `検証用の予算エラー: ${code}`;
+      config.handlers[analysisPath] = (route, body) =>
+        body.reviews[0] === "REVIEW:quota-2"
+          ? route.fulfill({
+              status: code === "BUDGET_UNAVAILABLE" ? 503 : 429,
+              json: { error: { code, message } },
+            })
+          : route.fulfill({ json: { value: 4, reviewNumbers: [1] } });
+      await send(page, "カフェを探して");
+      await page.getByRole("alert").filter({ hasText: message }).waitFor();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('[data-fetch-state="evaluated"]').length ===
+            4 && !document.querySelector('[data-fetch-state="analyzing"]'),
       );
       assert.equal(
-        await page
-          .locator(`[data-result-id="${failed}"]`)
-          .getAttribute("data-fetch-state"),
-        "failed",
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="evaluated"]').count(),
-        4,
-      );
-      assert.equal(await page.locator("[data-budget-stop]").count(), 0);
-      assert.equal(await searchButton(page).isEnabled(), true);
-      assert.equal(await moreButton(page).count(), 0);
-      await screenBox(page.locator("aside").getByRole("alert"));
-      const screenshot = await shot("budget-run-analysis");
-      assert.equal(audit.analysisRequests.length - beforeAnalysis, 5);
-      assert.equal(
-        audit.analysisRequests.filter((id) => id === failed).length,
-        1,
-      );
-      // Same search text is still a new run; exercises identity beyond query strings.
-      const previousRun = audit.headerRequests.at(-1).runId;
-      await page.evaluate(() => {
-        window.__mock.config.analysisErrors = {};
-      });
-      await start(page, name);
-      await done(page);
-      assert.notEqual(audit.headerRequests.at(-1).runId, previousRun);
-      return {
-        message,
-        failedPlace: failed,
-        evaluatedBeforeBudgetStop: 4,
-        newRunOnRepeatedQuery: true,
-        screenshot,
-      };
-    },
-  ],
-  [
-    "budget-unavailable-analysis",
-    async ({ page, audit, done, shot }) => {
-      const name = "budget-unavailable";
-      const message =
-        "予算台帳に接続できません。しばらくしてからお試しください。";
-      const before = audit.analysisRequests.length;
-      await start(page, name, {
-        analysisError: refusal("BUDGET_UNAVAILABLE", message, 503),
-      });
-      await done(page);
-      assert.equal(
-        await page.locator("aside").getByRole("alert").textContent(),
-        message,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="failed"]').count(),
+        requests(analysisPath).length,
         5,
+        "budget refusal stops subsequent batches",
       );
-      assert.equal(await searchButton(page).isEnabled(), true);
-      assert.equal(await page.locator("[data-budget-stop]").count(), 0);
-      await page.waitForTimeout(observationMs);
-      const calls = audit.analysisRequests.slice(before);
-      assert.deepEqual(
-        calls.slice().sort(),
-        Array.from({ length: 5 }, (_, i) => `${name}-${i + 1}`).sort(),
-      );
-      await screenBox(page.locator("aside").getByRole("alert"));
-      return {
-        message,
-        analysisCalls: calls.length,
-        callsPerPlace: 1,
-        observationMs,
-        screenshot: await shot("budget-unavailable-analysis"),
-      };
-    },
-  ],
-  [
-    "quota-fixed-wording",
-    async ({ page, audit, done, shot }) => {
-      const before = [
-        audit.detailRequests.length,
-        audit.analysisRequests.length,
-      ];
-      await start(page, "quota-wording", {
-        searchError: refusal(
-          "RESOURCE_EXHAUSTED",
-          "QUOTA_SENTINEL_FROM_SERVER",
-        ),
-      });
-      await done(page);
-      const message =
-        "Google Places の検索上限に達しました。時間をおいて再検索してください。";
-      assert.equal(
-        await page.locator("aside").getByRole("alert").textContent(),
-        message,
-      );
-      assert.equal(await page.locator("[data-budget-stop]").count(), 0);
-      assert.deepEqual(
-        [audit.detailRequests.length, audit.analysisRequests.length],
-        before,
-      );
-      await screenBox(page.locator("aside").getByRole("alert"));
-      return { message, screenshot: await shot("quota-fixed-wording") };
-    },
-  ],
-  [
-    "budget-session-search",
-    async (env) => {
-      const { page, audit, done } = env;
-      const message =
-        "このセッションの予算上限に達しました。検索を停止しました。";
-      const before = [
-        audit.detailRequests.length,
-        audit.analysisRequests.length,
-      ];
-      await start(page, "budget-session-search", {
-        searchError: refusal("BUDGET_SESSION_EXCEEDED", message),
-      });
-      await done(page);
-      assert.deepEqual(
-        [audit.detailRequests.length, audit.analysisRequests.length],
-        before,
-      );
-      return stopCheck(env, message, false, "budget-session-search");
-    },
-  ],
-  ...["SESSION", "MONTH"].map((scope) => [
-    `budget-${scope.toLowerCase()}-analysis`,
-    async (env) => {
-      const { page, done } = env;
-      const name = `budget-${scope.toLowerCase()}`;
-      const message =
-        scope === "SESSION"
-          ? "このセッションの予算上限に達しました。追加取得を停止しました。"
-          : "今月の予算上限に達しました。来月まで検索と追加取得を停止します。";
-      await start(page, name, {
-        analysisErrors: {
-          [`${name}-2`]: refusal(`BUDGET_${scope}_EXCEEDED`, message),
-        },
-      });
-      await done(page);
       assert.equal(
         await page.locator('[data-fetch-state="failed"]').count(),
         1,
       );
-      return stopCheck(
-        env,
-        message,
-        true,
-        `budget-${scope.toLowerCase()}-analysis`,
-      );
+      const firstRun = requests("/api/chat")[0].run;
+      await button(page, "地図に切替").click();
+      await input(page).fill("カフェを探して");
+      if (["BUDGET_RUN_EXCEEDED", "BUDGET_UNAVAILABLE"].includes(code)) {
+        delete config.handlers[analysisPath];
+        await button(page, "送信").click();
+        await page.waitForFunction(
+          () =>
+            document.querySelectorAll('[data-fetch-state="evaluated"]')
+              .length === 11,
+        );
+        assert.notEqual(requests("/api/chat")[1].run, firstRun);
+      } else {
+        assert.ok(await button(page, "送信").isDisabled());
+        await input(page).press("Enter");
+        assert.equal(requests("/api/chat").length, 1);
+      }
     },
   ]),
-];
+);
