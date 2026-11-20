@@ -36,7 +36,7 @@ export type PlaceDetail = PlaceSummary & {
   reviews: Review[];
 };
 
-export type PlaceSearchResponse = { places: PlaceSummary[] };
+export type PlaceSearchResponse = { places: PlaceDetail[] };
 
 // Request body accepted by POST /api/places/search. The rectangle is the map
 // viewport; `low` is the south-west corner and `high` the north-east corner.
@@ -44,7 +44,7 @@ export type PlaceSearchRequest = {
   textQuery: string;
   rectangle: { low: LatLngLiteral; high: LatLngLiteral };
   openNow?: boolean;
-  maxResultCount?: number;
+  pageSize?: number;
 };
 
 // Upper bound of the joined review text sent to /api/analyze-reviews.

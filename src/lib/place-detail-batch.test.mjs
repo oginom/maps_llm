@@ -1,50 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PlaceDetailBatch } from "./place-detail-batch.ts";
+import { evaluatePlaceBatches } from "./place-detail-batch.ts";
 
-test("reserves five requests synchronously and never exceeds twenty attempts", () => {
-  const batch = new PlaceDetailBatch(
-    Array.from({ length: 25 }, (_, index) => ({ placeId: String(index) })),
+const places = Array.from({ length: 25 }, (_, i) => ({ placeId: String(i) }));
+
+test("automatically evaluates the first twenty distinct places with at most five in flight", async () => {
+  const started = [];
+  let active = 0,
+    peak = 0;
+  await evaluatePlaceBatches(
+    places.flatMap((place) => [place, place]),
+    () => true,
+    async (place) => {
+      started.push(place);
+      peak = Math.max(peak, ++active);
+      await new Promise((resolve) => setImmediate(resolve));
+      active--;
+    },
   );
-  assert.equal(batch.take().length, 5);
-  assert.deepEqual(batch.take(), []); // A second click while work is pending.
-  batch.finish(); // Failures still consumed attempts; no automatic retries.
-  assert.deepEqual(
-    batch.take().map((place) => place.placeId),
-    ["5", "6", "7", "8", "9"],
-  );
-  batch.finish();
-  assert.equal(batch.take().length, 5);
-  batch.finish();
-  assert.deepEqual(
-    batch.take().map((place) => place.placeId),
-    ["15", "16", "17", "18", "19"],
-  );
-  batch.finish();
-  assert.deepEqual(batch.take(), []);
-  assert.equal(batch.requestedCount, 20);
+  assert.deepEqual(started, places.slice(0, 20));
+  assert.equal(peak, 5);
 });
 
-test("deduplicates places and handles a partial final batch", () => {
-  const places = Array.from({ length: 7 }, (_, index) => ({
-    placeId: String(index),
-  }));
-  const batch = new PlaceDetailBatch([...places, ...places]);
-  assert.equal(batch.take().length, 5);
-  batch.finish();
-  assert.equal(batch.remainingCount, 2);
-  assert.equal(batch.take().length, 2);
-  batch.finish();
-  assert.equal(batch.remainingCount, 0);
-  assert.deepEqual(batch.take(), []);
-});
-
-test("independent searches have independent request allowances", () => {
-  const oldSearch = new PlaceDetailBatch([{ placeId: "same" }]);
-  oldSearch.take();
-  const newSearch = new PlaceDetailBatch([{ placeId: "same" }]);
-  assert.equal(newSearch.take().length, 1);
-  assert.equal(newSearch.isBusy, true);
-  oldSearch.finish();
-  assert.equal(newSearch.isBusy, true);
+test("stopping during a wave prevents queued work from starting", async () => {
+  const controller = new AbortController();
+  const started = [];
+  await evaluatePlaceBatches(
+    places,
+    () => !controller.signal.aborted,
+    async (place) => {
+      started.push(place);
+      await Promise.resolve();
+      controller.abort();
+    },
+  );
+  assert.deepEqual(started, places.slice(0, 5));
 });

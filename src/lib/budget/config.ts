@@ -6,14 +6,18 @@ export type BudgetType =
   | "places.search"
   | "places.details"
   | "openai.analyze"
-  | "openai.examples";
+  | "openai.examples"
+  | "openai.chat";
 
 export const BUDGET_TYPES: readonly BudgetType[] = [
   "places.search",
   "places.details",
   "openai.analyze",
   "openai.examples",
+  "openai.chat",
 ];
+
+export type OpenAiBudgetType = Extract<BudgetType, `openai.${string}`>;
 
 export type BudgetScope = "month" | "session" | "run";
 
@@ -24,19 +28,37 @@ export const BUDGET_SCOPES: readonly BudgetScope[] = [
 ];
 
 // One scope's caps. OpenAI types are enforced on settled + reserved micro-USD;
-// the Google types are enforced on call units.
+// the Google types are enforced on call units. Chat model steps are counted
+// against the micro-USD cap and, additionally, against a step count so a tool
+// loop cannot spend a run's budget on repeated model calls.
 export type ScopeCaps = {
   openaiMicros: number;
   "places.search": number;
   "places.details": number;
+  "openai.chat": number;
 };
 
 export type BudgetCaps = Record<BudgetScope, ScopeCaps>;
 
 export const DEFAULT_BUDGET_CAPS: BudgetCaps = {
-  month: { openaiMicros: 750_000, "places.search": 60, "places.details": 300 },
-  session: { openaiMicros: 200_000, "places.search": 10, "places.details": 60 },
-  run: { openaiMicros: 50_000, "places.search": 2, "places.details": 20 },
+  month: {
+    openaiMicros: 750_000,
+    "places.search": 60,
+    "places.details": 300,
+    "openai.chat": 500,
+  },
+  session: {
+    openaiMicros: 200_000,
+    "places.search": 10,
+    "places.details": 60,
+    "openai.chat": 100,
+  },
+  run: {
+    openaiMicros: 50_000,
+    "places.search": 2,
+    "places.details": 20,
+    "openai.chat": 4,
+  },
 };
 
 // gpt-5.6-luna list price in micro-USD per token: $0.20 per 1M input tokens,
@@ -56,23 +78,22 @@ export function openAiCostMicros(
 }
 
 // Reserve estimates (upper bounds) per OpenAI call: analyze 8,000 in +
-// 1,000 out, examples 600 in + 1,200 out.
-export const OPENAI_RESERVE_MICROS: Record<
-  "openai.analyze" | "openai.examples",
-  number
-> = {
+// 1,000 out, examples 600 in + 1,200 out, one chat model step 20,000 in +
+// 2,000 out (the conversation with tool results is resent on every step).
+export const OPENAI_RESERVE_MICROS: Record<OpenAiBudgetType, number> = {
   "openai.analyze": openAiCostMicros(8_000, 1_000),
   "openai.examples": openAiCostMicros(600, 1_200),
+  "openai.chat": openAiCostMicros(20_000, 2_000),
 };
 
 // Google list prices in micro-USD, accumulated for reporting only
-// (Text Search Pro $32 / 1,000, Place Details Enterprise + Atmosphere
+// (Text Search Enterprise + Atmosphere $40 / 1,000, historical Place Details Enterprise + Atmosphere
 // $25 / 1,000). Enforcement of the Google types is on units.
 export const GOOGLE_LIST_PRICE_MICROS: Record<
   "places.search" | "places.details",
   number
 > = {
-  "places.search": 32_000,
+  "places.search": 40_000,
   "places.details": 25_000,
 };
 
@@ -84,10 +105,24 @@ export const PENDING_SWEEP_AFTER_MS = 5 * 60 * 1000;
 // `expiresAt`).
 export const SESSION_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 
-export function isOpenAiType(
+export function isOpenAiType(type: BudgetType): type is OpenAiBudgetType {
+  return type.startsWith("openai.");
+}
+
+// Types whose calls are also limited by count (Google units, chat steps).
+export type CountCappedBudgetType = Extract<
+  BudgetType,
+  "places.search" | "places.details" | "openai.chat"
+>;
+
+export function isCountCappedType(
   type: BudgetType,
-): type is "openai.analyze" | "openai.examples" {
-  return type === "openai.analyze" || type === "openai.examples";
+): type is CountCappedBudgetType {
+  return (
+    type === "places.search" ||
+    type === "places.details" ||
+    type === "openai.chat"
+  );
 }
 
 export function isGoogleType(
@@ -114,6 +149,7 @@ const scopeCapsOverrideSchema = z
     openaiMicros: nonNegativeInteger.optional(),
     "places.search": nonNegativeInteger.optional(),
     "places.details": nonNegativeInteger.optional(),
+    "openai.chat": nonNegativeInteger.optional(),
   })
   .strict();
 const capsOverrideSchema = z

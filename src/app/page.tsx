@@ -7,21 +7,34 @@ import {
   Marker,
   useMap,
 } from "@vis.gl/react-google-maps";
+import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { flushSync } from "react-dom";
 import { waitForMapLayout } from "@/lib/map-layout";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
+import { ChatPanel } from "@/components/ChatPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { BottomSheet, type SheetHeight } from "@/components/BottomSheet";
-import { PlaceDetailBatch } from "@/lib/place-detail-batch";
-import { getRatingColor, type SearchResult } from "@/lib/place-result";
+import { evaluatePlaceBatches } from "@/lib/place-detail-batch";
+import {
+  createSearchResults,
+  getRatingColor,
+  type SearchResult,
+} from "@/lib/place-result";
 import {
   MAX_REVIEWS_TEXT_LENGTH,
   type PlaceDetail,
   type PlaceSearchRequest,
   type PlaceSearchResponse,
 } from "@/lib/place-dto";
+import {
+  isSearchPlacesFailure,
+  parseChatErrorText,
+  type ChatUIMessage,
+  type SearchPlacesResult,
+} from "@/lib/chat-contract";
+import { MapChatTransport } from "@/lib/chat-transport";
 import { viewportToRectangle } from "@/lib/viewport";
 import { budgetHeaders, newRunId } from "@/lib/session-ids";
 
@@ -34,9 +47,9 @@ const defaultZoom = 10;
 
 type SearchSession = {
   controller: AbortController;
-  batch: PlaceDetailBatch<SearchResult>;
+  candidates: SearchResult[];
   evaluation: string;
-  // Budget run id: one per search, shared by its "next 5" batches.
+  // Budget run id: one per search, shared by all automatic evaluations.
   runId: string;
 };
 
@@ -102,20 +115,25 @@ function MapContent() {
   const [zoom, setZoom] = useState(defaultZoom);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const activeSession = useRef<SearchSession | null>(null);
+  const budgetRefusedRun = useRef<AbortController | null>(null);
   const searchController = useRef<AbortController | null>(null);
   const layoutController = useRef<AbortController | null>(null);
   const searchInProgress = useRef(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [requestedDetails, setRequestedDetails] = useState(0);
-  const [remainingDetails, setRemainingDetails] = useState(0);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationAttempts, setEvaluationAttempts] = useState(0);
   const [searchError, setSearchError] = useState<string | null>(null);
   // Set when the month or session budget is exhausted: no further searches
-  // or "next 5" batches until a new session (tab) or month.
+  // until a new session (tab) or month.
   const [budgetStop, setBudgetStop] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<{
     [key: string]: SearchResult;
   }>({});
+  // Chat: the transport holds the request snapshot taken at send time; the
+  // run's controller finishes the run when the stream ends.
+  const [chatTransport] = useState(() => new MapChatTransport());
+  const chatRunController = useRef<AbortController | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   // Load initial position from geolocation
   useEffect(() => {
@@ -194,17 +212,12 @@ function MapContent() {
     [],
   );
 
-  const loadNextDetails = async (session: SearchSession) => {
+  const evaluateCandidates = async (session: SearchSession) => {
     if (activeSession.current !== session || session.controller.signal.aborted)
       return;
-    const batch = session.batch.take();
-    if (batch.length === 0) return;
     const isCurrent = () =>
       activeSession.current === session && !session.controller.signal.aborted;
-    setIsLoadingDetails(true);
-    setRequestedDetails(session.batch.requestedCount);
-    setRemainingDetails(session.batch.remainingCount);
-
+    setIsEvaluating(true);
     const updateResult = (placeId: string, update: Partial<SearchResult>) => {
       if (!isCurrent()) return;
       setSearchResults((previous) => {
@@ -214,110 +227,75 @@ function MapContent() {
     };
     const reportError = (error: unknown, fallback: string) => {
       const message = error instanceof Error ? error.message : fallback;
+      if (error instanceof ApiRequestError && error.code?.startsWith("BUDGET_"))
+        budgetRefusedRun.current = session.controller;
       if (isBudgetStop(error)) setBudgetStop(message);
       else setSearchError(message);
       return message;
     };
 
     try {
-      await Promise.all(
-        batch.map(async (result) => {
-          const placeId = result.placeId;
-          updateResult(placeId, { detailsStatus: "loading" });
+      await evaluatePlaceBatches(
+        session.candidates,
+        () => isCurrent() && budgetRefusedRun.current !== session.controller,
+        async (result) => {
+          const { placeId, reviews } = result;
+          if (reviews.length === 0) return;
+          setEvaluationAttempts((count) => count + 1);
+          updateResult(placeId, { isAnalyzing: true });
           try {
-            const detailResponse = await fetch(
-              `/api/places/${encodeURIComponent(placeId)}`,
-              {
-                signal: session.controller.signal,
-                headers: budgetHeaders(session.runId),
+            const response = await fetch("/api/analyze-reviews", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...budgetHeaders(session.runId),
               },
-            );
-            if (!detailResponse.ok)
-              throw await readApiError(
-                detailResponse,
-                detailResponse.status === 429
-                  ? "Google Places の利用上限に達しました。時間をおいて再検索してください。"
-                  : "一部の店舗の口コミを取得できませんでした。",
-              );
-            const details: PlaceDetail = await detailResponse.json();
-            if (!isCurrent()) return;
-            const reviews = details.reviews;
-            updateResult(placeId, {
-              detailsStatus: "loaded",
-              reviews,
-              googleMapsUri: details.googleMapsUri || result.googleMapsUri,
-              name: details.name || result.name,
-              address: details.address || result.address,
-              rating: details.rating,
-              userRatingCount: details.userRatingCount,
-              openNow: details.openNow,
-              weekdayDescriptions: details.weekdayDescriptions,
-              websiteUri: details.websiteUri,
-              analysisStatus: {
-                isAnalyzing: reviews.length > 0,
-                isQueued: false,
-              },
+              signal: session.controller.signal,
+              body: JSON.stringify({
+                reviews: reviews
+                  .map((review) => review.text)
+                  .join("\n\n---\n\n")
+                  .slice(0, MAX_REVIEWS_TEXT_LENGTH),
+                metric: session.evaluation,
+                examples: result.examples,
+                scale: "5",
+              }),
             });
-            if (reviews.length === 0) return;
-
-            try {
-              const response = await fetch("/api/analyze-reviews", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  ...budgetHeaders(session.runId),
-                },
-                signal: session.controller.signal,
-                body: JSON.stringify({
-                  reviews: reviews
-                    .map((review) => review.text)
-                    .join("\n\n---\n\n")
-                    .slice(0, MAX_REVIEWS_TEXT_LENGTH),
-                  metric: session.evaluation,
-                  examples: result.examples,
-                  scale: "5",
-                }),
-              });
-              if (!response.ok)
-                throw await readApiError(
-                  response,
-                  response.status === 429
-                    ? "レビュー分析の利用上限に達しました。"
-                    : "レビューの分析中にエラーが発生しました。",
-                );
-              const data = await response.json();
-              updateResult(placeId, {
-                analysis: data.related_review,
-                value: data.value,
-                analysisStatus: { isAnalyzing: false, isQueued: false },
-              });
-            } catch (error) {
-              if (!isCurrent()) return;
-              const message = reportError(
-                error,
-                "レビューの分析中にエラーが発生しました。",
+            if (!response.ok)
+              throw await readApiError(
+                response,
+                response.status === 429
+                  ? "レビュー分析の利用上限に達しました。"
+                  : "レビューの分析中にエラーが発生しました。",
               );
-              updateResult(placeId, {
-                analysis: message,
-                analysisError: true,
-                analysisStatus: { isAnalyzing: false, isQueued: false },
-              });
-            }
+            const data = await response.json();
+            updateResult(placeId, {
+              analysis: data.related_review,
+              value: data.value,
+              isAnalyzing: false,
+            });
           } catch (error) {
             if (!isCurrent()) return;
-            updateResult(placeId, { detailsStatus: "error" });
-            reportError(error, "口コミを取得できませんでした。");
+            const message = reportError(
+              error,
+              "レビューの分析中にエラーが発生しました。",
+            );
+            updateResult(placeId, {
+              analysis: message,
+              analysisError: true,
+              isAnalyzing: false,
+            });
           }
-        }),
+        },
       );
     } finally {
-      session.batch.finish();
-      if (isCurrent()) setIsLoadingDetails(false);
+      if (isCurrent()) setIsEvaluating(false);
     }
   };
 
-  const handleSearch = async () => {
-    if (!map || searchInProgress.current || budgetStop) return;
+  // Common start of a manual search or a chat message: abort the previous
+  // run, reset the results and hand out the new controller and budget run id.
+  const beginRun = () => {
     searchInProgress.current = true;
     searchController.current?.abort();
     layoutController.current?.abort();
@@ -325,26 +303,87 @@ function MapContent() {
     searchController.current = controller;
     const runId = newRunId();
     activeSession.current = null;
-    const isCurrent = () =>
-      searchController.current === controller && !controller.signal.aborted;
+    budgetRefusedRun.current = null;
     setIsSearching(true);
-    setIsLoadingDetails(false);
-    setRequestedDetails(0);
-    setRemainingDetails(0);
+    setIsEvaluating(false);
+    setEvaluationAttempts(0);
     setSearchError(null);
     setSearchResults({});
     setSelectedPlace(null);
+    return { controller, runId };
+  };
 
-    const prepareSearchMap = () =>
-      waitForMapLayout(map.getDiv(), controller.signal, () => {
-        if (window.matchMedia("(max-width: 899.95px)").matches)
-          flushSync(() => setSheetHeight("half"));
-      });
+  const isCurrentRun = (controller: AbortController) =>
+    searchController.current === controller && !controller.signal.aborted;
+
+  const endRun = (controller: AbortController) => {
+    if (!isCurrentRun(controller)) return;
+    searchInProgress.current = false;
+    setIsSearching(false);
+  };
+
+  // Expand the searchable map (mobile sheet to half) and wait for Maps to
+  // apply the resize before reading bounds or fitting.
+  const prepareSearchMap = (controller: AbortController) =>
+    waitForMapLayout(map!.getDiv(), controller.signal, () => {
+      if (window.matchMedia("(max-width: 899.95px)").matches)
+        flushSync(() => setSheetHeight("half"));
+    });
+
+  const reportRunError = (error: unknown, fallback: string) => {
+    if (isBudgetStop(error)) setBudgetStop(error.message);
+    else setSearchError(error instanceof Error ? error.message : fallback);
+  };
+
+  // Shared by the manual form and the chat tool result: show the candidates
+  // as pins and rows, fit the map, then start review analysis.
+  const applyCandidates = async (input: {
+    controller: AbortController;
+    runId: string;
+    places: PlaceDetail[];
+    evaluation: string;
+    examples: string;
+  }) => {
+    const { controller, runId } = input;
+    if (!map || !isCurrentRun(controller) || activeSession.current) return;
+    const results = createSearchResults(input.places, {
+      evaluation: input.evaluation,
+      examples: input.examples,
+    });
+    const candidates = Object.values(results);
+    // Claim this run before waiting for layout: even a repeated tool output
+    // must not start a second set of paid evaluations under the same run ID.
+    const session: SearchSession = {
+      controller,
+      candidates,
+      evaluation: input.evaluation,
+      runId,
+    };
+    activeSession.current = session;
+    setSearchResults(results);
+    await prepareSearchMap(controller);
+    if (!isCurrentRun(controller)) return;
+    const bounds = new google.maps.LatLngBounds();
+    for (const candidate of candidates) bounds.extend(candidate.location);
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds);
+      const currentZoom = map.getZoom();
+      if (candidates.length === 1 && currentZoom && currentZoom > 15)
+        map.setZoom(15);
+    }
+    if (candidates.length === 0)
+      setSearchError("条件に合う場所が見つかりませんでした。");
+    void evaluateCandidates(session);
+  };
+
+  const handleSearch = async () => {
+    if (!map || searchInProgress.current || budgetStop) return;
+    const { controller, runId } = beginRun();
     try {
       // Expand the searchable map before preparing the query. Observe again
       // before reading bounds / fitting, in case the viewport changed meanwhile.
-      await prepareSearchMap();
-      if (!isCurrent()) return;
+      await prepareSearchMap(controller);
+      if (!isCurrentRun(controller)) return;
       const response = await fetch("/api/generate-examples", {
         method: "POST",
         headers: {
@@ -362,9 +401,9 @@ function MapContent() {
             : "検索の準備に失敗しました。時間をおいて再検索してください。",
         );
       const { examples, searchQuery } = await response.json();
-      if (!isCurrent()) return;
-      await prepareSearchMap();
-      if (!isCurrent()) return;
+      if (!isCurrentRun(controller)) return;
+      await prepareSearchMap(controller);
+      if (!isCurrentRun(controller)) return;
       const viewport = map.getBounds()?.toJSON();
       if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
       const searchRequest: PlaceSearchRequest = {
@@ -388,54 +427,114 @@ function MapContent() {
             : "場所の検索に失敗しました。",
         );
       const { places }: PlaceSearchResponse = await searchResponse.json();
-      if (!isCurrent()) return;
-      const results: Record<string, SearchResult> = {};
-      const bounds = new google.maps.LatLngBounds();
-      for (const place of places) {
-        results[place.placeId] = {
-          ...place,
-          detailsStatus: "pending",
-          analysisStatus: { isAnalyzing: false, isQueued: false },
-          examples,
-          evaluation,
-        };
-        bounds.extend(place.location);
-      }
-      const candidates = Object.values(results);
-      setSearchResults(results);
-      await prepareSearchMap();
-      if (!isCurrent()) return;
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds);
-        const currentZoom = map.getZoom();
-        if (candidates.length === 1 && currentZoom && currentZoom > 15)
-          map.setZoom(15);
-      }
-      const session: SearchSession = {
+      await applyCandidates({
         controller,
-        batch: new PlaceDetailBatch(candidates),
-        evaluation,
         runId,
-      };
-      activeSession.current = session;
-      if (candidates.length === 0)
-        setSearchError("条件に合う場所が見つかりませんでした。");
-      void loadNextDetails(session);
+        places,
+        evaluation,
+        examples,
+      });
     } catch (error) {
-      if (isCurrent()) {
-        if (isBudgetStop(error)) setBudgetStop(error.message);
-        else
-          setSearchError(
-            error instanceof Error ? error.message : "検索に失敗しました。",
-          );
-      }
+      if (isCurrentRun(controller))
+        reportRunError(error, "検索に失敗しました。");
     } finally {
-      if (isCurrent()) {
-        searchInProgress.current = false;
-        setIsSearching(false);
+      endRun(controller);
+    }
+  };
+
+  // Chat: one message = one run. The tool result arrives through the
+  // transport while the answer is still streaming; the run ends with the
+  // stream (`onFinish` / `onError`), not with the analysis batch.
+  const chat = useChat<ChatUIMessage>({
+    transport: chatTransport,
+    onError: (error) => {
+      const { code, message } = parseChatErrorText(error.message);
+      if (code === "CLIENT_ABORTED") return;
+      if (code?.startsWith("BUDGET_"))
+        budgetRefusedRun.current = chatRunController.current;
+      if (code && BUDGET_STOP_CODES.has(code)) setBudgetStop(message);
+      setChatError(message);
+    },
+    onFinish: () => {
+      const controller = chatRunController.current;
+      chatRunController.current = null;
+      if (controller) endRun(controller);
+    },
+  });
+  const { sendMessage: sendChatMessage, stop: stopChat } = chat;
+
+  const handleChatSend = async (text: string) => {
+    if (!map || searchInProgress.current || budgetStop) return;
+    const selectedPlaceId = selectedPlace;
+    const { controller, runId } = beginRun();
+    chatRunController.current = controller;
+    setChatError(null);
+    try {
+      await prepareSearchMap(controller);
+      if (!isCurrentRun(controller)) return;
+      const viewport = map.getBounds()?.toJSON();
+      if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
+      chatTransport.setRequestContext({ runId, viewport, selectedPlaceId });
+      // Resolves when the stream ends; errors go to `onError`.
+      await sendChatMessage({ text });
+    } catch (error) {
+      if (isCurrentRun(controller)) {
+        setChatError(
+          error instanceof Error ? error.message : "送信に失敗しました。",
+        );
+        endRun(controller);
       }
     }
   };
+
+  const handleStopChat = () => {
+    const controller = chatRunController.current;
+    if (controller && isCurrentRun(controller)) {
+      endRun(controller);
+      controller.abort();
+      setIsEvaluating(false);
+      setSearchResults((previous) =>
+        Object.fromEntries(
+          Object.entries(previous).map(([id, result]) => [
+            id,
+            result.isAnalyzing
+              ? {
+                  ...result,
+                  analysis: "評価を中断しました。",
+                  analysisError: true,
+                  isAnalyzing: false,
+                }
+              : result,
+          ]),
+        ),
+      );
+    }
+    void stopChat();
+  };
+
+  // Tool results arrive through the transport outside React's event system;
+  // keep the handler bound to the latest closures.
+  useEffect(() => {
+    chatTransport.setToolResultHandler((result: SearchPlacesResult) => {
+      const controller = chatRunController.current;
+      const request = chatTransport.getRequestContext();
+      if (!controller || !request || !isCurrentRun(controller)) return;
+      if (isSearchPlacesFailure(result)) {
+        reportRunError(
+          new ApiRequestError(result.error.message, result.error.code),
+          "場所の検索に失敗しました。",
+        );
+        return;
+      }
+      void applyCandidates({
+        controller,
+        runId: request.runId,
+        places: result.places,
+        evaluation: result.evaluation,
+        examples: result.examples,
+      });
+    });
+  });
 
   const changeSheetHeight = async (
     height: SheetHeight,
@@ -533,6 +632,22 @@ function MapContent() {
         }}
       >
         <SearchPanel
+          chat={
+            <ChatPanel
+              messages={chat.messages}
+              status={chat.status}
+              error={chatError}
+              sendDisabled={!map || budgetStop !== null}
+              onSend={(text) => {
+                void handleChatSend(text);
+              }}
+              onStop={handleStopChat}
+              onInputFocus={() => {
+                void changeSheetHeight("full");
+              }}
+            />
+          }
+          hasChatMessages={chat.messages.length > 0}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           evaluation={evaluation}
@@ -540,9 +655,8 @@ function MapContent() {
           onSearch={handleSearch}
           searchDisabled={isSearching || !map || budgetStop !== null}
           isSearching={isSearching}
-          isLoadingDetails={isLoadingDetails}
-          requestedDetails={requestedDetails}
-          remainingDetails={remainingDetails}
+          isEvaluating={isEvaluating}
+          evaluationAttempts={evaluationAttempts}
           searchError={searchError}
           budgetStop={budgetStop}
           results={results}
@@ -554,10 +668,6 @@ function MapContent() {
           }}
           onInputFocus={() => {
             void changeSheetHeight("full");
-          }}
-          onMore={() => {
-            if (activeSession.current && !budgetStop)
-              void loadNextDetails(activeSession.current);
           }}
         />
       </Box>

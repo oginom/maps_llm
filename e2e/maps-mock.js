@@ -1,20 +1,18 @@
 // Loaded with addInitScript, before React/APIProvider. No Google code is loaded.
 (() => {
   const state = (window.__mock = {
-    config: { count: 12, holdDetails: false, fail: [], gateJson: false },
+    config: { count: 12, fail: [], gateJson: false },
     positions: {},
     searches: [],
     searchRequests: [],
     fits: [],
     resizes: [],
     details: [],
-    releasedDetails: [],
     analyses: [],
     aborts: [],
     fetchErrors: [],
     jsonWaiting: [],
     jsonDelivered: [],
-    pendingDetails: [],
     markers: [],
     pans: [],
   });
@@ -272,8 +270,6 @@
     const lng = typeof point.lng === "function" ? point.lng() : point.lng;
     return state.positions[`${lat},${lng}`] ?? point;
   };
-  state.releaseDetails = () =>
-    state.pendingDetails.splice(0).forEach((fn) => fn());
   const jsonReleases = [];
   state.releaseJson = () => jsonReleases.splice(0).forEach((fn) => fn());
   const nativeFetch = window.fetch.bind(window);
@@ -298,19 +294,6 @@
     } else if (path.startsWith("/api/places/")) {
       const id = decodeURIComponent(path.split("/").at(-1));
       state.details.push(id);
-      const hold = state.config.holdDetails;
-      const response = await nativeFetch(input, options);
-      const data = await response.json();
-      response.json = () =>
-        new Promise((resolve) => {
-          const release = () => {
-            state.releasedDetails.push(id);
-            resolve(data);
-          };
-          if (hold) state.pendingDetails.push(release);
-          else release();
-        });
-      return response;
     }
     if (path !== "/api/analyze-reviews") return nativeFetch(input, options);
     const id = JSON.parse(options.body).reviews.replace("REVIEW:", "");

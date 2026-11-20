@@ -1,20 +1,33 @@
-import type { PlaceDetail, PlaceSummary } from "./place-dto";
+import type { PlaceDetail } from "./place-dto";
 
-// A search candidate as held in the browser: the Places summary, the detail
-// fields once fetched, and the analysis state for the evaluation criteria.
-export type SearchResult = PlaceSummary &
-  Partial<Omit<PlaceDetail, keyof PlaceSummary>> & {
-    value?: number;
-    analysis?: string;
-    detailsStatus: "pending" | "loading" | "loaded" | "error";
-    analysisStatus: {
-      isAnalyzing: boolean;
-      isQueued: boolean;
+export type SearchResult = PlaceDetail & {
+  value?: number;
+  analysis?: string;
+  isAnalyzing: boolean;
+  examples: string;
+  evaluation: string;
+  analysisError?: boolean;
+};
+
+// Candidates as the browser holds them right after a search (manual form or
+// chat tool result): reviews and attribution included, keyed by place id, duplicates
+// dropped, ordered as Places returned them.
+export function createSearchResults(
+  places: PlaceDetail[],
+  criteria: { evaluation: string; examples: string },
+): Record<string, SearchResult> {
+  const results: Record<string, SearchResult> = {};
+  for (const place of places) {
+    if (results[place.placeId]) continue;
+    results[place.placeId] = {
+      ...place,
+      isAnalyzing: false,
+      examples: criteria.examples,
+      evaluation: criteria.evaluation,
     };
-    examples: string;
-    evaluation: string;
-    analysisError?: boolean;
-  };
+  }
+  return results;
+}
 
 export const getRatingColor = (
   rating: number = 3,
@@ -39,20 +52,15 @@ export const getRatingColor = (
 };
 
 export function resultState(result: SearchResult) {
-  if (result.detailsStatus === "error" || result.analysisError) return "failed";
-  if (result.detailsStatus === "pending") return "unfetched";
-  if (
-    result.detailsStatus === "loading" ||
-    result.analysisStatus.isAnalyzing ||
-    result.analysisStatus.isQueued
-  )
-    return "fetching";
-  return result.value ? "evaluated" : "no-reviews";
+  if (result.analysisError) return "failed";
+  if (result.isAnalyzing) return "analyzing";
+  if (result.value) return "evaluated";
+  return result.reviews.length ? "unevaluated" : "no-reviews";
 }
 export const stateLabels = {
-  unfetched: "未取得",
-  fetching: "取得・評価中",
+  unevaluated: "未評価",
+  analyzing: "評価中",
   evaluated: "評価済み",
-  failed: "取得・評価失敗",
+  failed: "評価失敗",
   "no-reviews": "口コミなし・未評価",
 };

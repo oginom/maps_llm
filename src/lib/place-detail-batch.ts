@@ -1,41 +1,23 @@
-// Reserve attempts before any asynchronous work so double clicks and failures
-// cannot exceed the per-search allowance.
-export const INITIAL_DETAIL_COUNT = 5;
-export const DETAIL_BATCH_SIZE = 5;
-export const MAX_DETAILS_PER_SEARCH = 20;
+export const EVALUATION_BATCH_SIZE = 5;
+export const MAX_EVALUATIONS_PER_SEARCH = 20;
 
-export class PlaceDetailBatch<T extends { placeId: string }> {
-  private candidates: T[];
-  requestedCount = 0;
-  isBusy = false;
-
-  constructor(candidates: T[]) {
-    const seen = new Set<string>();
-    this.candidates = candidates
-      .filter((candidate) => {
-        if (seen.has(candidate.placeId)) return false;
-        seen.add(candidate.placeId);
-        return true;
-      })
-      .slice(0, MAX_DETAILS_PER_SEARCH);
+// Check cancellation and budget refusals before starting the next wave.
+export async function evaluatePlaceBatches<T extends { placeId: string }>(
+  candidates: T[],
+  shouldContinue: () => boolean,
+  evaluate: (candidate: T) => Promise<void>,
+) {
+  const seen = new Set<string>();
+  const batch: T[] = [];
+  for (const candidate of candidates) {
+    if (!shouldContinue() || seen.size === MAX_EVALUATIONS_PER_SEARCH) break;
+    if (seen.has(candidate.placeId)) continue;
+    seen.add(candidate.placeId);
+    batch.push(candidate);
+    if (batch.length === EVALUATION_BATCH_SIZE) {
+      await Promise.all(batch.map(evaluate));
+      batch.length = 0;
+    }
   }
-
-  get remainingCount() {
-    return this.candidates.length - this.requestedCount;
-  }
-
-  take() {
-    if (this.isBusy || this.remainingCount === 0) return [];
-    this.isBusy = true;
-    const batch = this.candidates.slice(
-      this.requestedCount,
-      this.requestedCount + DETAIL_BATCH_SIZE,
-    );
-    this.requestedCount += batch.length;
-    return batch;
-  }
-
-  finish() {
-    this.isBusy = false;
-  }
+  if (shouldContinue()) await Promise.all(batch.map(evaluate));
 }

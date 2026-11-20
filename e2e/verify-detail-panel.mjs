@@ -1,5 +1,6 @@
 import { budgetScenarios, verifyBudgetHeaders } from "./budget-scenarios.mjs";
 import {
+  analysisFailure,
   placesRoutes,
   serverErrorMessage,
   weekdayDescriptions,
@@ -62,9 +63,7 @@ async function visibleInside(page, selector) {
 async function done(page) {
   await page.waitForFunction(
     () =>
-      /口コミ取得対象/.test(
-        document.querySelector('[role="status"]').textContent,
-      ) &&
+      /評価試行/.test(document.querySelector('[role="status"]').textContent) &&
       !/評価中|検索中/.test(
         document.querySelector('[role="status"]').textContent,
       ),
@@ -123,10 +122,11 @@ try {
         const review = req.postDataJSON().reviews;
         audit.analysisRequests.push(review.replace("REVIEW:", ""));
         const config = await page.evaluate(() => window.__mock.config);
-        if (config.analysisError)
+        const failure = analysisFailure(config, review.replace("REVIEW:", ""));
+        if (failure)
           return route.fulfill({
-            status: config.analysisError.status,
-            json: { error: config.analysisError.error },
+            status: failure.status,
+            json: { error: failure.error },
           });
         const n = Number(review.split("-").at(-1));
         return route.fulfill({
@@ -140,9 +140,12 @@ try {
       return route.continue();
     });
     await context.addInitScript({ path: `${root}e2e/maps-mock.js` });
-    await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`);
-    await page.waitForFunction(
-      () => !document.querySelector('[aria-label="search"]')?.disabled,
+    await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    await page.waitForFunction(() =>
+      document.querySelector('[aria-label="search"]:enabled'),
     );
     const shot = async (name) => {
       const path = `${view}-${name}.png`;
@@ -166,7 +169,7 @@ try {
     };
     await page.getByPlaceholder("Enter search term").fill("panel");
     await page.getByRole("button", { name: "search", exact: true }).click();
-    await page.waitForFunction(() => window.__mock.details.length === 5);
+    await page.waitForFunction(() => window.__mock.analyses.length >= 5);
     await done(page);
     await check("1-initial", async () => {
       assert.equal(await page.locator("[data-result-id]").count(), 12);
@@ -180,25 +183,25 @@ try {
       );
       assert.equal(
         await page.locator('[data-fetch-state="evaluated"]').count(),
-        5,
+        12,
       );
       assert.equal(
-        await page.locator('[data-fetch-state="unfetched"]').count(),
-        7,
+        await page.locator('[data-fetch-state="unevaluated"]').count(),
+        0,
       );
       assert.match(
         await page.getByRole("status").textContent(),
-        /評価済み 5 件.*追加可能 7 件.*失敗 0 件.*口コミ取得対象 5 件 \/ 最大20件/,
+        /評価済み 12 件.*失敗 0 件.*評価試行 12 件 \/ 最大20件/,
       );
       assert.equal(
         await page
           .locator('[data-place-id]:not([data-color="#ffffff"])')
           .count(),
-        5,
+        12,
       );
       assert.match(
         await page.locator('[data-result-id="panel-6"]').textContent(),
-        /未取得 · Google ★ —/,
+        /評価済み · Google ★ 4/,
       );
       assert.match(
         await page.locator('[data-result-id="panel-1"]').textContent(),
@@ -209,8 +212,8 @@ try {
         /評価済み · Google ★ —/,
       );
       assert.equal(audit.searchRequests.length, 1);
-      assert.equal(audit.detailRequests.length, 5);
-      assert.equal(audit.analysisRequests.length, 5);
+      assert.equal(audit.detailRequests.length, 0);
+      assert.equal(audit.analysisRequests.length, 12);
       return { screenshot: await shot("initial") };
     });
     await check("2-edge-pin", async () => {
@@ -275,7 +278,7 @@ try {
       );
       assert.match(
         await page.locator("[data-place-details]").textContent(),
-        /panel 店舗12/,
+        /panel-12 詳細店舗/,
       );
       return { screenshot: await shot("offscreen-row") };
     });
@@ -284,7 +287,7 @@ try {
       await page.getByPlaceholder("Enter search term").fill("quota");
       await page.getByRole("button", { name: "search", exact: true }).click();
       await page.waitForFunction(() =>
-        window.__mock.details.includes("quota-5"),
+        window.__mock.analyses.includes("quota-5"),
       );
       await done(page);
       assert.equal(
@@ -297,7 +300,7 @@ try {
         await page
           .locator('[data-result-id="quota-12"]')
           .getAttribute("data-fetch-state"),
-        "unfetched",
+        "evaluated",
       );
       const screenshots = [];
       for (const size of view === "phone"
@@ -305,59 +308,8 @@ try {
         : ["full"]) {
         if (view === "phone") await height(page, size);
         await visibleInside(page, 'aside [role="alert"]');
-        await visibleInside(page, 'button:has-text("次の5件を評価")');
         screenshots.push(await shot(`warning-${size}`));
       }
-      await page.evaluate(() => (window.__mock.config.holdDetails = true));
-      await page.getByRole("button", { name: "次の5件を評価" }).click();
-      await page.waitForFunction(() =>
-        window.__mock.details.includes("quota-10"),
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="fetching"]').count(),
-        5,
-      );
-      assert.equal(
-        await page.getByRole("status").getAttribute("aria-live"),
-        "off",
-      );
-      await page.waitForFunction(
-        () => window.__mock.pendingDetails.length === 5,
-      );
-      await page.evaluate(() => window.__mock.releaseDetails());
-      await done(page);
-      assert.equal(
-        await page.locator('[data-fetch-state="evaluated"]').count(),
-        9,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="unfetched"]').count(),
-        2,
-      );
-      assert.match(
-        await page.getByRole("status").textContent(),
-        /評価済み 9 件.*追加可能 2 件.*失敗 1 件.*口コミ取得対象 10 件 \/ 最大20件/,
-      );
-      assert.equal(
-        await page.locator('[data-fetch-state="failed"]').count(),
-        1,
-      );
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-2"]')
-          .getAttribute("data-fetch-state"),
-        "failed",
-      );
-      assert.equal(
-        await page
-          .locator('[data-result-id="quota-12"]')
-          .getAttribute("data-fetch-state"),
-        "unfetched",
-      );
-      screenshots.push(await shot("fetch-partial"));
-      await page.evaluate(() => (window.__mock.config.holdDetails = false));
-      await page.getByRole("button", { name: "次の2件を評価" }).click();
-      await done(page);
       assert.equal(
         await page.locator('[data-fetch-state="evaluated"]').count(),
         11,
@@ -367,7 +319,7 @@ try {
         1,
       );
       assert.equal(
-        await page.locator('[data-fetch-state="unfetched"]').count(),
+        await page.locator('[data-fetch-state="unevaluated"]').count(),
         0,
       );
       assert.equal(
@@ -388,24 +340,16 @@ try {
       );
       assert.match(
         await page.getByRole("status").textContent(),
-        /評価済み 11 件.*追加可能 0 件.*失敗 1 件.*口コミ取得対象 12 件 \/ 最大20件/,
-      );
-      const attempts = await page.evaluate(() =>
-        window.__mock.details.filter((id) => id.startsWith("quota-")),
-      );
-      assert.deepEqual(
-        attempts,
-        Array.from({ length: 12 }, (_, i) => `quota-${i + 1}`),
+        /評価済み 11 件.*失敗 1 件.*評価試行 12 件 \/ 最大20件/,
       );
       const analyses = await page.evaluate(() =>
         window.__mock.analyses.filter((id) => id.startsWith("quota-")),
       );
       assert.deepEqual(
-        analyses.slice().sort(),
-        attempts.filter((id) => id !== "quota-2").sort(),
+        analyses,
+        Array.from({ length: 12 }, (_, i) => `quota-${i + 1}`),
       );
       return {
-        attempts,
         analyses,
         screenshots,
         screenshot: await shot("fetch-complete"),
@@ -577,7 +521,7 @@ try {
       // Exercise the accepted plain-Enter path, including focus expansion.
       await page.getByPlaceholder("Enter search term").press("Enter");
       await page.waitForFunction(() =>
-        window.__mock.details.includes("resize-5"),
+        window.__mock.analyses.includes("resize-5"),
       );
       await done(page);
       const measured = await page.evaluate(() => ({
@@ -721,9 +665,12 @@ try {
     await verifyBudgetHeaders(page, audit);
     for (const [name, scenario] of budgetScenarios) {
       // Reload clears the terminal UI stop but preserves the tab session UUID.
-      await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`);
-      await page.waitForFunction(
-        () => !document.querySelector('[aria-label="search"]')?.disabled,
+      await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
+      await page.waitForFunction(() =>
+        document.querySelector('[aria-label="search"]:enabled'),
       );
       await check(name, async () => {
         const result = await scenario({ page, audit, done, shot });
@@ -734,6 +681,7 @@ try {
         return result;
       });
     }
+    await context.unrouteAll({ behavior: "wait" });
     await context.close();
   }
 } finally {

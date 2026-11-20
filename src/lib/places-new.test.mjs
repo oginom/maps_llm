@@ -1,36 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  DETAIL_FIELD_MASK,
-  DETAIL_QUOTA_MESSAGE,
   PlacesApiError,
   SEARCH_FIELD_MASK,
   SEARCH_QUOTA_MESSAGE,
-  getPlace,
-  mapPlaceDetail,
   mapSearchResponse,
   searchText,
   toPlacesApiError,
 } from "./places-new.ts";
-
-// A trimmed Places API (New) response in the shape the fixed FieldMasks return.
-const rawSearchResponse = {
-  places: [
-    {
-      id: "ChIJN1t_tDeuEmsRUsoyG83frY4",
-      displayName: { text: "カフェ A", languageCode: "ja" },
-      formattedAddress: "東京都千代田区1-1",
-      location: { latitude: 35.68, longitude: 139.76 },
-      googleMapsUri: "https://maps.google.com/?cid=1",
-      rating: 4.4, // Not in the mask; must not leak through.
-    },
-    { id: "no-location", displayName: { text: "座標なし" } },
-    {
-      id: "ChIJ-second",
-      location: { latitude: 35.69, longitude: 139.77 },
-    },
-  ],
-};
 
 const rawPlace = {
   id: "ChIJN1t_tDeuEmsRUsoyG83frY4",
@@ -69,31 +46,30 @@ const rawPlace = {
   ],
 };
 
-test("maps search results to summaries and drops entries without location", () => {
-  const places = mapSearchResponse(rawSearchResponse);
-  assert.deepEqual(places, [
-    {
-      placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4",
-      name: "カフェ A",
-      address: "東京都千代田区1-1",
-      location: { lat: 35.68, lng: 139.76 },
-      googleMapsUri: "https://maps.google.com/?cid=1",
-    },
-    {
-      placeId: "ChIJ-second",
-      name: "",
-      address: "",
-      location: { lat: 35.69, lng: 139.77 },
-      googleMapsUri:
-        "https://www.google.com/maps/place/?q=place_id:ChIJ-second",
-    },
-  ]);
-  assert.equal("rating" in places[0], false);
-  assert.deepEqual(mapSearchResponse({}), []);
-});
+const rawSearchResponse = {
+  places: [
+    rawPlace,
+    { id: "no-location" },
+    { location: rawPlace.location },
+    { id: "ChIJ-second", location: { latitude: 35.69, longitude: 139.77 } },
+  ],
+};
 
-test("maps place details including reviews without uri, photo or text", () => {
-  const detail = mapPlaceDetail(rawPlace);
+const searchInput = {
+  textQuery: "電源 カフェ",
+  rectangle: {
+    low: { lat: 35.6, lng: 139.7 },
+    high: { lat: 35.7, lng: 139.8 },
+  },
+  openNow: true,
+  pageSize: 8,
+};
+
+test("maps bundled details and attribution, skipping places without id or location", () => {
+  const places = mapSearchResponse(rawSearchResponse);
+  assert.equal(places.length, 2);
+  const [detail, minimal] = places;
+  assert.deepEqual(mapSearchResponse({}), []);
   assert.deepEqual(detail, {
     placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4",
     name: "カフェ A",
@@ -128,16 +104,12 @@ test("maps place details including reviews without uri, photo or text", () => {
     ],
   });
   assert.equal("flagContentUri" in detail.reviews[0], false);
-  const minimal = mapPlaceDetail({
-    id: "x".repeat(12),
-    location: { latitude: 1, longitude: 2 },
-  });
   assert.deepEqual(minimal.reviews, []);
   assert.equal(minimal.rating, undefined);
-  assert.throws(() => mapPlaceDetail({ displayName: { text: "no id" } }), {
-    name: "PlacesApiError",
-    httpStatus: 502,
-  });
+  assert.equal(
+    minimal.googleMapsUri,
+    "https://www.google.com/maps/place/?q=place_id:ChIJ-second",
+  );
 });
 
 test("converts Google error bodies: 429 quota, 403 permission, 400 argument", () => {
@@ -212,19 +184,12 @@ test("searchText sends the fixed mask, key, viewport and page size", async () =>
       return new Response(JSON.stringify(rawSearchResponse), { status: 200 });
     };
     const controller = new AbortController();
-    const places = await searchText(
-      {
-        textQuery: "電源 カフェ",
-        rectangle: {
-          low: { lat: 35.6, lng: 139.7 },
-          high: { lat: 35.7, lng: 139.8 },
-        },
-        openNow: true,
-        maxResultCount: 20,
-      },
-      { signal: controller.signal, fetchImplementation },
-    );
+    const places = await searchText(searchInput, {
+      signal: controller.signal,
+      fetchImplementation,
+    });
     assert.equal(places.length, 2);
+    assert.equal(places[0].reviews[0].author.name, "投稿者 A");
     assert.equal(calls.length, 1);
     assert.equal(
       calls[0].url,
@@ -234,6 +199,29 @@ test("searchText sends the fixed mask, key, viewport and page size", async () =>
     assert.equal(calls[0].init.signal, controller.signal);
     assert.equal(calls[0].init.headers["X-Goog-Api-Key"], "test-key");
     assert.equal(calls[0].init.headers["X-Goog-FieldMask"], SEARCH_FIELD_MASK);
+    assert.deepEqual(
+      SEARCH_FIELD_MASK.split(",").sort(),
+      [
+        "id",
+        "displayName",
+        "formattedAddress",
+        "location",
+        "googleMapsUri",
+        "rating",
+        "userRatingCount",
+        "currentOpeningHours.openNow",
+        "regularOpeningHours.weekdayDescriptions",
+        "websiteUri",
+        "reviews.text",
+        "reviews.rating",
+        "reviews.publishTime",
+        "reviews.relativePublishTimeDescription",
+        "reviews.authorAttribution",
+        "reviews.googleMapsUri",
+      ]
+        .map((field) => `places.${field}`)
+        .sort(),
+    );
     assert.deepEqual(JSON.parse(calls[0].init.body), {
       textQuery: "電源 カフェ",
       locationRestriction: {
@@ -242,7 +230,7 @@ test("searchText sends the fixed mask, key, viewport and page size", async () =>
           high: { latitude: 35.7, longitude: 139.8 },
         },
       },
-      pageSize: 20,
+      pageSize: 8,
       languageCode: "ja",
       regionCode: "JP",
       openNow: true,
@@ -250,23 +238,8 @@ test("searchText sends the fixed mask, key, viewport and page size", async () =>
   });
 });
 
-test("getPlace uses the detail mask and maps HTTP failures to PlacesApiError", async () => {
+test("searchText maps quota and non-JSON HTTP failures", async () => {
   await withKey(async () => {
-    let call;
-    const ok = async (url, init) => {
-      call = { url, init };
-      return new Response(JSON.stringify(rawPlace), { status: 200 });
-    };
-    const detail = await getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
-      fetchImplementation: ok,
-    });
-    assert.equal(detail.reviews.length, 2);
-    assert.equal(
-      call.url,
-      "https://places.googleapis.com/v1/places/ChIJN1t_tDeuEmsRUsoyG83frY4?languageCode=ja&regionCode=JP",
-    );
-    assert.equal(call.init.headers["X-Goog-FieldMask"], DETAIL_FIELD_MASK);
-
     const quota = async () =>
       new Response(
         JSON.stringify({
@@ -275,14 +248,14 @@ test("getPlace uses the detail mask and maps HTTP failures to PlacesApiError", a
         { status: 429 },
       );
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", { fetchImplementation: quota }),
-      { httpStatus: 429, message: DETAIL_QUOTA_MESSAGE },
+      searchText(searchInput, { fetchImplementation: quota }),
+      { httpStatus: 429, message: SEARCH_QUOTA_MESSAGE },
     );
 
     const html = async () =>
       new Response("<html>Bad Gateway</html>", { status: 502 });
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", { fetchImplementation: html }),
+      searchText(searchInput, { fetchImplementation: html }),
       { httpStatus: 502, googleStatus: "HTTP_502" },
     );
   });
@@ -293,7 +266,7 @@ test("fails clearly when the server key is missing", async () => {
   delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
   try {
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+      searchText(searchInput, {
         fetchImplementation: async () => {
           throw new Error("must not be called");
         },
@@ -312,7 +285,7 @@ test("onRequestSent fires only once the Google request is sent", async () => {
     delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
     let sent = 0;
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+      searchText(searchInput, {
         fetchImplementation: async () => new Response("{}", { status: 200 }),
         onRequestSent: () => {
           sent += 1;
@@ -326,7 +299,7 @@ test("onRequestSent fires only once the Google request is sent", async () => {
 
     process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-key";
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+      searchText(searchInput, {
         fetchImplementation: async () =>
           new Response(
             JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }),
@@ -346,7 +319,7 @@ test("onRequestSent fires only once the Google request is sent", async () => {
     controller.abort();
     let fetched = 0;
     await assert.rejects(
-      getPlace("ChIJN1t_tDeuEmsRUsoyG83frY4", {
+      searchText(searchInput, {
         signal: controller.signal,
         fetchImplementation: async () => {
           fetched += 1;

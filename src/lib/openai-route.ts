@@ -2,6 +2,7 @@
 import OpenAI from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
 import { isClientAbort } from "./abort";
+import { OPENAI_QUOTA_MESSAGE } from "./api-messages";
 import {
   budgetErrorResponse,
   clientAbortedResponse,
@@ -11,8 +12,7 @@ import {
 } from "./api-route";
 import { openAiCostMicros } from "./budget/config";
 
-export const OPENAI_QUOTA_MESSAGE =
-  "OpenAI の利用上限に達しました。時間をおいて再試行してください。";
+export { OPENAI_QUOTA_MESSAGE };
 
 // Actual cost of a completion in micro-USD from its usage; `undefined` when
 // the response carried no usage (the caller then settles at the estimate).

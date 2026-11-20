@@ -14,6 +14,15 @@ export const weekdayDescriptions = [
 const photoUri =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect width="32" height="32" fill="%2399bbdd"/%3E%3C/svg%3E';
 
+export function analysisFailure(config, id) {
+  if (config.fail.includes(id))
+    return {
+      status: 429,
+      error: { code: "RESOURCE_EXHAUSTED", message: "上限" },
+    };
+  return config.analysisErrors?.[id] ?? config.analysisError;
+}
+
 // Both suites use real browser fetch, intercepted before the Next.js handlers.
 export function placesRoutes(page, audit) {
   audit.searchRequests = [];
@@ -26,11 +35,72 @@ export function placesRoutes(page, audit) {
   const candidateRuns = new Map();
   const uuidV4 =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const candidates = new Map();
+  const registerPlaces = async (textQuery, count, runId) => {
+    const noReviews = await page.evaluate(
+      () => window.__mock.config.noReviews || [],
+    );
+    const places = Array.from({ length: count }, (_, i) => {
+      const n = i + 1,
+        id = `${textQuery}-${n}`;
+      return {
+        placeId: id,
+        address: "東京都 モック区 検証町1-2-3",
+        location: { lat: 35.7 + i * 0.001, lng: 139.7 + i * 0.001 },
+        googleMapsUri: "https://example.invalid/mock-place",
+        name: `${id} 詳細店舗`,
+        ...(n === 5 ? {} : { rating: 4, userRatingCount: 42 + n }),
+        openNow: n % 2 === 1,
+        weekdayDescriptions,
+        websiteUri: `https://example.invalid/site/${id}`,
+        reviews: noReviews.includes(id)
+          ? []
+          : [
+              {
+                text: `REVIEW:${id}`,
+                rating: 4,
+                publishTime: "2026-09-14T03:00:00Z",
+                relativePublishTimeDescription: "1週間前",
+                author: {
+                  name: `投稿者 ${id}`,
+                  ...(n === 5
+                    ? {}
+                    : {
+                        uri: `https://example.invalid/author/${id}`,
+                        photoUri,
+                      }),
+                },
+                googleMapsUri: `https://example.invalid/review/${id}`,
+              },
+            ],
+      };
+    });
+    places.forEach((place) => {
+      candidateRuns.set(place.placeId, runId);
+    });
+    await page.evaluate((places) => {
+      places.forEach((place, i) => {
+        window.__mock.positions[`${place.location.lat},${place.location.lng}`] =
+          {
+            ...place.location,
+            id: place.placeId,
+            x: 0.16 + (i % 4) * 0.22,
+            y:
+              0.17 +
+              Math.floor(i / 4) *
+                Math.min(
+                  0.16,
+                  0.64 / Math.max(1, Math.ceil(places.length / 4) - 1),
+                ),
+          };
+      });
+    }, places);
+    return places;
+  };
   return async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (
+      path === "/api/chat" ||
       path.startsWith("/api/places/") ||
       path === "/api/generate-examples" ||
       path === "/api/analyze-reviews"
@@ -54,6 +124,42 @@ export function placesRoutes(page, audit) {
             sessionStorage.getItem("maps-llm-session-id"),
           ),
         );
+        if (path === "/api/chat") {
+          assert.ok(!runs.has(runId));
+          runs.set(runId, "chat");
+          currentRun = runId;
+          const places = await registerPlaces("chat", 20, runId);
+          const input = {
+            textQuery: "カフェ",
+            evaluation: "電源",
+            examples: "1 ... なし, 5 ... あり",
+          };
+          const chunks = [
+            { type: "start", messageId: "mock-answer" },
+            { type: "start-step" },
+            {
+              type: "tool-input-available",
+              toolCallId: "mock-search",
+              toolName: "search_places",
+              input,
+            },
+            {
+              type: "tool-output-available",
+              toolCallId: "mock-search",
+              output: { ...input, searchId: runId, places },
+            },
+            { type: "finish-step" },
+            { type: "finish", finishReason: "stop" },
+          ];
+          await route.fulfill({
+            contentType: "text/event-stream",
+            body:
+              chunks
+                .map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`)
+                .join("") + "data: [DONE]\n\n",
+          });
+          return true;
+        }
         if (path === "/api/generate-examples") {
           assert.ok(
             !runs.has(runId),
@@ -120,88 +226,15 @@ export function placesRoutes(page, audit) {
         });
         return true;
       }
-      const places = Array.from({ length: config.count }, (_, i) => ({
-        placeId: `${body.textQuery}-${i + 1}`,
-        name: `${body.textQuery} 店舗${i + 1}`,
-        address: "東京都 モック区 検証町1-2-3",
-        location: { lat: 35.7 + i * 0.001, lng: 139.7 + i * 0.001 },
-        googleMapsUri: "https://example.invalid/mock-place",
-      }));
-      places.forEach((place) => {
-        candidates.set(place.placeId, place);
-        candidateRuns.set(place.placeId, request.headers()["x-run-id"]);
-      });
-      await page.evaluate((places) => {
-        places.forEach((place, i) => {
-          window.__mock.positions[
-            `${place.location.lat},${place.location.lng}`
-          ] = {
-            ...place.location,
-            id: place.placeId,
-            x: 0.16 + (i % 4) * 0.22,
-            y:
-              0.17 +
-              Math.floor(i / 4) *
-                Math.min(
-                  0.16,
-                  0.64 / Math.max(1, Math.ceil(places.length / 4) - 1),
-                ),
-          };
-        });
-      }, places);
+      const places = await registerPlaces(
+        body.textQuery,
+        config.count,
+        currentRun,
+      );
       await route.fulfill({ json: { places } });
     } else {
-      assert.equal(request.method(), "GET");
-      const id = decodeURIComponent(path.split("/").at(-1));
-      audit.detailRequests.push(id);
-      assert.ok(candidates.has(id), `Unknown candidate ${id}`);
-      if (config.detailErrors?.[id]) {
-        await route.fulfill({
-          status: config.detailErrors[id].status,
-          json: { error: config.detailErrors[id].error },
-        });
-      } else if (config.fail.includes(id)) {
-        await route.fulfill({
-          status: 429,
-          json: {
-            error: {
-              code: "RESOURCE_EXHAUSTED",
-              message:
-                "Google Places の利用上限に達しました。時間をおいて再検索してください。",
-            },
-          },
-        });
-      } else {
-        const n = Number(id.split("-").at(-1));
-        await route.fulfill({
-          json: {
-            ...candidates.get(id),
-            name: `${id} 詳細店舗`,
-            ...(n === 5 ? {} : { rating: 4, userRatingCount: 42 + n }),
-            openNow: n % 2 === 1,
-            weekdayDescriptions,
-            websiteUri: `https://example.invalid/site/${id}`,
-            reviews: [
-              {
-                text: `REVIEW:${id}`,
-                rating: 4,
-                publishTime: "2026-09-14T03:00:00Z",
-                relativePublishTimeDescription: "1週間前",
-                author: {
-                  name: `投稿者 ${id}`,
-                  ...(n === 5
-                    ? {}
-                    : {
-                        uri: `https://example.invalid/author/${id}`,
-                        photoUri,
-                      }),
-                },
-                googleMapsUri: `https://example.invalid/review/${id}`,
-              },
-            ],
-          },
-        });
-      }
+      audit.detailRequests.push(path);
+      await route.abort("blockedbyclient");
     }
     return true;
   };

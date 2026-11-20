@@ -1,11 +1,24 @@
-import { Alert, Box, Button, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Collapse,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useState, type ReactNode } from "react";
 import { Histogram } from "./Histogram";
 import { PlaceDetails } from "./PlaceDetails";
 import { ResultsList } from "./ResultsList";
 import { resultState, type SearchResult } from "@/lib/place-result";
-import { MAX_DETAILS_PER_SEARCH } from "@/lib/place-detail-batch";
+import { MAX_EVALUATIONS_PER_SEARCH } from "@/lib/place-detail-batch";
 
 type Props = {
+  // Chat box rendered above the manual search form.
+  chat: ReactNode;
+  // The manual form starts collapsed once the chat has messages; the user
+  // can still open it with the toggle.
+  hasChatMessages: boolean;
   searchTerm: string;
   setSearchTerm: (value: string) => void;
   evaluation: string;
@@ -13,22 +26,24 @@ type Props = {
   onSearch: () => void;
   searchDisabled: boolean;
   isSearching: boolean;
-  isLoadingDetails: boolean;
-  requestedDetails: number;
-  remainingDetails: number;
+  isEvaluating: boolean;
+  evaluationAttempts: number;
   searchError: string | null;
   // Explanation shown when the month or session budget is exhausted; search
-  // and "next 5" stay disabled while it is set.
+  // stays disabled while it is set.
   budgetStop: string | null;
   results: SearchResult[];
   selectedPlace: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onMore: () => void;
   onInputFocus: () => void;
 };
 export function SearchPanel(props: Props) {
   const { results, selectedPlace } = props;
+  const [manualSearchToggle, setManualSearchToggle] = useState<
+    boolean | undefined
+  >();
+  const manualSearchOpen = manualSearchToggle ?? !props.hasChatMessages;
   const selected = results.find((result) => result.placeId === selectedPlace);
   const evaluated = results.filter(
     (result) => resultState(result) === "evaluated",
@@ -52,72 +67,84 @@ export function SearchPanel(props: Props) {
           paddingBottom: "max(8px, env(safe-area-inset-bottom))",
         }}
       >
-        <Box
-          component="form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!props.searchDisabled) props.onSearch();
-          }}
-          onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              (event.nativeEvent.isComposing || event.keyCode === 229)
-            )
-              event.preventDefault();
-          }}
-          sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+        {props.chat}
+        <Button
+          type="button"
+          data-manual-search-toggle
+          size="small"
+          aria-expanded={manualSearchOpen}
+          onClick={() => setManualSearchToggle(!manualSearchOpen)}
+          sx={{ mt: 0.5, px: 0.5, minWidth: 0, fontSize: 12 }}
         >
-          <TextField
-            label="検索ワード"
-            placeholder="Enter search term"
-            size="small"
-            fullWidth
-            value={props.searchTerm}
-            onChange={(event) => props.setSearchTerm(event.target.value)}
-            onFocus={props.onInputFocus}
-          />
-          <Box sx={{ display: "flex", gap: 1 }}>
+          {manualSearchOpen ? "手動で検索 ▲" : "手動で検索 ▼"}
+        </Button>
+        <Collapse in={manualSearchOpen} unmountOnExit={false}>
+          <Box
+            component="form"
+            data-manual-search-form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!props.searchDisabled) props.onSearch();
+            }}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                (event.nativeEvent.isComposing || event.keyCode === 229)
+              )
+                event.preventDefault();
+            }}
+            sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+          >
             <TextField
-              label="評価条件"
-              placeholder="Enter evaluation"
+              label="検索ワード"
+              placeholder="Enter search term"
               size="small"
               fullWidth
-              value={props.evaluation}
-              onChange={(event) => props.setEvaluation(event.target.value)}
+              value={props.searchTerm}
+              onChange={(event) => props.setSearchTerm(event.target.value)}
               onFocus={props.onInputFocus}
             />
-            <Button
-              type="submit"
-              aria-label="search"
-              variant="contained"
-              disableElevation
-              disabled={props.searchDisabled}
-              sx={{ flexShrink: 0 }}
-            >
-              検索
-            </Button>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <TextField
+                label="評価条件"
+                placeholder="Enter evaluation"
+                size="small"
+                fullWidth
+                value={props.evaluation}
+                onChange={(event) => props.setEvaluation(event.target.value)}
+                onFocus={props.onInputFocus}
+              />
+              <Button
+                type="submit"
+                aria-label="search"
+                variant="contained"
+                disableElevation
+                disabled={props.searchDisabled}
+                sx={{ flexShrink: 0 }}
+              >
+                検索
+              </Button>
+            </Box>
           </Box>
-        </Box>
+        </Collapse>
         <Box
           role="status"
-          aria-live={
-            props.isSearching || props.isLoadingDetails ? "off" : "polite"
-          }
-          aria-busy={props.isSearching || props.isLoadingDetails}
+          aria-live={props.isSearching || props.isEvaluating ? "off" : "polite"}
+          aria-busy={props.isSearching || props.isEvaluating}
           sx={{ mt: 1 }}
         >
           <Typography variant="body2" sx={{ fontWeight: 600, fontSize: 12 }}>
             {props.isSearching
               ? "検索中..."
-              : `評価済み ${evaluated} 件 / 最大${MAX_DETAILS_PER_SEARCH}件 · 追加可能 ${props.remainingDetails} 件 · 失敗 ${failures} 件${props.isLoadingDetails ? "・評価中..." : ""}`}
+              : `評価済み ${evaluated} 件 / 最大${MAX_EVALUATIONS_PER_SEARCH}件 · 失敗 ${failures} 件${props.isEvaluating ? "・評価中..." : ""}`}
           </Typography>
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ fontSize: 11 }}
           >
-            口コミ取得対象 {props.requestedDetails} 件 / 最大
-            {MAX_DETAILS_PER_SEARCH}件 · 候補 {results.length} 件
+            評価試行 {props.evaluationAttempts} 件 / 最大
+            {MAX_EVALUATIONS_PER_SEARCH}件 · 候補 {results.length} 件
           </Typography>
         </Box>
         {props.searchError && (
@@ -144,31 +171,6 @@ export function SearchPanel(props: Props) {
             {props.budgetStop}
           </Typography>
         )}
-        {props.remainingDetails > 0 && (
-          <Button
-            size="small"
-            variant="outlined"
-            fullWidth
-            sx={{ mt: 0.75, minHeight: 36 }}
-            disabled={
-              props.isSearching ||
-              props.isLoadingDetails ||
-              props.budgetStop !== null
-            }
-            onClick={props.onMore}
-          >
-            次の{Math.min(5, props.remainingDetails)}件を評価
-          </Button>
-        )}
-        {results.length > 0 &&
-          props.remainingDetails === 0 &&
-          !props.isLoadingDetails && (
-            <Typography variant="caption" color="text.secondary">
-              {props.requestedDetails >= MAX_DETAILS_PER_SEARCH
-                ? "この検索の取得上限に達しました（失敗も含む）。"
-                : "取得可能な候補をすべて確認しました。"}
-            </Typography>
-          )}
         <Typography
           data-attribution
           variant="caption"

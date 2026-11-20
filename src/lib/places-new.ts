@@ -8,43 +8,29 @@ const PLACES_ENDPOINT = "https://places.googleapis.com/v1";
 const LANGUAGE_CODE = "ja";
 const REGION_CODE = "JP";
 
-// Text Search: every field is within the "Text Search Pro" SKU (id is
-// Essentials IDs Only). `rating` is an Enterprise field and is deliberately
-// excluded; the Google rating appears after Place Details is fetched.
+// Requesting reviews selects Text Search Enterprise + Atmosphere. One search
+// returns everything needed to display and evaluate all candidates.
 export const SEARCH_FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
   "places.location",
   "places.googleMapsUri",
-].join(",");
-
-// Place Details: `reviews` puts this request in the
-// "Place Details Enterprise + Atmosphere" SKU. Sub-fields limit the payload,
-// not the SKU.
-export const DETAIL_FIELD_MASK = [
-  "id",
-  "displayName",
-  "formattedAddress",
-  "location",
-  "googleMapsUri",
-  "rating",
-  "userRatingCount",
-  "currentOpeningHours.openNow",
-  "regularOpeningHours.weekdayDescriptions",
-  "websiteUri",
-  "reviews.text",
-  "reviews.rating",
-  "reviews.publishTime",
-  "reviews.relativePublishTimeDescription",
-  "reviews.authorAttribution",
-  "reviews.googleMapsUri",
+  "places.rating",
+  "places.userRatingCount",
+  "places.currentOpeningHours.openNow",
+  "places.regularOpeningHours.weekdayDescriptions",
+  "places.websiteUri",
+  "places.reviews.text",
+  "places.reviews.rating",
+  "places.reviews.publishTime",
+  "places.reviews.relativePublishTimeDescription",
+  "places.reviews.authorAttribution",
+  "places.reviews.googleMapsUri",
 ].join(",");
 
 export const SEARCH_QUOTA_MESSAGE =
   "Google Places の検索上限に達しました。時間をおいて再検索してください。";
-export const DETAIL_QUOTA_MESSAGE =
-  "Google Places の利用上限に達しました。時間をおいて再検索してください。";
 
 export class PlacesApiError extends Error {
   readonly httpStatus: number;
@@ -153,14 +139,9 @@ export function mapReview(raw: RawReview): Review | undefined {
   return review;
 }
 
-export function mapPlaceDetail(raw: RawPlace): PlaceDetail {
+function mapPlaceDetail(raw: RawPlace): PlaceDetail | undefined {
   const summary = mapPlaceSummary(raw);
-  if (!summary)
-    throw new PlacesApiError({
-      httpStatus: 502,
-      googleStatus: "INVALID_RESPONSE",
-      message: "Google Places の応答に場所 ID または座標がありません。",
-    });
+  if (!summary) return undefined;
   const detail: PlaceDetail = {
     ...summary,
     reviews: (raw.reviews ?? [])
@@ -178,10 +159,10 @@ export function mapPlaceDetail(raw: RawPlace): PlaceDetail {
   return detail;
 }
 
-export function mapSearchResponse(raw: RawSearchResponse): PlaceSummary[] {
-  const places: PlaceSummary[] = [];
+export function mapSearchResponse(raw: RawSearchResponse): PlaceDetail[] {
+  const places: PlaceDetail[] = [];
   for (const rawPlace of raw.places ?? []) {
-    const place = mapPlaceSummary(rawPlace);
+    const place = mapPlaceDetail(rawPlace);
     if (place) places.push(place);
     else
       console.warn(
@@ -279,7 +260,7 @@ async function callPlaces(
 export async function searchText(
   input: PlaceSearchInput,
   options: CallOptions = {},
-): Promise<PlaceSummary[]> {
+): Promise<PlaceDetail[]> {
   const requestBody: Record<string, unknown> = {
     textQuery: input.textQuery,
     locationRestriction: {
@@ -294,8 +275,7 @@ export async function searchText(
         },
       },
     },
-    // `pageSize` is the current name; `maxResultCount` is deprecated upstream.
-    pageSize: input.maxResultCount,
+    pageSize: input.pageSize,
     languageCode: LANGUAGE_CODE,
     regionCode: REGION_CODE,
   };
@@ -308,22 +288,4 @@ export async function searchText(
     options,
   );
   return mapSearchResponse(body as RawSearchResponse);
-}
-
-export async function getPlace(
-  placeId: string,
-  options: CallOptions = {},
-): Promise<PlaceDetail> {
-  const query = new URLSearchParams({
-    languageCode: LANGUAGE_CODE,
-    regionCode: REGION_CODE,
-  });
-  const body = await callPlaces(
-    `${PLACES_ENDPOINT}/places/${encodeURIComponent(placeId)}?${query}`,
-    { method: "GET" },
-    DETAIL_FIELD_MASK,
-    DETAIL_QUOTA_MESSAGE,
-    options,
-  );
-  return mapPlaceDetail(body as RawPlace);
 }

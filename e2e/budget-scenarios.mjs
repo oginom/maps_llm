@@ -12,6 +12,11 @@ const observationMs = 1000;
 
 export async function verifyBudgetHeaders(page, audit) {
   assert.deepEqual(audit.headerErrors, []);
+  assert.deepEqual(
+    audit.detailRequests,
+    [],
+    "Bundled search must not call Place Details",
+  );
   assert.ok(audit.headerRequests.length > 0);
   assert.equal(
     audit.sessionId,
@@ -89,25 +94,21 @@ async function stopCheck({ page, audit, shot }, message, hasCandidates, name) {
   const stop = page.locator("[data-budget-stop]");
   assert.equal(await stop.textContent(), message);
   assert.equal(await searchButton(page).isDisabled(), true);
-  if (hasCandidates) assert.equal(await moreButton(page).isDisabled(), true);
-  else {
-    assert.equal(await moreButton(page).count(), 0);
+  assert.equal(await moreButton(page).count(), 0);
+  if (!hasCandidates) {
     assert.equal(await page.locator("[data-result-id]").count(), 0);
   }
   const boxes = {
     stop: await screenBox(stop),
     search: await screenBox(searchButton(page)),
   };
-  if (hasCandidates) boxes.more = await screenBox(moreButton(page));
   const before = audit.headerRequests.length;
-  await page.locator("aside form").evaluate((form) => {
+  await page.locator("[data-manual-search-form]").evaluate((form) => {
     form.querySelector('button[type="submit"]').click();
     form.dispatchEvent(
       new Event("submit", { bubbles: true, cancelable: true }),
     );
   });
-  if (hasCandidates)
-    await moreButton(page).evaluate((button) => button.click());
   await page.waitForTimeout(observationMs);
   assert.equal(
     audit.headerRequests.length,
@@ -117,7 +118,7 @@ async function stopCheck({ page, audit, shot }, message, hasCandidates, name) {
   await stop.scrollIntoViewIfNeeded();
   return {
     message,
-    fetchMore: hasCandidates ? "disabled" : "absent (no candidates)",
+    fetchMore: "absent",
     boxes,
     observationMs,
     callsAfterStop: 0,
@@ -127,14 +128,15 @@ async function stopCheck({ page, audit, shot }, message, hasCandidates, name) {
 
 export const budgetScenarios = [
   [
-    "budget-run-detail",
+    "budget-run-analysis",
     async ({ page, audit, done, shot }) => {
       const name = "budget-run",
         failed = `${name}-2`;
       const message =
         "この検索の予算上限に達しました。別の検索を開始してください。";
+      const beforeAnalysis = audit.analysisRequests.length;
       await start(page, name, {
-        detailErrors: { [failed]: refusal("BUDGET_RUN_EXCEEDED", message) },
+        analysisErrors: { [failed]: refusal("BUDGET_RUN_EXCEEDED", message) },
       });
       await done(page);
       assert.equal(
@@ -153,24 +155,18 @@ export const budgetScenarios = [
       );
       assert.equal(await page.locator("[data-budget-stop]").count(), 0);
       assert.equal(await searchButton(page).isEnabled(), true);
-      assert.equal(await moreButton(page).isEnabled(), true);
+      assert.equal(await moreButton(page).count(), 0);
       await screenBox(page.locator("aside").getByRole("alert"));
-      const screenshot = await shot("budget-run-detail");
-      await moreButton(page).click();
-      await done(page);
+      const screenshot = await shot("budget-run-analysis");
+      assert.equal(audit.analysisRequests.length - beforeAnalysis, 5);
       assert.equal(
-        await page.locator('[data-fetch-state="evaluated"]').count(),
-        9,
-      );
-      assert.equal(
-        audit.detailRequests.filter((id) => id === failed).length,
+        audit.analysisRequests.filter((id) => id === failed).length,
         1,
       );
-      assert.equal(audit.analysisRequests.includes(failed), false);
       // Same search text is still a new run; exercises identity beyond query strings.
       const previousRun = audit.headerRequests.at(-1).runId;
       await page.evaluate(() => {
-        window.__mock.config.detailErrors = {};
+        window.__mock.config.analysisErrors = {};
       });
       await start(page, name);
       await done(page);
@@ -178,7 +174,7 @@ export const budgetScenarios = [
       return {
         message,
         failedPlace: failed,
-        evaluatedAfterExtraBatch: 9,
+        evaluatedBeforeBudgetStop: 4,
         newRunOnRepeatedQuery: true,
         screenshot,
       };
@@ -272,7 +268,7 @@ export const budgetScenarios = [
     },
   ],
   ...["SESSION", "MONTH"].map((scope) => [
-    `budget-${scope.toLowerCase()}-details`,
+    `budget-${scope.toLowerCase()}-analysis`,
     async (env) => {
       const { page, done } = env;
       const name = `budget-${scope.toLowerCase()}`;
@@ -281,7 +277,7 @@ export const budgetScenarios = [
           ? "このセッションの予算上限に達しました。追加取得を停止しました。"
           : "今月の予算上限に達しました。来月まで検索と追加取得を停止します。";
       await start(page, name, {
-        detailErrors: {
+        analysisErrors: {
           [`${name}-2`]: refusal(`BUDGET_${scope}_EXCEEDED`, message),
         },
       });
@@ -294,7 +290,7 @@ export const budgetScenarios = [
         env,
         message,
         true,
-        `budget-${scope.toLowerCase()}-details`,
+        `budget-${scope.toLowerCase()}-analysis`,
       );
     },
   ]),

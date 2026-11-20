@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { isClientAbort } from "./abort";
+import { CLIENT_ABORTED_MESSAGE, INTERNAL_ERROR_MESSAGE } from "./api-messages";
 import { formatIssues } from "./api-schemas";
 import {
   BudgetExceededError,
@@ -14,8 +15,7 @@ import { parseBudgetContext } from "./budget/request-context";
 import { PlacesApiError } from "./places-new";
 
 export const CLIENT_ABORTED_STATUS = 499;
-export const INTERNAL_ERROR_MESSAGE =
-  "サーバー内部でエラーが発生しました。時間をおいて再試行してください。";
+export { INTERNAL_ERROR_MESSAGE };
 
 export function errorResponse(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, { status });
@@ -108,7 +108,7 @@ export function clientAbortedResponse(route: string, startedAt: number) {
   return errorResponse(
     CLIENT_ABORTED_STATUS,
     "CLIENT_ABORTED",
-    "リクエストが中断されました。",
+    CLIENT_ABORTED_MESSAGE,
   );
 }
 

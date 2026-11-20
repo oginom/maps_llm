@@ -7,6 +7,7 @@ const TYPE_LABELS: Record<BudgetType, string> = {
   "places.details": "口コミの取得",
   "openai.analyze": "AI 評価",
   "openai.examples": "検索の準備",
+  "openai.chat": "チャットの応答",
 };
 
 export type BudgetErrorCode =

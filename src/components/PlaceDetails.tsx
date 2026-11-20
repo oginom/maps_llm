@@ -16,9 +16,9 @@ export function PlaceDetails({
 }) {
   const matchedReview =
     result.analysis && !result.analysisError
-      ? matchReview(result.analysis, result.reviews ?? [])
+      ? matchReview(result.analysis, result.reviews)
       : undefined;
-  const authors = matchedReview ? [matchedReview] : (result.reviews ?? []);
+  const authors = matchedReview ? [matchedReview] : result.reviews;
   return (
     <Box
       component="section"

@@ -14,6 +14,7 @@ import {
   SESSION_TTL_MS,
   GOOGLE_LIST_PRICE_MICROS,
   getBudgetCaps,
+  isCountCappedType,
   isGoogleType,
   isOpenAiType,
   reserveAmount,
@@ -290,22 +291,29 @@ function applySettle(
   counters.settledMicros += actualMicros;
 }
 
-function used(counters: Counters, type: BudgetType): number {
-  if (isOpenAiType(type))
-    return counters.settledMicros + counters.reservedMicros;
+function usedCount(counters: Counters, type: BudgetType): number {
   return (counters.counts[type] ?? 0) + (counters.reservedCounts[type] ?? 0);
 }
 
-function capFor(
+// OpenAI types are limited by settled + reserved micro-USD; Google types and
+// chat steps are limited by call count (chat steps by both).
+function exceedsCap(
   caps: BudgetCaps,
   scope: BudgetScope,
+  counters: Counters,
   type: BudgetType,
-): number {
-  return isOpenAiType(type) ? caps[scope].openaiMicros : caps[scope][type];
-}
-
-function increment(type: BudgetType, amount: Amount): number {
-  return isOpenAiType(type) ? amount.micros : amount.count;
+  amount: Amount,
+): boolean {
+  if (
+    isOpenAiType(type) &&
+    counters.settledMicros + counters.reservedMicros + amount.micros >
+      caps[scope].openaiMicros
+  )
+    return true;
+  return (
+    isCountCappedType(type) &&
+    usedCount(counters, type) + amount.count > caps[scope][type]
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -465,10 +473,7 @@ export class Ledger {
       ];
       if (!isStaleRun) scopes.push(["run", session.run]);
       for (const [scope, counters] of scopes)
-        if (
-          used(counters, type) + increment(type, amount) >
-          capFor(this.caps, scope, type)
-        )
+        if (exceedsCap(this.caps, scope, counters, type, amount))
           throw new BudgetExceededError(scope, type);
 
       const id = this.newId();

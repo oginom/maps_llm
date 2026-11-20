@@ -1,5 +1,9 @@
 import { budgetScenarios, verifyBudgetHeaders } from "./budget-scenarios.mjs";
-import { placesRoutes, serverErrorMessage } from "./places-routes.mjs";
+import {
+  analysisFailure,
+  placesRoutes,
+  serverErrorMessage,
+} from "./places-routes.mjs";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -75,10 +79,11 @@ async function setup(viewport) {
       const id = request.postDataJSON().reviews.replace("REVIEW:", "");
       audit.analysisRequests.push(id);
       const config = await page.evaluate(() => window.__mock.config);
-      if (config.analysisError)
+      const failure = analysisFailure(config, id);
+      if (failure)
         return route.fulfill({
-          status: config.analysisError.status,
-          json: { error: config.analysisError.error },
+          status: failure.status,
+          json: { error: failure.error },
         });
       const fulfill = () =>
         route.fulfill({
@@ -100,9 +105,12 @@ async function setup(viewport) {
     return route.continue();
   });
   await context.addInitScript({ path: `${root}e2e/maps-mock.js` });
-  await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`);
-  await page.waitForFunction(
-    () => !document.querySelector('button[aria-label="search"]')?.disabled,
+  await page.goto(`${baseURL}/?lat=35.7&lng=139.7&zoom=10`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60000,
+  });
+  await page.waitForFunction(() =>
+    document.querySelector('button[aria-label="search"]:enabled'),
   );
   return { context, page, audit };
 }
@@ -119,7 +127,7 @@ async function done(page) {
     const el = document.querySelector('[role="status"]');
     return (
       el &&
-      /口コミ取得対象/.test(el.textContent) &&
+      /評価試行/.test(el.textContent) &&
       !/評価中|検索中/.test(el.textContent)
     );
   });
@@ -130,7 +138,6 @@ async function snapshot(page) {
     return {
       searches: m.searches,
       details: m.details,
-      releasedDetails: m.releasedDetails,
       analyses: m.analyses,
       aborts: m.aborts,
       fetchErrors: m.fetchErrors,
@@ -200,6 +207,7 @@ async function check(view, scenario, run) {
     results.push(result);
     console.log(JSON.stringify(result));
   } finally {
+    await env.context.unrouteAll({ behavior: "wait" });
     await env.context.close();
   }
 }
@@ -219,16 +227,32 @@ try {
     await check(view, "1-initial", async ({ page }) => {
       await search(page, "initial");
       await done(page);
-      await pinCounts(page, 5, 7);
+      await pinCounts(page, 12, 0);
       const state = await snapshot(page);
-      assert.deepEqual(state.details, ids("initial"));
-      assert.deepEqual(state.analyses.slice().sort(), ids("initial").sort());
-      assert.match(state.status, /5 件 \/ 最大20件/);
+      assert.deepEqual(state.details, []);
+      assert.deepEqual(
+        state.analyses.slice().sort(),
+        ids("initial", 12).sort(),
+      );
+      assert.match(state.status, /12 件 \/ 最大20件/);
       assert.equal(
-        await page.getByRole("button", { name: "次の5件を評価" }).isEnabled(),
-        true,
+        await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
+        0,
       );
       return { state, screenshot: await shot(page, `${view}-initial`) };
+    });
+    await check(view, "chat-automatic-evaluation", async ({ page }) => {
+      await page.locator("[data-chat-input]").fill("電源があるカフェ");
+      await page.locator("[data-chat-send]").click();
+      await pinCounts(page, 20, 0);
+      await done(page);
+      const state = await snapshot(page);
+      assert.deepEqual(state.details, []);
+      assert.deepEqual(state.analyses.slice().sort(), ids("chat", 20).sort());
+      assert.equal(
+        await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
+        0,
+      );
     });
     await check(view, "2-cap", async ({ page }) => {
       await page.evaluate(() => {
@@ -236,37 +260,14 @@ try {
       });
       await search(page, "cap");
       await done(page);
-      const batches = [];
-      for (const count of [5, 10, 15, 20]) {
-        if (count > 5) {
-          await page.getByRole("button", { name: "次の5件を評価" }).click();
-          await done(page);
-        }
-        await pinCounts(page, count, 23 - count);
-        const batch = await snapshot(page);
-        assert.deepEqual(batch.details, ids("cap", count));
-        assert.deepEqual(
-          batch.analyses.slice().sort(),
-          ids("cap", count).sort(),
-        );
-        assert.match(batch.status, new RegExp(`${count} 件 / 最大20件`));
-        if (count < 20) {
-          assert.equal(
-            await page
-              .getByRole("button", { name: "次の5件を評価" })
-              .isEnabled(),
-            true,
-          );
-        }
-        batches.push(count);
-      }
+      await pinCounts(page, 20, 3);
       await page.waitForTimeout(250); // No automatic fetching past the cap.
       const state = await snapshot(page);
-      assert.deepEqual(state.details, ids("cap", 20));
+      assert.deepEqual(state.details, []);
       assert.deepEqual(state.analyses.slice().sort(), ids("cap", 20).sort());
       assert.equal(state.pins.length, 23);
       assert.equal(
-        await page.locator('[data-fetch-state="unfetched"]').count(),
+        await page.locator('[data-fetch-state="unevaluated"]').count(),
         3,
       );
       assert.equal(
@@ -275,94 +276,53 @@ try {
       );
       assert.match(state.status, /20 件 \/ 最大20件/);
       const screenshot = await shot(page, `${view}-cap`);
-      // Also verify a partial final batch (7 candidates => 5 + 2).
+      // Seven bundled places, one without reviews: six analyses and seven pins.
       await page.evaluate(() => {
         window.__mock.config.count = 7;
+        window.__mock.config.noReviews = ["partial-7"];
       });
       await search(page, "partial");
       await done(page);
-      await page.getByRole("button", { name: "次の2件を評価" }).click();
-      await done(page);
-      await pinCounts(page, 7, 0);
+      await pinCounts(page, 6, 1);
+      assert.equal(
+        await page.locator('[data-fetch-state="no-reviews"]').count(),
+        1,
+      );
       const partial = await snapshot(page);
       assert.deepEqual(
-        partial.details.filter((id) => id.startsWith("partial")),
-        ids("partial", 7),
+        partial.analyses.filter((id) => id.startsWith("partial")),
+        ids("partial", 6),
       );
       assert.equal(
         await page.getByRole("button", { name: /次の.*件を評価/ }).count(),
         0,
       );
-      return { state, batches, partialAttempts: 7, screenshot };
+      return { state, partialAttempts: 6, screenshot };
     });
-    await check(view, "3-double-click", async ({ page }) => {
-      await search(page, "double");
-      await done(page);
+    await check(view, "3-bounded-concurrency", async ({ page }) => {
       await page.evaluate(() => {
-        window.__mock.config.holdDetails = true;
+        window.__mock.config.gateJson = true;
       });
-      const button = page.getByRole("button", { name: "次の5件を評価" });
-      const box = await button.boundingBox();
-      await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2, {
-        delay: 30,
-      });
-      await page.waitForFunction(() => window.__mock.details.length === 10);
-      let state = await snapshot(page);
-      assert.deepEqual(state.details, ids("double", 10));
-      assert.equal(new Set(state.details).size, 10);
-      await page.waitForFunction(
-        () => window.__mock.pendingDetails.length === 5,
-      );
-      await page.evaluate(() => window.__mock.releaseDetails());
-      await done(page);
-      await pinCounts(page, 10, 2);
-      assert.match((await snapshot(page)).status, /10 件 \/ 最大20件/);
+      await search(page, "bounded");
+      await page.waitForFunction(() => window.__mock.jsonWaiting.length === 5);
+      assert.deepEqual((await snapshot(page)).analyses, ids("bounded"));
+      await page.locator('[data-result-id="bounded-7"]').click();
+      const details = page.locator("[data-place-details]");
+      assert.match(await details.textContent(), /Google 評価: 4\/5/);
       assert.equal(
-        await page.getByRole("button", { name: "次の2件を評価" }).isEnabled(),
-        true,
+        await details
+          .getByRole("link", { name: "公式サイト" })
+          .getAttribute("href"),
+        "https://example.invalid/site/bounded-7",
       );
-      const screenshot = await shot(page, `${view}-double-click`);
-      // A second search stresses synchronous re-entry before React can render.
+      assert.deepEqual((await snapshot(page)).details, []);
       await page.evaluate(() => {
-        window.__mock.config.holdDetails = false;
+        window.__mock.config.gateJson = false;
+        window.__mock.releaseJson();
       });
-      await search(page, "sync");
       await done(page);
-      await page.evaluate(() => {
-        window.__mock.config.holdDetails = true;
-        const button = [...document.querySelectorAll("button")].find((el) =>
-          el.textContent.includes("次の5件"),
-        );
-        button.click();
-        button.click();
-      });
-      await page.waitForFunction(
-        () =>
-          window.__mock.details.filter((id) => id.startsWith("sync")).length ===
-          10,
-      );
-      state = await snapshot(page);
-      assert.deepEqual(
-        state.details.filter((id) => id.startsWith("sync")),
-        ids("sync", 10),
-      );
-      await page.waitForFunction(
-        () => window.__mock.pendingDetails.length === 5,
-      );
-      await page.evaluate(() => window.__mock.releaseDetails());
-      await done(page);
-      await pinCounts(page, 10, 2);
-      const completed = await snapshot(page);
-      assert.deepEqual(
-        completed.analyses.filter((id) => id.startsWith("sync")).sort(),
-        ids("sync", 10).sort(),
-      );
-      return {
-        reservation: state,
-        state: completed,
-        screenshot,
-        note: "native dblclick + same-tick click()/click(); each reserves exactly 5 extra",
-      };
+      await pinCounts(page, 12, 0);
+      assert.deepEqual((await snapshot(page)).analyses, ids("bounded", 12));
     });
     await check(view, "4-quota-failure", async ({ page }) => {
       await page.evaluate(() => {
@@ -370,58 +330,24 @@ try {
       });
       await search(page, "failure");
       await done(page);
-      await pinCounts(page, 4, 8);
+      await pinCounts(page, 11, 1);
       const initial = await snapshot(page);
-      assert.match(initial.alert, /Google Places の利用上限/);
-      assert.equal(initial.analyses.includes("failure-2"), false);
+      assert.match(initial.alert, /レビュー分析の利用上限/);
+      assert.equal(initial.analyses.includes("failure-2"), true);
       const screenshot = await shot(page, `${view}-quota-error`);
-      await page.getByRole("button", { name: "次の5件を評価" }).click();
-      await done(page);
-      await pinCounts(page, 9, 3);
       await page.waitForTimeout(250); // Bounded observation window for unwanted retries.
       const state = await snapshot(page);
-      assert.deepEqual(state.details, ids("failure", 10));
-      assert.equal(state.details.filter((id) => id === "failure-2").length, 1);
+      assert.deepEqual(state.details, []);
+      assert.equal(state.analyses.filter((id) => id === "failure-2").length, 1);
       assert.equal(
         state.pins.find((p) => p.id === "failure-2").color,
         "#ffffff",
       );
-      assert.equal(state.analyses.length, 9);
-      assert.match(state.status, /10 件 \/ 最大20件/);
+      assert.equal(state.analyses.length, 12);
+      assert.match(state.status, /12 件 \/ 最大20件/);
       return { initial, state, screenshot };
     });
     await check(view, "5-stale-results", async ({ page }) => {
-      await page.evaluate(() => {
-        window.__mock.config.holdDetails = true;
-      });
-      await search(page, "old-details");
-      await page.waitForFunction(() => window.__mock.details.length === 5);
-      await page.waitForFunction(
-        () => window.__mock.pendingDetails.length === 5,
-      );
-      await page.evaluate(() => {
-        window.__mock.config.holdDetails = false;
-      });
-      await search(page, "new-details");
-      await done(page);
-      await pinCounts(page, 5, 7);
-      await page.waitForFunction(
-        () => window.__mock.pendingDetails.length === 5,
-      );
-      await page.evaluate(() => window.__mock.releaseDetails());
-      await page.waitForTimeout(100);
-      const detailsState = await snapshot(page);
-      assert.equal(
-        detailsState.releasedDetails.filter((id) =>
-          id.startsWith("old-details"),
-        ).length,
-        5,
-      );
-      assert.equal(
-        detailsState.analyses.some((id) => id.startsWith("old-details")),
-        false,
-      );
-      assert.ok(detailsState.pins.every((p) => p.id.startsWith("new-details")));
       // Exercise a late analysis response independently of fetch cancellation.
       await page.evaluate(() => {
         window.__mock.config.gateJson = true;
@@ -433,15 +359,19 @@ try {
       });
       await search(page, "new-json");
       await done(page);
-      await pinCounts(page, 5, 7);
+      await pinCounts(page, 12, 0);
       await page.evaluate(() => window.__mock.releaseJson());
       await page.waitForFunction(
         () => window.__mock.jsonDelivered.length === 5,
       );
       await page.waitForTimeout(100);
       const state = await snapshot(page);
+      assert.deepEqual(
+        state.analyses.filter((id) => id.startsWith("old-json")),
+        ids("old-json"),
+      );
       assert.ok(state.pins.every((p) => p.id.startsWith("new-json")));
-      assert.match(state.status, /5 件 \/ 最大20件/);
+      assert.match(state.status, /12 件 \/ 最大20件/);
       assert.equal(state.alert, null);
       if (view === "phone") {
         while (
@@ -462,7 +392,6 @@ try {
         0,
       );
       return {
-        detailsState,
         state,
         screenshot: await shot(page, `${view}-stale-results`),
       };
@@ -478,7 +407,7 @@ try {
       await search(page, "abort-new");
       await page.waitForFunction(() => window.__mock.fetchErrors.length === 5);
       await done(page);
-      await pinCounts(page, 5, 7);
+      await pinCounts(page, 12, 0);
       const state = await snapshot(page);
       assert.deepEqual(state.aborts.slice().sort(), ids("abort-old").sort());
       assert.ok(state.fetchErrors.every((e) => e.name === "AbortError"));
@@ -489,7 +418,7 @@ try {
         ids("abort-old").sort(),
       );
       assert.ok(state.pins.every((p) => p.id.startsWith("abort-new")));
-      assert.match(state.status, /5 件 \/ 最大20件/);
+      assert.match(state.status, /12 件 \/ 最大20件/);
       // Release mock server responses only after cancellation was observed.
       await Promise.allSettled(audit.holds.map((fn) => fn()));
       return {
@@ -545,11 +474,6 @@ try {
           histogram: box(document.querySelector("[data-histogram]")),
           input: box(
             document.querySelector('[placeholder="Enter search term"]'),
-          ),
-          more: box(
-            [...document.querySelectorAll("button")].find((el) =>
-              el.textContent.includes("次の5件"),
-            ),
           ),
           documentWidth: document.documentElement.scrollWidth,
         };

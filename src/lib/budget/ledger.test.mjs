@@ -42,7 +42,7 @@ test("price constants match the design", () => {
   assert.equal(openAiCostMicros(0, 1_000_000), 1_200_000);
   assert.equal(OPENAI_RESERVE_MICROS["openai.analyze"], 2_800);
   assert.equal(OPENAI_RESERVE_MICROS["openai.examples"], 1_560);
-  assert.equal(GOOGLE_LIST_PRICE_MICROS["places.search"], 32_000);
+  assert.equal(GOOGLE_LIST_PRICE_MICROS["places.search"], 40_000);
   assert.equal(GOOGLE_LIST_PRICE_MICROS["places.details"], 25_000);
 });
 
@@ -88,7 +88,7 @@ test("reserve then settle a Google call: units and list price", async () => {
   assert.deepEqual(session.pending, {});
   assert.equal(month.counts["places.search"], 1);
   assert.equal(month.reservedCounts["places.search"], 0);
-  assert.equal(month.listPriceMicros, 32_000);
+  assert.equal(month.listPriceMicros, 40_000);
   assert.equal(month.settledMicros, 0);
 });
 
