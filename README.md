@@ -2,12 +2,14 @@
 
 ## What is it?
 
-Maps LLM is a customized Google Maps application enhanced with AI capabilities.
+Move the map to the area you want to explore, then ask in Japanese, for example `電源があるカフェ` (cafés with power outlets). Chat searches the **current map viewport** using Google Places; naming a distant neighborhood does not move the search there. A manual search form is also available.
 
-- Users can search for locations based on custom evaluation criteria, and visualize the results using colored map pins.
+Both search modes fetch up to 20 places and their reviews in one Google Places request. Pins appear before individual review analysis finishes. Their colors show how well each place matches **your criterion**, not its Google star rating. Select a place to see the score, supporting review excerpt and Google Maps link.
 
 ## Development and handoff
 
 Start with the [session handoff](docs/handoff.md) for the current status and next steps. The [documentation index](docs/README.md) links the improvement plan, API limits, and historical cost audit.
 
-![maps_llm_1](docs/img/maps_llm_1.png)
+Earlier interface:
+
+![Earlier Maps LLM interface](docs/img/maps_llm_1.png)

@@ -1,0 +1,22 @@
+# チャット検索: 会話から候補ピンと口コミ評価へ
+
+地図を検索したい範囲に合わせて「電源があるカフェ」と送ると、チャットが検索語と評価条件を決める。エリア・駅名は必須ではない。検索先は**送信時の地図の表示範囲**で、地名を指定しても地図をその場所に移して検索する機能はない。何を探したいか推定できない場合は聞き返す。
+
+## 検索と評価の流れ
+
+1. ブラウザは前の実行を中断し、新しい `X-Run-Id` で `POST /api/chat` に `{ messages, viewport, selectedPlaceId? }` を送る。会話履歴はタブのメモリのみ。個店への追加質問は未実装。
+2. `ToolLoopAgent` が `search_places` に `textQuery`、`evaluation`、`examples`（`1 ... x, 5 ... y`）、必要なら営業中条件や件数を渡す。手動検索と同じ[Places アダプター](places-new-adapter.md)が **Text Search Enterprise + Atmosphere 1 回**で最大 20 店の候補・表示情報・口コミを取得する。別途 Place Details は呼ばない。
+3. **画面と会話モデルでは使うデータが異なる。** ブラウザは候補と付随する口コミを受け取り、ピンと一覧を表示する。会話モデルが検索結果への返答や次のターンに使うツール情報に口コミ原文は含めない。
+4. 手動検索と同じ自動評価処理が、取得済みの口コミを `/api/analyze-reviews` に店舗別に送る。最大 20 店、並列数を制限し、前の実行の結果は採用しない。色は条件スコアで、Google 評価とは別。口コミがない店を採点済みとみなさない。
+
+## モデル・予算・エラー
+
+会話は Vercel AI SDK の `ToolLoopAgent` と `gpt-5.6-luna`（Responses API、`reasoningEffort: "none"`、`store: false`）。`useChat` が UI メッセージストリームを受ける。[エージェント](../src/lib/chat-agent.ts)／[ツール契約](../src/lib/chat-contract.ts)／[ブラウザ側](../src/lib/chat-transport.ts)
+
+`X-Session-Id` / `X-Run-Id` は UUID v4。最初のモデルステップはストリーム開始前に予約し、その後もステップ単位で予約・精算する。Places は `places.search` 1 回、後続の採点は店舗別の `openai.analyze`。すべて同じ実行 ID に計上し、店舗数分の Google 詳細予約は作らない。[予算台帳](budget-ledger.md)
+
+開始前の入力エラー・予算超過・台帳障害は HTTP 400 / 429 / 503 と `{ error: { code, message } }`。開始後のモデルエラーはストリームのエラーチャンクに同形式を載せる。検索ツールの既知の失敗はツール結果で伝え、成功候補として描画しない。
+
+## 検証範囲
+
+ユーザーがローカルで確認したのは一括検索への変更前のチャット。新方式の実 Google / OpenAI 接続、実回答の安定性、実際の請求額、Cloud Run での中断時の課金停止は未確認。自動テストと[モックブラウザ検証](../e2e/README.md)は実 API を使わない。

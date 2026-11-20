@@ -2,7 +2,7 @@
 
 作成: 2026-09-21。引き継ぎ項目 5「アプリ側の費用・呼出し制御」の設計と実装記録。実装は `src/lib/budget/`、route 連携は `src/lib/api-route.ts` と `src/lib/openai-route.ts`、ブラウザ側は `src/lib/session-ids.ts` と `src/app/page.tsx`。
 
-**この文書の時点で実 Firestore / Google / OpenAI への接続は行っていない。** 単体テスト（メモリ・ファイル・fetch 差し替えの Firestore REST）、型検査、lint、webpack ビルドで確認した範囲と、本番前にリードが行うインフラ手順を分けて記す。
+旧検索方式では本番 Firestore への精算を確認済み。一括検索版は実 Google / OpenAI API では未検証。
 
 ## 1. 目的と前提
 
@@ -13,26 +13,28 @@
 
 ## 2. 数え方と上限
 
-| 種別              | 単位              | 予約額（呼び出し前）             | 精算額（呼び出し後）                                              |
-| ----------------- | ----------------- | -------------------------------- | ----------------------------------------------------------------- |
-| `places.search`   | 回数              | 1 回                             | 送信していれば 1 回（結果を問わない）。定価 $0.032 を参考値に加算 |
-| `places.details`  | 回数              | 1 回                             | 同上。定価 $0.025                                                 |
-| `openai.analyze`  | micro-USD（整数） | 2,800（8,000 入力 + 1,000 出力） | `usage` の実費。usage が無い失敗は予約額                          |
-| `openai.examples` | micro-USD（整数） | 1,560（600 入力 + 1,200 出力）   | 同上                                                              |
+| 種別              | 単位              | 予約額（呼び出し前）              | 精算額（呼び出し後）                                                                                    |
+| ----------------- | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `places.search`   | 回数              | 1 回                              | 送信済みなら 1 回。口コミ付き Text Search の定価参考額 $0.040。候補数による加算なし |
+| `openai.analyze`  | micro-USD（整数） | 2,800（8,000 入力 + 1,000 出力）  | `usage` の実費。usage が無い失敗は予約額                                                                |
+| `openai.examples` | micro-USD（整数） | 1,560（600 入力 + 1,200 出力）    | 同上                                                                                                    |
+| `openai.chat`     | micro-USD と回数  | 6,400（20,000 入力 + 2,000 出力） | `usage` の実費。加えて回数上限（月 500 / セッション 100 / 実行 4）。[チャット](chat-minimal-flow.md) |
 
 OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.20 / 1M トークン）。推論トークンは `completion_tokens` に含まれ、キャッシュ済み入力も満額で数える。`ceil(prompt × 0.2 + completion × 1.2)` micro-USD。設計メモの検索準備 $0.0017 はトークン数から計算すると $0.00156 になるので、計算値の 1,560 micro-USD を採用した。
 
 上限（`src/lib/budget/config.ts` の `DEFAULT_BUDGET_CAPS`）:
 
-| 範囲      | 定義                                               | OpenAI micro-USD | `places.search` | `places.details` |
-| --------- | -------------------------------------------------- | ---------------: | --------------: | ---------------: |
-| `month`   | UTC の暦月                                         | 750,000（$0.75） |              60 |              300 |
-| `session` | ブラウザのタブ 1 つ（`sessionStorage` の UUID）    | 200,000（$0.20） |              10 |               60 |
-| `run`     | 1 回の `handleSearch`（後続の「次の 5 件」を含む） |  50,000（$0.05） |               2 |               20 |
+| 範囲 | 定義 | OpenAI micro-USD | `places.search` |
+| --- | --- | ---: | ---: |
+| `month` | UTC の暦月 | 750,000（$0.75） | 60 |
+| `session` | ブラウザのタブ | 200,000（$0.20） | 10 |
+| `run` | 1 回の検索と後続の採点 | 50,000（$0.05） | 2 |
+
+手動検索・チャットともに一括検索 1 回を予約し、店舗別の Place Details 予約・精算はない。Google の詳細 100 回 / 日はプロジェクトの設定で、アプリの上限や消費回数ではない。
 
 判定は各範囲で `settled + reserved + 予約額 <= 上限`。OpenAI 種別は金額、Google 種別は回数で判定する。定価の累計（`listPriceMicros`）は月文書に集計するだけで判定には使わない。月 → セッション → 実行の順に調べ、最初に超えた範囲を返す。
 
-検証用に環境変数 `BUDGET_CAPS_JSON`（例 `{"run":{"places.details":3}}`）で一部を上書きできる。適用時は `[budget] BUDGET_CAPS_JSON override applied` を 1 回ログに出す。不正な JSON は起動時ではなく最初の予約時に例外になり、route は 500 を返す。
+検証用に環境変数 `BUDGET_CAPS_JSON`（例 `{"run":{"places.search":1}}`）で一部を上書きできる。適用時は `[budget] BUDGET_CAPS_JSON override applied` を 1 回ログに出す。不正な JSON は起動時ではなく最初の予約時に例外になり、route は 500 を返す。
 
 ## 3. 識別子
 
@@ -47,7 +49,7 @@ Firestore（Native モード、`(default)` データベース）に 2 つのコ�
 `budget_months/{YYYY-MM}`
 
 ```
-counts         { "places.search": n, "places.details": n, "openai.analyze": n, "openai.examples": n }
+counts         { "places.search": n, "openai.analyze": n, "openai.examples": n, "openai.chat": n }
 reservedCounts { 同上 }
 settledMicros  整数（OpenAI 実費の累計）
 reservedMicros 整数（未精算の予約額）
@@ -99,12 +101,12 @@ route 側の順序: ヘッダー検証 → 本文検証 → 中断確認 → 予
 | `LedgerUnavailableError`         | 503  | `BUDGET_UNAVAILABLE`      | 「利用状況の台帳に接続できないため、処理を開始できません。…」                |
 | ヘッダー不正                     | 400  | `INVALID_ARGUMENT`        | 「入力が不正です: X-Session-Id: …」                                          |
 
-種別のラベルは「場所の検索」「口コミの取得」「AI 評価」「検索の準備」。Google / OpenAI 側の割当超過は従来どおり 429 `RESOURCE_EXHAUSTED` で、コードで区別できる。
+Google / OpenAI 側の割当超過は 429 `RESOURCE_EXHAUSTED` で、アプリ側の台帳上限とはコードで区別できる。
 
 ブラウザ（`page.tsx`）の扱い:
 
 - 429 で `error.code` が `BUDGET_` で始まる場合はサーバーのメッセージを表示する（従来の固定文言は Google / OpenAI の 429 だけ）。
-- `BUDGET_MONTH_EXCEEDED` / `BUDGET_SESSION_EXCEEDED` は `budgetStop` 状態に入れ、検索ボタンと「次の N 件を評価」を無効化し、パネルに赤字の説明行（`data-budget-stop`）を出す。この状態は再読み込みまで解除されない。
+- `BUDGET_MONTH_EXCEEDED` / `BUDGET_SESSION_EXCEEDED` は `budgetStop` 状態に入り、有料操作を止めて理由をパネルに表示する。
 - `BUDGET_RUN_EXCEEDED` はその検索の警告として表示するだけで、新しい検索は可能。
 - 503 `BUDGET_UNAVAILABLE` はメッセージを表示し、自動再試行しない。
 
@@ -154,8 +156,8 @@ Firestore ストアの再試行: 5xx・ネットワークエラー・3 秒タイ
 
 ## 11. e2e モックが再現すべき形
 
-- 4 つの API 呼び出しには `X-Session-Id` と `X-Run-Id`（UUID v4）が付く。同じ検索の `generate-examples` / `places/search` / `places/{id}` / `analyze-reviews` は同じ `X-Run-Id`、同じタブは同じ `X-Session-Id`。モック側でこれを検査できる。
-- 予算超過の応答: HTTP 429、本文 `{ "error": { "code": "BUDGET_RUN_EXCEEDED" | "BUDGET_SESSION_EXCEEDED" | "BUDGET_MONTH_EXCEEDED", "message": "…" } }`。UI は `message` を表示し、SESSION / MONTH では検索ボタンと「次の N 件を評価」が無効になり `[data-budget-stop]` が現れる。
+- 各有料 API 呼び出しには `X-Session-Id` と `X-Run-Id`（UUID v4）が付く。手動検索の準備・検索またはチャット検索と、その候補の `analyze-reviews` は同じ `X-Run-Id`。同じタブは同じ `X-Session-Id`。
+- 予算超過の応答: HTTP 429、本文 `{ "error": { "code": "BUDGET_RUN_EXCEEDED" | "BUDGET_SESSION_EXCEEDED" | "BUDGET_MONTH_EXCEEDED", "message": "…" } }`。UI は `message` を表示し、SESSION / MONTH では `[data-budget-stop]` が現れる。
 - 台帳障害の応答: HTTP 503、`{ "error": { "code": "BUDGET_UNAVAILABLE", "message": "…" } }`。UI はメッセージを表示し、再試行しない。
 - 従来の 429 `RESOURCE_EXHAUSTED` の固定文言は変更なし。
 - 実サーバーを使う e2e（`next dev`）では `LEDGER_BACKEND=file` と実行ごとに新しい `LEDGER_FILE` を指定すると、前回の回数を引き継がない。回数上限を短時間で再現するには `BUDGET_CAPS_JSON` を使う。
@@ -163,4 +165,4 @@ Firestore ストアの再試行: 5xx・ネットワークエラー・3 秒タイ
 ## 12. 検証済みの範囲
 
 - `node --test src/lib/budget/*.test.mjs`: 上限の範囲別判定、10 並列予約（ミューテックス有 / 無）、予約と精算の同時実行、旧実行の遅延要求、`expiresAt` の更新、予約額未満の精算、5 分後の掃除、月またぎ、実行 ID の切り替え、解放、Firestore の値エンコード往復、`batchGet` の欠落文書、`commit` の前提条件、衝突と 5xx の扱い、`commit` の `NOT_FOUND`、デコード失敗、再試行枯渇、トークン注入、タイムアウト、ファイルストアの永続化と前提条件、ヘッダー検証。
-- 実 Firestore への接続、Cloud Run 上のメタデータサーバー認証、TTL の動作、実ブラウザでの停止表示は未検証。
+- 本番台帳を確認した旧版の記録は[引き継ぎ](handoff.md)を参照。旧版での成功は一括検索版の実 API・実請求の検証ではない。
