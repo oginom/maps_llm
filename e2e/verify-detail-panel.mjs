@@ -33,10 +33,14 @@ await runSuite({
         json: { places: await registerPlaces(page, body.textQuery, 5) },
       });
     const handle = page.locator("[data-sheet-handle]");
-    if (view === "phone")
+    if (view === "phone") {
+      // Focusing an input no longer changes the map. Expand explicitly to
+      // exercise the transition from a full sheet to the search viewport.
+      await handle.press("ArrowUp");
       await page.waitForFunction(
         () => window.__mock.map.appliedSize.height < 100,
       );
+    }
     await manual(page)
       .getByRole("button", { name: "検索", exact: true })
       .click();
