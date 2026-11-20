@@ -6,6 +6,8 @@ Read `docs/handoff.md` first when resuming work. Personal environment details su
 
 ## Agent Operating Rules
 
+- Design mobile-first journeys across planned features before adding individual controls. Use chat as the primary entry point. Show contextual controls, evidence and comparisons only when useful; keep the current question target visible. See `docs/ai-map-plan.md` for the interaction direction.
+
 - Commit changes in coherent, verified units and push them to GitHub at task milestones. Push the related commits together when working on `main`, where each push triggers deployment.
 - You (the main session) are responsible for planning, decision-making and judgment, organizing tasks, instructing and managing sub-agents, and reviewing their output.
 - Delegate the actual work, such as implementation and investigation, to sub-agents (model: default, which is Opus 5 with 1M context).
