@@ -10,6 +10,8 @@ In a place's detail panel, ask a follow-up such as `電源はどの席にある�
 
 ## Development and handoff
 
+To try the proposed chat-first interface, open [`/prototype`](http://localhost:3000/prototype) on the development server. This separate prototype uses fictional places, reviews, and walking times; it does not call the Maps or OpenAI APIs.
+
 Start with the [session handoff](docs/handoff.md) for the current status and next steps. The [documentation index](docs/README.md) links the improvement plan, API limits, and historical cost audit.
 
 Earlier interface:
