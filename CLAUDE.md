@@ -62,6 +62,8 @@ Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mj
 
 ### LLM Integration Flow
 
+Selected-place questions use `POST /api/place-question`, separate from both the area-search agent and automatic scoring. `usePlaceQuestions` preserves candidates and keeps completed turns per place for the current search. Only the selected branch's numbered reviews can be cited; the last three turns disambiguate follow-ups. Empty reviews return unknown without a model call. Otherwise one `openai.chat` reservation covers the answer. See `docs/chat-minimal-flow.md`.
+
 Manual form:
 
 1. User enters search term (e.g., "カフェ") and evaluation criteria (e.g., "電源がある")
