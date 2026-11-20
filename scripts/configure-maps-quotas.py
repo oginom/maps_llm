@@ -21,7 +21,7 @@ TARGETS = {
     "places.googleapis.com": {"SearchTextRequest": 20, "GetPlaceRequest": 100},
     "routes.googleapis.com": {
         "compute_routes_requests": 20,
-        "compute_route_matrix_elements": 30,
+        "compute_route_matrix_elements": 500,
     },
 }
 BASE = "https://serviceusage.googleapis.com/v1beta1/"
@@ -31,6 +31,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--account", required=True)
     parser.add_argument("--project", required=True)
+    parser.add_argument("--metric", choices=[
+        f"{service}/{suffix}" for service, targets in TARGETS.items() for suffix in targets
+    ], help="Inspect or apply only this metric's daily project limit")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--allow-below-usage", action="store_true",
                         help="Allow a daily cap below recent usage; API access may stop until reset")
@@ -69,6 +72,11 @@ def main():
     # Discover all targets before making any changes.
     plan = []
     for service, targets in TARGETS.items():
+        if args.metric:
+            targets = {suffix: target for suffix, target in targets.items()
+                       if f"{service}/{suffix}" == args.metric}
+            if not targets:
+                continue
         metrics = []
         query = {"view": "FULL", "pageSize": 200}
         while True:
