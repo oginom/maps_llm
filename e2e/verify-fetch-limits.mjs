@@ -55,7 +55,7 @@ async function setup(viewport) {
   page.on("requestfailed", (req) => {
     if (new URL(req.url()).pathname === "/api/analyze-reviews") {
       audit.failedRequests.push({
-        id: req.postDataJSON().reviews.replace("REVIEW:", ""),
+        id: req.postDataJSON().reviews[0].replace("REVIEW:", ""),
         error: req.failure()?.errorText,
       });
     }
@@ -76,7 +76,7 @@ async function setup(viewport) {
       });
     }
     if (url.pathname === "/api/analyze-reviews") {
-      const id = request.postDataJSON().reviews.replace("REVIEW:", "");
+      const id = request.postDataJSON().reviews[0].replace("REVIEW:", "");
       audit.analysisRequests.push(id);
       const config = await page.evaluate(() => window.__mock.config);
       const failure = analysisFailure(config, id);
@@ -89,7 +89,7 @@ async function setup(viewport) {
         route.fulfill({
           json: {
             value: 5,
-            related_review: `ANALYSIS:${id} 電源があり作業できます。`,
+            reviewNumbers: [1],
           },
         });
       if (audit.holdAnalysis) {
@@ -384,11 +384,11 @@ try {
         .getByRole("button", { name: "mock pin new-json-1", exact: true })
         .click();
       assert.equal(
-        await page.getByText("ANALYSIS:new-json-1", { exact: false }).count(),
+        await page.getByText("REVIEW:new-json-1", { exact: true }).count(),
         1,
       );
       assert.equal(
-        await page.getByText("ANALYSIS:old-json", { exact: false }).count(),
+        await page.getByText("REVIEW:old-json", { exact: false }).count(),
         0,
       );
       return {

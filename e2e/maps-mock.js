@@ -296,7 +296,7 @@
       state.details.push(id);
     }
     if (path !== "/api/analyze-reviews") return nativeFetch(input, options);
-    const id = JSON.parse(options.body).reviews.replace("REVIEW:", "");
+    const id = JSON.parse(options.body).reviews[0].replace("REVIEW:", "");
     const gate = state.config.gateJson;
     state.analyses.push(id);
     options.signal?.addEventListener("abort", () => state.aborts.push(id), {

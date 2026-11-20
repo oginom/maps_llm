@@ -15,4 +15,4 @@
 
 [Google のグローバル料金表](https://developers.google.com/maps/billing-and-pricing/pricing)では、この SKU の月間無料枠は 1,000 回、最初の有料帯は **$40 / 1,000 検索（$0.040 / 検索）**。無料枠は請求先で共有される。たとえば 20 店取得しても Google 検索の定価参考額は $0.040。店舗ごとの OpenAI 採点と地図表示は別料金。[FieldMask と SKU](https://developers.google.com/maps/billing-and-pricing/sku-details/places)／[日次割当とアプリ上限](api-limits.md)
 
-[一括検索の実 API 確認](verification-bundled-search.md)で現行の検索応答に口コミが含まれることを確認した。実請求額、採点完了までの時間は未確認。
+[旧採点方式での実 API 確認](verification-bundled-search.md)で一括検索の応答に口コミが含まれることを確認した。現行方式では根拠となる口コミ 1〜3 件を番号で選択し、原文と投稿者は同じ検索応答から取得する。判断材料がなければスコアは付けない。現行方式の完了時間、実請求額は未確認。

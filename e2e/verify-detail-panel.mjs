@@ -119,7 +119,9 @@ try {
           },
         });
       if (url.pathname === "/api/analyze-reviews") {
-        const review = req.postDataJSON().reviews;
+        const { reviews } = req.postDataJSON();
+        const [review] = reviews;
+        if (review === "REVIEW:quota-3") audit.evidenceRequest = reviews;
         audit.analysisRequests.push(review.replace("REVIEW:", ""));
         const config = await page.evaluate(() => window.__mock.config);
         const failure = analysisFailure(config, review.replace("REVIEW:", ""));
@@ -130,7 +132,13 @@ try {
           });
         const n = Number(review.split("-").at(-1));
         return route.fulfill({
-          json: { value: ((n - 1) % 5) + 1, related_review: review },
+          json:
+            review === "REVIEW:quota-6"
+              ? { value: null, reviewNumbers: [] }
+              : {
+                  value: ((n - 1) % 5) + 1,
+                  reviewNumbers: review === "REVIEW:quota-3" ? [3, 1] : [1],
+                },
         });
       }
       if (url.pathname.startsWith("/api/")) {
@@ -312,7 +320,7 @@ try {
       }
       assert.equal(
         await page.locator('[data-fetch-state="evaluated"]').count(),
-        11,
+        10,
       );
       assert.equal(
         await page.locator('[data-fetch-state="failed"]').count(),
@@ -340,7 +348,7 @@ try {
       );
       assert.match(
         await page.getByRole("status").textContent(),
-        /評価済み 11 件.*失敗 1 件.*評価試行 12 件 \/ 最大20件/,
+        /評価済み 10 件.*失敗 1 件.*評価試行 12 件 \/ 最大20件/,
       );
       const analyses = await page.evaluate(() =>
         window.__mock.analyses.filter((id) => id.startsWith("quota-")),
@@ -359,7 +367,7 @@ try {
       const bins = await page
         .locator("[data-bin]")
         .evaluateAll((els) => els.map((el) => Number(el.dataset.count)));
-      assert.deepEqual(bins, [3, 2, 2, 2, 2]);
+      assert.deepEqual(bins, [2, 2, 2, 2, 2]);
       await visibleInside(page, "[data-histogram]");
       await visibleInside(page, 'aside [role="alert"]');
       return { bins, screenshot: await shot("histogram") };
@@ -439,6 +447,48 @@ try {
         .locator("[data-detail-scroll]")
         .evaluate((el) => (el.scrollTop = el.scrollHeight));
       const screenshots = [await shot("attribution")];
+      await page.getByRole("button", { name: "一覧に戻る" }).click();
+      await page.locator('[data-result-id="quota-6"]').click();
+      assert.equal(
+        await page
+          .locator('[data-result-id="quota-6"]')
+          .getAttribute("data-fetch-state"),
+        "unknown",
+      );
+      assert.equal(
+        await page
+          .locator('[data-place-id="quota-6"]')
+          .getAttribute("data-color"),
+        "#ffffff",
+      );
+      assert.equal(
+        await detail.getByText("関連する口コミ", { exact: true }).count(),
+        0,
+      );
+      assert.doesNotMatch(await detail.textContent(), /REVIEW:|投稿者 quota-6/);
+      assert.equal(await detail.locator('a[href*="/review/"]').count(), 0);
+      await page.getByRole("button", { name: "一覧に戻る" }).click();
+      await page.locator('[data-result-id="quota-3"]').click();
+      assert.deepEqual(audit.evidenceRequest, [
+        "REVIEW:quota-3",
+        "根拠 2: quota-3",
+        "根拠 3: quota-3",
+      ]);
+      const evidenceText = await detail.textContent();
+      assert.match(
+        evidenceText,
+        /根拠 3: quota-3[\s\S]*投稿者 quota-3\/3[\s\S]*REVIEW:quota-3[\s\S]*投稿者 quota-3/,
+      );
+      assert.doesNotMatch(evidenceText, /根拠 2: quota-3|投稿者 quota-3\/2/);
+      for (const kind of ["review", "author"]) {
+        const base = `https://example.invalid/${kind}/quota-3`;
+        assert.deepEqual(
+          await detail
+            .locator(`a[href^="${base}"]`)
+            .evaluateAll((links) => links.map((link) => link.href)),
+          [`${base}/3`, base],
+        );
+      }
       for (const n of [1, 4, 5]) {
         await page.getByRole("button", { name: "一覧に戻る" }).click();
         await page.locator(`[data-result-id="quota-${n}"]`).click();

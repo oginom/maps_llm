@@ -71,6 +71,19 @@ export function placesRoutes(page, audit) {
                 },
                 googleMapsUri: `https://example.invalid/review/${id}`,
               },
+              ...(id === "quota-3"
+                ? [2, 3].map((number) => ({
+                    text: `根拠 ${number}: ${id}`,
+                    rating: number,
+                    publishTime: "2026-10-14T03:00:00Z",
+                    relativePublishTimeDescription: "1か月前",
+                    author: {
+                      name: `投稿者 ${id}/${number}`,
+                      uri: `https://example.invalid/author/${id}/${number}`,
+                    },
+                    googleMapsUri: `https://example.invalid/review/${id}/${number}`,
+                  }))
+                : []),
             ],
       };
     });
@@ -182,7 +195,7 @@ export function placesRoutes(page, audit) {
           } else {
             const id =
               path === "/api/analyze-reviews"
-                ? request.postDataJSON().reviews.replace("REVIEW:", "")
+                ? request.postDataJSON().reviews[0].replace("REVIEW:", "")
                 : decodeURIComponent(path.split("/").at(-1));
             assert.equal(
               runId,

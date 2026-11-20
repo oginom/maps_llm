@@ -27,7 +27,7 @@ Maps LLM is a Next.js application that provides a customized Google Maps interfa
 
 Node version is pinned to 24.20.0 via `.mise.toml` for local development. The Docker image uses `node:24-slim`. Node 22 or newer is required by the openai SDK 7.x.
 
-Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mjs` (Node 24 supports the TypeScript helpers directly). They cover the detail batch, review matching, the Places (New) DTO/error mapping, the zod request schemas, the budget ledger (protocol, Firestore REST store with a fake fetch, file store, header parsing), the chat budget middleware and the chat agent with a mock model and a stubbed Places call. Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
+Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mjs scripts/verify-bundled-search.test.mjs` (Node 24 supports the TypeScript helpers directly). They cover the detail batch, review evidence validation, bundled search verification, the Places (New) DTO/error mapping, the zod request schemas, the budget ledger (protocol, Firestore REST store with a fake fetch, file store, header parsing), the chat budget middleware and the chat agent with a mock model and a stubbed Places call. Mocked browser checks live under `e2e/` (see `e2e/README.md`); they never call the real Google or OpenAI APIs.
 
 ## Architecture
 
@@ -49,10 +49,10 @@ Run the unit tests with `node --test src/lib/*.test.mjs src/lib/budget/*.test.mj
 ### Key Components Structure
 
 - `src/app/page.tsx`: Main map interface. Owns the search / fetch / analysis flow, search sessions, selection and URL state, and composes the UI components.
-- `src/components/`: `BottomSheet` (PC right side panel of 400px at widths of 900px and above, phone bottom sheet with collapsed / half / full heights), `SearchPanel` (form, status line, warnings), `ResultsList`, `PlaceDetails` (score, review excerpt with reviewer attribution, Google Maps link) and `Histogram`.
-- `src/lib/place-result.ts` (score colours and result state), `src/lib/review-match.ts` (matches the LLM excerpt back to a Places review for attribution), `src/lib/map-layout.ts` (waits for the map container resize to settle before reading bounds).
+- `src/components/`: `BottomSheet` (PC right side panel of 400px at widths of 900px and above, phone bottom sheet with collapsed / half / full heights), `SearchPanel` (form, status line, warnings), `ResultsList`, `PlaceDetails` (score, original cited reviews with their respective reviewer attribution, Google Maps link) and `Histogram`.
+- `src/lib/place-result.ts` (score colours and result state), `src/lib/review-evidence.ts` (`prepareReviewTexts` for request construction and `parseReviewAnalysis(data, reviewCount, scale)` for validating scores and evidence), `src/lib/map-layout.ts` (waits for the map container resize to settle before reading bounds).
 - `src/app/api/places/search/route.ts` (POST): manual Places Text Search, validated with zod and mapped to the DTOs in `src/lib/place-dto.ts`. There is no standalone Place Details route or detail ledger charge. Google quota errors become 429, key/permission problems 502, bad input 400.
-- `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Body is zod-validated (`reviews`, `metric`, `examples`, `scale`). Returns `{ value, related_review }` as JSON. OpenAI 429 / `insufficient_quota` become 429, other API errors 502, and an empty or invalid model response 500. Usage tokens and duration are logged per call.
+- `src/app/api/analyze-reviews/route.ts`: OpenAI API endpoint for review analysis. Body is zod-validated (`reviews: string[]`, `metric`, `examples`, `scale`). Returns `{ value: number | null, reviewNumbers: number[] }`. A score requires 1–3 unique, 1-based positions in the submitted array. Insufficient evidence returns `{ value: null, reviewNumbers: [] }`. OpenAI 429 / `insufficient_quota` become 429, other API errors 502, and an empty or invalid model response 500. Usage tokens and duration are logged per call.
 - All API routes return `{ error: { code, message } }` on failure and pass the request's AbortSignal upstream.
 - `src/lib/budget/`: persistent cost / call ledger (`docs/budget-ledger.md`). Every paid route requires `X-Session-Id` / `X-Run-Id` (UUID v4, 400 otherwise), calls `reserveBudget` before the upstream request and `settleReservation` in `finally`. Caps per month / session / run live in `budget/config.ts`; a refused reservation is 429 `BUDGET_MONTH_EXCEEDED` / `BUDGET_SESSION_EXCEEDED` / `BUDGET_RUN_EXCEEDED`, an unreachable ledger is 503 `BUDGET_UNAVAILABLE` (fail closed). Backends: Firestore REST (`firestore-store.ts`, production), a JSON file (`file-store.ts`, development only) and memory (tests). The browser ids come from `src/lib/session-ids.ts`.
 - `src/app/api/generate-examples/route.ts`: OpenAI API endpoint for generating evaluation examples and an optimized search query. Returns `{ examples, searchQuery }` as JSON. The system prompt must keep its concrete 入力/出力 example; without it the model has returned a JSON string inside `examples`.
@@ -76,7 +76,7 @@ Chat:
 
 Both paths then:
 
-4. Automatically analyze the reviews already returned by Text Search (at most 5 reviews per place), with bounded concurrency and up to 20 unique candidates. `/api/analyze-reviews` scores each eligible place and extracts an excerpt; it does not call Google.
+4. Automatically analyze the reviews already returned by Text Search (at most 5 reviews per place), with bounded concurrency and up to 20 unique candidates. `/api/analyze-reviews` identifies supporting originals by number; unknown results are not counted as scored. It does not call Google.
 5. Map markers are color-coded based on the LLM evaluation scores
 
 The LLM prompts are written in Japanese and expect Japanese input.
