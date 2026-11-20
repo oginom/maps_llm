@@ -73,7 +73,10 @@ export function BottomSheet({
         bgcolor: "#eef2f5",
       }}
     >
-      <Box data-map-region sx={{ flex: 1, minWidth: 0, minHeight: 64 }}>
+      <Box
+        data-map-region
+        sx={{ flex: 1, minWidth: 0, minHeight: 64, order: { xs: 0, md: 1 } }}
+      >
         {map}
       </Box>
       <Paper
@@ -84,7 +87,8 @@ export function BottomSheet({
         square
         elevation={3}
         sx={{
-          width: { xs: "100%", md: 400 },
+          width: { xs: "100%", md: 420 },
+          order: { xs: 1, md: 0 },
           flexShrink: 0,
           minHeight: 0,
           height: {
@@ -101,7 +105,7 @@ export function BottomSheet({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          borderRadius: { xs: "16px 16px 0 0", md: 0 },
+          borderRadius: { xs: "20px 20px 0 0", md: 0 },
           "& [data-panel-body]": {
             display: {
               xs: height === "collapsed" ? "none" : "flex",
