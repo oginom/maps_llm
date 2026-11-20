@@ -22,11 +22,7 @@ import {
 import { MAX_EVALUATION_LENGTH } from "@/lib/api-schemas";
 import { BottomSheet, type SheetHeight } from "@/components/BottomSheet";
 import { evaluatePlaceBatches } from "@/lib/place-detail-batch";
-import {
-  createSearchResults,
-  getRatingColor,
-  type SearchResult,
-} from "@/lib/place-result";
+import { createSearchResults, resultState, type SearchResult } from "@/lib/place-result";
 import { parseReviewAnalysis, prepareReviewTexts } from "@/lib/review-evidence";
 import type {
   PlaceDetail,
@@ -43,6 +39,7 @@ import { MapChatTransport } from "@/lib/chat-transport";
 import { viewportToRectangle } from "@/lib/viewport";
 import { budgetHeaders, newRunId } from "@/lib/session-ids";
 import { usePlaceQuestions } from "@/lib/use-place-questions";
+import { markerSvg } from "@/lib/map-marker";
 
 const defaultCenter = {
   lat: 35.7,
@@ -841,7 +838,18 @@ function MapContent() {
             <Marker
               position={comparison.origin}
               title={WALKING_ORIGIN_LABEL}
-              label={{ text: "発", color: "white" }}
+              icon={{
+                url: markerSvg({ origin: true }),
+                scaledSize: new google.maps.Size(48, 54),
+                anchor: new google.maps.Point(24, 51),
+                labelOrigin: new google.maps.Point(24, 22),
+              }}
+              label={{
+                text: "発",
+                color: "#fffdf7",
+                fontSize: "14px",
+                fontWeight: "700",
+              }}
               zIndex={999}
             />
           )}
@@ -853,20 +861,21 @@ function MapContent() {
               title={`${index + 1}. ${result.name}`}
               zIndex={selectedPlace === result.placeId ? 1000 : index}
               icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: result.value
-                  ? getRatingColor(result.value, true)
-                  : "#ffffff",
-                fillOpacity: 0.75,
-                strokeColor: "#152d45",
-                strokeWeight:
-                  selectedPlace === result.placeId ||
-                  comparison?.placeIds.includes(result.placeId)
-                    ? 4
-                    : 1,
-                scale: 20,
+                url: markerSvg({
+                  value: resultState(result) === "evaluated" ? result.value : null,
+                  selected: selectedPlace === result.placeId,
+                  compared: comparison?.placeIds.includes(result.placeId),
+                }),
+                scaledSize: new google.maps.Size(48, 54),
+                anchor: new google.maps.Point(24, 51),
+                labelOrigin: new google.maps.Point(24, 22),
               }}
-              label={{ text: String(index + 1), color: "black" }}
+              label={{
+                text: String(index + 1),
+                color: "#fffdf7",
+                fontSize: "14px",
+                fontWeight: "700",
+              }}
             />
           ))}
         </Map>

@@ -1,40 +1,65 @@
-import { Box, Typography } from "@mui/material";
-import { getRatingColor, type SearchResult } from "@/lib/place-result";
+import { resultState, type SearchResult } from "@/lib/place-result";
+import { SCORE_COLORS, UNSCORED_COLOR } from "@/lib/score-colors";
+import styles from "./MapConversationPanel.module.css";
 
 export function Histogram({ results }: { results: SearchResult[] }) {
   const bins = [0, 0, 0, 0, 0];
-  results.forEach(({ value }) => {
-    if (value && value >= 1 && value <= 5) bins[Math.floor(value) - 1]++;
+  let unscored = 0;
+  results.forEach((result) => {
+    const { value } = result;
+    if (resultState(result) === "evaluated" && value != null && Number.isFinite(value) && value >= 1 && value <= 5)
+      bins[Math.min(4, Math.floor(value) - 1)]++;
+    else unscored++;
   });
+  const maximum = Math.max(1, ...bins, unscored);
   return (
-    <Box
-      aria-label="評価の分布"
+    <section
+      className={styles.distribution}
+      aria-label="適合度の分布"
       data-histogram
-      sx={{ px: 1.5, py: 0.75, borderTop: "1px solid #e0e5ea", flexShrink: 0 }}
     >
-      <Typography variant="caption">
-        分布 · 条件への評価（1 低 → 5 高）
-      </Typography>
-      <Box sx={{ display: "flex", gap: 0.5, height: 28, alignItems: "end" }}>
+      <div className={styles.distributionHeading}>
+        適合度の分布 <span>低 → 高</span>
+      </div>
+      <div className={styles.bins}>
         {bins.map((count, index) => (
-          <Box
+          <div
             key={index}
+            className={styles.bin}
             data-bin={index + 1}
             data-count={count}
-            sx={{
-              flex: 1,
-              textAlign: "center",
-              fontSize: 11,
-              color: "#111",
-              bgcolor: getRatingColor(index + 1, true),
-              height: `${18 + (count / Math.max(1, ...bins)) * 10}px`,
-              borderRadius: "3px 3px 0 0",
-            }}
+            aria-label={`適合度 ${index + 1}、${count}件`}
           >
-            {index + 1}: {count}件
-          </Box>
+            <span
+              className={styles.binBar}
+              style={{
+                backgroundColor: SCORE_COLORS[index],
+                height: `${(20 * count) / maximum}px`,
+              }}
+            />
+            <span>
+              {index + 1}点 <b>{count}件</b>
+            </span>
+          </div>
         ))}
-      </Box>
-    </Box>
+        <div
+          className={styles.bin}
+          data-bin="unscored"
+          data-count={unscored}
+          aria-label={`未採点、${unscored}件`}
+        >
+          <span
+            className={styles.binBar}
+            style={{
+              backgroundColor: UNSCORED_COLOR,
+              height: `${(20 * unscored) / maximum}px`,
+            }}
+          />
+          <span>
+            未採点 <b>{unscored}件</b>
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }

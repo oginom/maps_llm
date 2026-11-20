@@ -230,16 +230,31 @@
       Object.assign(this.element.style, {
         left: Number.isFinite(point.x) ? `${point.x}px` : "50%",
         top: Number.isFinite(point.y) ? `${point.y}px` : "50%",
-        background: icon?.fillColor ?? "#53657a",
-        borderWidth: `${icon?.strokeWeight ?? 1}px`,
+        background: icon?.url
+          ? `center / contain no-repeat url("${icon.url}")`
+          : (icon?.fillColor ?? "#53657a"),
+        borderWidth: icon?.url ? "0" : `${icon?.strokeWeight ?? 1}px`,
         borderColor: icon?.strokeColor ?? "#333",
       });
-      if (icon) this.element.dataset.placeId = position.id;
-      this.element.dataset.color = icon?.fillColor ?? "";
+      if (position.id) this.element.dataset.placeId = position.id;
+      const svg = icon?.url ? decodeURIComponent(icon.url.split(",")[1]) : "";
+      this.element.dataset.color =
+        svg.match(/<path d="M24 45[^>]*fill="([^"]+)/)?.[1] ??
+        icon?.fillColor ??
+        "";
+      if (icon?.url)
+        Object.assign(this.element.style, {
+          width: "48px",
+          height: "54px",
+          borderRadius: "0",
+          color: label.color,
+          fontWeight: "700",
+          paddingBottom: "10px",
+        });
       this.element.dataset.selected = String(icon?.strokeWeight === 4);
       this.element.setAttribute(
         "aria-label",
-        icon ? `mock pin ${position.id}` : this.options.title,
+        position.id ? `mock pin ${position.id}` : this.options.title,
       );
       this.element.textContent = label.text;
     }
@@ -335,6 +350,18 @@
     LatLngBounds,
     event,
     SymbolPath: { CIRCLE: 0 },
+    Size: class {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+      }
+    },
+    Point: class {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+    },
   };
   maps.importLibrary = async (name) => {
     if (name === "places")

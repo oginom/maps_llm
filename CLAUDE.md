@@ -119,7 +119,7 @@ See `.env.example`. `.env` and `.env.local` are gitignored.
 - Real-time geolocation detection (used as the initial map center when no `lat`/`lng` is in the URL)
 - Batch processing of review analysis to avoid API rate limits
 - Scoped chat, ranked results, cited branch answers and walking comparison in a side panel (PC) or bottom sheet (phone)
-- Color-coded markers based on evaluation scores (blue=high score, red=low score)
+- Numbered map pins, candidate score labels and the visible score distribution use the same five-color scale (terracotta to teal). Unscored places are neutral and counted separately.
 - Stable numbered pins link ranked candidates to the map
 - URL state persistence for sharing locations
 

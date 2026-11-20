@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   WALKING_ORIGIN_LABEL,
   WALKING_ROUTE_NOTICE,
   type MapConversationProps,
 } from "@/lib/map-conversation";
 import { resultState, stateLabels } from "@/lib/place-result";
+import { scoreColor } from "@/lib/score-colors";
 import { ReviewEvidence } from "./ReviewEvidence";
 import { Histogram } from "./Histogram";
 import styles from "./MapConversationPanel.module.css";
@@ -31,7 +33,12 @@ export function MapConversationPanel(props: MapConversationProps) {
     <section className={styles.panel} aria-label="チャットと検索結果">
       <div data-panel-body className={styles.body}>
         <header className={styles.header}>
-          <h1>まちのコンパス</h1>
+          <img
+            src="/service-mark.svg"
+            alt="まちのコンパス"
+            width={32}
+            height={32}
+          />
         </header>
         <div className={styles.scroll}>
           <div className={styles.conversation} aria-live="polite">
@@ -42,7 +49,12 @@ export function MapConversationPanel(props: MapConversationProps) {
               >
                 {message.role === "assistant" && (
                   <span className={styles.avatar} aria-hidden="true">
-                    ✳
+                    <img
+                      src="/assistant-mark.svg"
+                      alt=""
+                      width={18}
+                      height={18}
+                    />
                   </span>
                 )}
                 <div className={styles.bubble}>{message.text}</div>
@@ -277,6 +289,7 @@ export function MapConversationPanel(props: MapConversationProps) {
                   </h2>
                   {props.criterion && <span>{props.criterion}で評価</span>}
                 </div>
+                <Histogram results={candidates} />
                 {comparison && (
                   <div className={styles.notice}>
                     <div className={styles.noticeHeading}>
@@ -325,6 +338,11 @@ export function MapConversationPanel(props: MapConversationProps) {
                         <span
                           className={styles.score}
                           data-score={candidate.value ?? ""}
+                          style={{
+                            color: scoreColor(
+                              state === "evaluated" ? candidate.value : null,
+                            ),
+                          }}
                         >
                           <b>{state === "evaluated" ? candidate.value : "—"}</b>
                           <small>適合度 / 5</small>
@@ -407,10 +425,6 @@ export function MapConversationPanel(props: MapConversationProps) {
                     </div>
                   </div>
                 )}
-                <details className={styles.evidence}>
-                  <summary>評価の分布を見る</summary>
-                  <Histogram results={candidates} />
-                </details>
                 <p className={styles.dataNote}>
                   適合度は口コミに基づく条件評価です · Google Maps
                 </p>
