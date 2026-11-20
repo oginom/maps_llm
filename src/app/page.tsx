@@ -11,6 +11,7 @@ import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { flushSync } from "react-dom";
 import { waitForMapLayout } from "@/lib/map-layout";
+import { trackSearchViewport } from "@/lib/search-viewport";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapConversationPanel } from "@/components/MapConversationPanel";
 import {
@@ -110,6 +111,18 @@ function MapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const map = useMap();
+  const camera = useRef<ReturnType<typeof trackSearchViewport> | null>(null);
+  const pendingSend = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (!map) return;
+    const tracker = trackSearchViewport(map);
+    camera.current = tracker;
+    return () => {
+      pendingSend.current?.abort();
+      tracker.dispose();
+      camera.current = null;
+    };
+  }, [map]);
 
   const [sheetHeight, setSheetHeight] = useState<SheetHeight>("half");
   const [scope, setScope] = useState<ConversationScope>("map");
@@ -347,6 +360,26 @@ function MapContent() {
   const isCurrentRun = (controller: AbortController) =>
     searchController.current === controller && !controller.signal.aborted;
 
+  const startMapSearch = async () => {
+    if (pendingSend.current) return;
+    const capture = new AbortController();
+    pendingSend.current = capture;
+    layoutController.current?.abort();
+    try {
+      if (!camera.current || camera.current.map !== map)
+        throw new Error("地図の表示範囲を取得できませんでした。");
+      const viewport = await camera.current.snapshot(capture.signal);
+      if (!capture.signal.aborted) return { viewport, ...beginRun() };
+    } catch (error) {
+      if (!capture.signal.aborted) {
+        setChatError(null);
+        reportRunError(error, "地図の表示範囲を取得できませんでした。");
+      }
+    } finally {
+      if (pendingSend.current === capture) pendingSend.current = null;
+    }
+  };
+
   const endRun = (controller: AbortController) => {
     if (!isCurrentRun(controller)) return;
     searchInProgress.current = false;
@@ -354,7 +387,7 @@ function MapContent() {
   };
 
   // Expand the searchable map (mobile sheet to half) and wait for Maps to
-  // apply the resize before reading bounds or fitting.
+  // apply the resize before fitting results.
   const prepareSearchMap = (controller: AbortController) =>
     waitForMapLayout(map!.getDiv(), controller.signal, () => {
       if (window.matchMedia("(max-width: 899.95px)").matches)
@@ -416,10 +449,10 @@ function MapContent() {
       budgetStop
     )
       return;
-    const { controller, runId } = beginRun();
+    const run = await startMapSearch();
+    if (!run) return;
+    const { controller, runId, viewport } = run;
     try {
-      // Expand the searchable map before preparing the query. Observe again
-      // before reading bounds / fitting, in case the viewport changed meanwhile.
       await prepareSearchMap(controller);
       if (!isCurrentRun(controller)) return;
       const response = await fetch("/api/generate-examples", {
@@ -440,10 +473,6 @@ function MapContent() {
         );
       const { examples, searchQuery } = await response.json();
       if (!isCurrentRun(controller)) return;
-      await prepareSearchMap(controller);
-      if (!isCurrentRun(controller)) return;
-      const viewport = map.getBounds()?.toJSON();
-      if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
       const searchRequest: PlaceSearchRequest = {
         textQuery: searchQuery,
         rectangle: viewportToRectangle(viewport),
@@ -510,14 +539,14 @@ function MapContent() {
       budgetStop
     )
       return;
-    const { controller, runId } = beginRun();
+    const run = await startMapSearch();
+    if (!run) return;
+    const { controller, runId, viewport } = run;
     chatRunController.current = controller;
     setChatError(null);
     try {
       await prepareSearchMap(controller);
       if (!isCurrentRun(controller)) return;
-      const viewport = map.getBounds()?.toJSON();
-      if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
       chatTransport.setRequestContext({
         runId,
         viewport,
@@ -540,6 +569,7 @@ function MapContent() {
   };
 
   const handleStopChat = () => {
+    pendingSend.current?.abort();
     if (placeQuestions.questions.pendingQuestion) {
       placeQuestions.cancel();
       return;
@@ -603,6 +633,7 @@ function MapContent() {
       (height === sheetHeight && !isSelection)
     )
       return;
+    pendingSend.current?.abort();
     layoutController.current?.abort();
     const controller = new AbortController();
     layoutController.current = controller;
@@ -657,6 +688,7 @@ function MapContent() {
       (next === "candidates" && !results.length)
     )
       return;
+    pendingSend.current?.abort();
     placeQuestions.cancel();
     layoutController.current?.abort();
     cancelComparison();

@@ -29,7 +29,7 @@ export const searchPlacesInputSchema = z
       .min(1)
       .max(MAX_TEXT_QUERY_LENGTH)
       .describe(
-        "Google Places のテキスト検索語。地名がなければ種類または店名だけ（例: カフェ / スターバックス）。明記された地名・駅名は後ろに付ける（例: 喫茶店 渋谷）。評価条件は含めない。",
+        "Google Places のテキスト検索語。今回の依頼に地名がなければ種類または店名だけ（例: カフェ / スターバックス）。今回明記された地名・駅名は後ろに付ける（例: 喫茶店 渋谷）。過去の検索地域や評価条件は含めない。",
       ),
     evaluation: z
       .string()
