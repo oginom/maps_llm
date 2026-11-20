@@ -2,7 +2,7 @@
 
 ## What is it?
 
-Open `/` and move the Google map to the area you want to explore. One chat input shows what your next message applies to:
+Open `/`, move the Google map to the area you want to explore, and start your search in chat. All area searches start there. The label on the chat input shows what your next message applies to:
 
 - **Map:** Ask `電源があるカフェ` (cafés with power outlets). One Google Places search fetches up to 20 candidates and their reviews in the current viewport. Pin colors show how well each place matches your criterion. Insufficient evidence means no score.
 - **Current candidates:** Change the criterion to `静かに読書できる` (quiet enough to read). The app ranks the same places using the reviews already fetched, without another Places search.

@@ -25,11 +25,7 @@ import { BottomSheet, type SheetHeight } from "@/components/BottomSheet";
 import { evaluatePlaceBatches } from "@/lib/place-detail-batch";
 import { createSearchResults, resultState, type SearchResult } from "@/lib/place-result";
 import { parseReviewAnalysis, prepareReviewTexts } from "@/lib/review-evidence";
-import type {
-  PlaceDetail,
-  PlaceSearchRequest,
-  PlaceSearchResponse,
-} from "@/lib/place-dto";
+import type { PlaceDetail } from "@/lib/place-dto";
 import {
   isSearchPlacesFailure,
   parseChatErrorText,
@@ -37,7 +33,6 @@ import {
   type SearchPlacesResult,
 } from "@/lib/chat-contract";
 import { MapChatTransport } from "@/lib/chat-transport";
-import { viewportToRectangle } from "@/lib/viewport";
 import { budgetHeaders, newRunId } from "@/lib/session-ids";
 import { usePlaceQuestions } from "@/lib/use-place-questions";
 import { markerSvg } from "@/lib/map-marker";
@@ -141,8 +136,6 @@ function MapContent() {
     walkingRequest.current = null;
     setComparison(null);
   };
-  const [searchTerm, setSearchTerm] = useState("カフェ");
-  const [evaluation, setEvaluation] = useState("電源がある");
   const [center, setCenter] = useState(defaultCenter);
   const [zoom, setZoom] = useState(defaultZoom);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
@@ -199,8 +192,6 @@ function MapContent() {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
     const zoomParam = searchParams.get("zoom");
-    const searchTermParam = searchParams.get("searchTerm");
-    const evaluationParam = searchParams.get("evaluation");
 
     if (lat && lng) {
       setCenter({
@@ -210,12 +201,6 @@ function MapContent() {
     }
     if (zoomParam) {
       setZoom(parseInt(zoomParam));
-    }
-    if (searchTermParam) {
-      setSearchTerm(searchTermParam);
-    }
-    if (evaluationParam) {
-      setEvaluation(evaluationParam);
     }
   }, [searchParams]);
 
@@ -227,16 +212,12 @@ function MapContent() {
     params.set("lat", newCenter.lat.toString());
     params.set("lng", newCenter.lng.toString());
     params.set("zoom", newZoom.toString());
-    params.set("searchTerm", searchTerm);
-    params.set("evaluation", evaluation);
 
     const currentParams = new URLSearchParams(window.location.search);
     if (
       currentParams.get("lat") === params.get("lat") &&
       currentParams.get("lng") === params.get("lng") &&
-      currentParams.get("zoom") === params.get("zoom") &&
-      currentParams.get("searchTerm") === params.get("searchTerm") &&
-      currentParams.get("evaluation") === params.get("evaluation")
+      currentParams.get("zoom") === params.get("zoom")
     ) {
       return;
     }
@@ -331,8 +312,7 @@ function MapContent() {
     }
   };
 
-  // Common start of a manual search or a chat message: abort the previous
-  // run, reset the results and hand out the new controller and budget run id.
+  // A new map search replaces the previous run and its candidates.
   const beginRun = () => {
     cancelComparison();
     setScope("map");
@@ -399,8 +379,7 @@ function MapContent() {
     else setSearchError(error instanceof Error ? error.message : fallback);
   };
 
-  // Shared by the manual form and the chat tool result: show the candidates
-  // as pins and rows, fit the map, then start review analysis.
+  // Show the tool result as pins and rows, fit the map, then start review analysis.
   const applyCandidates = async (input: {
     controller: AbortController;
     runId: string;
@@ -439,74 +418,6 @@ function MapContent() {
     if (candidates.length === 0)
       setSearchError("条件に合う場所が見つかりませんでした。");
     void evaluateCandidates(session);
-  };
-
-  const handleSearch = async () => {
-    if (
-      !map ||
-      searchInProgress.current ||
-      chatRunController.current ||
-      budgetStop
-    )
-      return;
-    const run = await startMapSearch();
-    if (!run) return;
-    const { controller, runId, viewport } = run;
-    try {
-      await prepareSearchMap(controller);
-      if (!isCurrentRun(controller)) return;
-      const response = await fetch("/api/generate-examples", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...budgetHeaders(runId),
-        },
-        signal: controller.signal,
-        body: JSON.stringify({ searchTerm, evaluation }),
-      });
-      if (!response.ok)
-        throw await readApiError(
-          response,
-          response.status === 429
-            ? "検索の利用上限に達しました。"
-            : "検索の準備に失敗しました。時間をおいて再検索してください。",
-        );
-      const { examples, searchQuery } = await response.json();
-      if (!isCurrentRun(controller)) return;
-      const searchRequest: PlaceSearchRequest = {
-        textQuery: searchQuery,
-        rectangle: viewportToRectangle(viewport),
-      };
-      const searchResponse = await fetch("/api/places/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...budgetHeaders(runId),
-        },
-        signal: controller.signal,
-        body: JSON.stringify(searchRequest),
-      });
-      if (!searchResponse.ok)
-        throw await readApiError(
-          searchResponse,
-          searchResponse.status === 429
-            ? "Google Places の検索上限に達しました。時間をおいて再検索してください。"
-            : "場所の検索に失敗しました。",
-        );
-      const { places }: PlaceSearchResponse = await searchResponse.json();
-      await applyCandidates({
-        controller,
-        runId,
-        places,
-        evaluation,
-        examples,
-      });
-    } catch (error) {
-      if (isCurrentRun(controller))
-        reportRunError(error, "検索に失敗しました。");
-    } finally {
-      endRun(controller);
-    }
   };
 
   // Chat: one message = one run. The tool result arrives through the
@@ -937,13 +848,6 @@ function MapContent() {
         evaluationAttempts={evaluationAttempts}
         disabled={!map || budgetStop !== null}
         error={budgetStop ?? chatError ?? searchError}
-        manualSearch={{
-          searchTerm,
-          evaluation,
-          setSearchTerm,
-          setEvaluation,
-          submit: handleSearch,
-        }}
         clarification={clarification}
         onScope={changeScope}
         onSelect={selectPlace}

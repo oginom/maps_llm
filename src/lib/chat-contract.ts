@@ -14,9 +14,7 @@ import type { ChatAgent } from "./chat-agent.ts";
 
 export const CHAT_TOOL_NAME = "search_places";
 
-// The 1-5 scale examples must use the exact shape /api/generate-examples
-// produces ("1 ... lowest, 5 ... highest"), because /api/analyze-reviews
-// interpolates the string into its prompt as-is.
+// /api/analyze-reviews inserts the scale examples into its prompt as-is.
 export const EXAMPLES_PATTERN = /^1 \.\.\. \S.*, 5 \.\.\. \S.*$/;
 export const EXAMPLES_FORMAT_MESSAGE =
   'examples は "1 ... 最低評価の例, 5 ... 最高評価の例" の形式でなければなりません。';

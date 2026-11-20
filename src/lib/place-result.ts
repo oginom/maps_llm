@@ -10,9 +10,8 @@ export type SearchResult = PlaceDetail & {
   analysisError?: boolean;
 };
 
-// Candidates as the browser holds them right after a search (manual form or
-// chat tool result): reviews and attribution included, keyed by place id, duplicates
-// dropped, ordered as Places returned them.
+// Candidates from the chat tool include reviews and attribution, keyed by
+// place id with duplicates dropped, ordered as Places returned them.
 export function createSearchResults(
   places: PlaceDetail[],
   criteria: { evaluation: string; examples: string },

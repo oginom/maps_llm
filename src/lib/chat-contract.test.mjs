@@ -14,7 +14,7 @@ const validInput = {
   examples: "1 ... 電源は一切ない, 5 ... 全席に電源完備",
 };
 
-test("search_places input accepts the generate-examples format and optional flags", () => {
+test("search_places input accepts the scoring examples format and optional flags", () => {
   assert.deepEqual(searchPlacesInputSchema.parse(validInput), validInput);
   const withFlags = searchPlacesInputSchema.parse({
     ...validInput,

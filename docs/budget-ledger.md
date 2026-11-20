@@ -18,10 +18,9 @@
 | `places.search`   | 回数              | 1 回                              | 送信済みなら 1 回。口コミ付き Text Search の定価参考額 $0.040。候補数による加算なし |
 | `routes.matrixElement` | 要素数 | 2 要素（1 出発地 × 2 店） | 送信済みなら 2 要素。台帳の参考額は $0.005 / 要素、$0.010 / 比較 |
 | `openai.analyze`  | micro-USD（整数） | 2,800（8,000 入力 + 1,000 出力）  | `usage` の実費。usage が無い失敗は予約額                                                                |
-| `openai.examples` | micro-USD（整数） | 1,560（600 入力 + 1,200 出力）    | 同上                                                                                                    |
 | `openai.chat`     | micro-USD と回数  | 6,400（20,000 入力 + 2,000 出力） | `usage` の実費。加えて回数上限（月 500 / セッション 100 / 実行 4）。[チャット](chat-minimal-flow.md) |
 
-OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.20 / 1M トークン）。推論トークンは `completion_tokens` に含まれ、キャッシュ済み入力も満額で数える。`ceil(prompt × 0.2 + completion × 1.2)` micro-USD。設計メモの検索準備 $0.0017 はトークン数から計算すると $0.00156 になるので、計算値の 1,560 micro-USD を採用した。
+OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.20 / 1M トークン）。推論トークンは `completion_tokens` に含まれ、キャッシュ済み入力も満額で数える。`ceil(prompt × 0.2 + completion × 1.2)` micro-USD。旧フォームの検索準備は `openai.examples` として 1,560 micro-USD を予約していた。現在はチャットが検索条件を決めるので、その個別予約はない。
 
 上限（`src/lib/budget/config.ts` の `DEFAULT_BUDGET_CAPS`）:
 
@@ -31,7 +30,7 @@ OpenAI の単価は Luna の定価（入力 $0.20 / 1M トークン、出力 $1.
 | `session` | ブラウザのタブ | 200,000（$0.20） | 10 | 8 |
 | `run` | 1 回の実行 | 50,000（$0.05） | 2 | 4 |
 
-手動検索・チャットともに一括検索 1 回を予約し、店舗別の Place Details 予約・精算はない。Google の詳細 100 回 / 日はプロジェクトの設定で、アプリの上限や消費回数ではない。
+`search_places` は一括検索 1 回を予約し、店舗別の Place Details 予約・精算はない。Google の詳細 100 回 / 日はプロジェクトの設定で、アプリの上限や消費回数ではない。
 
 判定は各範囲で `settled + reserved + 予約額 <= 上限`。OpenAI 種別は金額、Google 種別は回数で判定する。定価の累計（`listPriceMicros`）は月文書に集計するだけで判定には使わない。月 → セッション → 実行の順に調べ、最初に超えた範囲を返す。
 
@@ -50,7 +49,7 @@ Firestore（Native モード、`(default)` データベース）に 2 つのコ�
 `budget_months/{YYYY-MM}`
 
 ```
-counts         { "places.search": n, "routes.matrixElement": n, "openai.analyze": n, "openai.examples": n, "openai.chat": n }
+counts         { "places.search": n, "routes.matrixElement": n, "openai.analyze": n, "openai.chat": n }
 reservedCounts { 同上 }
 settledMicros  整数（OpenAI 実費の累計）
 reservedMicros 整数（未精算の予約額）
@@ -157,7 +156,7 @@ Firestore ストアの再試行: 5xx・ネットワークエラー・3 秒タイ
 
 ## 11. e2e モックが再現すべき形
 
-- 各有料 API 呼び出しには `X-Session-Id` と `X-Run-Id`（UUID v4）が付く。手動検索の準備・検索またはチャット検索と、その候補の `analyze-reviews` は同じ `X-Run-Id`。同じタブは同じ `X-Session-Id`。
+- 各有料 API 呼び出しには `X-Session-Id` と `X-Run-Id`（UUID v4）が付く。チャット検索と、その候補の自動採点（`analyze-reviews`）は同じ `X-Run-Id`。同じタブは同じ `X-Session-Id`。
 - 予算超過の応答: HTTP 429、本文 `{ "error": { "code": "BUDGET_RUN_EXCEEDED" | "BUDGET_SESSION_EXCEEDED" | "BUDGET_MONTH_EXCEEDED", "message": "…" } }`。UI は `message` を表示し、SESSION / MONTH では `[data-budget-stop]` が現れる。
 - 台帳障害の応答: HTTP 503、`{ "error": { "code": "BUDGET_UNAVAILABLE", "message": "…" } }`。UI はメッセージを表示し、再試行しない。
 - 従来の 429 `RESOURCE_EXHAUSTED` の固定文言は変更なし。

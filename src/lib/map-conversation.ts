@@ -30,13 +30,6 @@ export interface MapConversationProps {
   error: string | null;
   /** An ambiguous candidate-scope message. Show choices: onRerank(text), onAreaSearch(text). */
   clarification: string | null;
-  manualSearch: {
-    searchTerm: string;
-    evaluation: string;
-    setSearchTerm: (value: string) => void;
-    setEvaluation: (value: string) => void;
-    submit: () => void;
-  };
   onScope: (scope: ConversationScope) => void;
   onSelect: (placeId: string) => void;
   onSend: (text: string) => void;

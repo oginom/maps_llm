@@ -1,6 +1,6 @@
 // Chat agent for /api/chat: one ToolLoopAgent per request with a single
 // `search_places` tool. The tool reserves / settles Google calls on the
-// budget ledger like /api/places/search; the model steps are counted by
+// budget ledger; the model steps are counted by
 // `createChatBudgetMiddleware`.
 //
 // Server only (Places adapter, ledger). The browser imports only types from

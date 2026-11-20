@@ -2,7 +2,6 @@
 // body shape `{ error: { code, message } }`, and one log line per call.
 import { NextResponse } from "next/server";
 import type { z } from "zod";
-import { isClientAbort } from "./abort";
 import { CLIENT_ABORTED_MESSAGE, INTERNAL_ERROR_MESSAGE } from "./api-messages";
 import { formatIssues } from "./api-schemas";
 import {
@@ -12,7 +11,6 @@ import {
 } from "./budget/errors";
 import type { BudgetRequestContext } from "./budget/ledger";
 import { parseBudgetContext } from "./budget/request-context";
-import { PlacesApiError } from "./places-new";
 
 export const CLIENT_ABORTED_STATUS = 499;
 export { INTERNAL_ERROR_MESSAGE };
@@ -121,26 +119,4 @@ export function internalErrorResponse(
   console.error(`[api/${route}] unexpected error`, error);
   logRoute(route, 500, startedAt, "unexpected error");
   return errorResponse(500, "INTERNAL", INTERNAL_ERROR_MESSAGE);
-}
-
-export function placesErrorResponse(
-  route: string,
-  error: unknown,
-  startedAt: number,
-  signal?: AbortSignal,
-) {
-  if (isClientAbort(error, signal))
-    return clientAbortedResponse(route, startedAt);
-  const budgetResponse = budgetErrorResponse(route, error, startedAt);
-  if (budgetResponse) return budgetResponse;
-  if (error instanceof PlacesApiError) {
-    logRoute(
-      route,
-      error.httpStatus,
-      startedAt,
-      `google=${error.googleStatus}`,
-    );
-    return errorResponse(error.httpStatus, error.googleStatus, error.message);
-  }
-  return internalErrorResponse(route, error, startedAt);
 }

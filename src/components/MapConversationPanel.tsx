@@ -106,40 +106,6 @@ export function MapConversationPanel(props: MapConversationProps) {
               </div>
             </div>
           )}
-          {props.scope === "map" && (
-            <details className={styles.manual} data-manual-search-toggle>
-              <summary>手動で検索</summary>
-              <div data-manual-search-form>
-                <label>
-                  検索ワード
-                  <input
-                    value={props.manualSearch.searchTerm}
-                    onChange={(event) =>
-                      props.manualSearch.setSearchTerm(event.target.value)
-                    }
-                    onFocus={props.onInputFocus}
-                  />
-                </label>
-                <label>
-                  評価条件
-                  <input
-                    value={props.manualSearch.evaluation}
-                    onChange={(event) =>
-                      props.manualSearch.setEvaluation(event.target.value)
-                    }
-                    onFocus={props.onInputFocus}
-                  />
-                </label>
-                <button
-                  type="button"
-                  disabled={props.disabled || busy}
-                  onClick={props.manualSearch.submit}
-                >
-                  検索
-                </button>
-              </div>
-            </details>
-          )}
           {(props.searching || props.evaluating) && (
             <p role="status" className={styles.status}>
               {props.searching

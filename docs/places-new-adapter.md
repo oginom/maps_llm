@@ -1,6 +1,6 @@
 # Places API (New): 口コミを含む一括検索
 
-**1 検索 = Google への Text Search 1 回、最大 20 店。** 手動フォームは `POST /api/places/search`、チャットは `search_places` から共通の[サーバーアダプター](../src/lib/places-new.ts)を呼ぶ。どちらも初回から口コミを要求する。店舗を選んでも追加通信は不要で、独立した Place Details ルートはない。
+**1 検索 = Google への Text Search 1 回、最大 20 店。** 地図を対象にしたチャットが `search_places` から[サーバーアダプター](../src/lib/places-new.ts)を呼び、初回から口コミを要求する。店舗を選んでも追加通信は不要で、独立した Place Details ルートはない。
 
 ## 入力と応答
 

@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   analyzeReviewsRequestSchema,
   formatIssues,
-  generateExamplesRequestSchema,
   placeIdSchema,
   placeSearchRequestSchema,
 } from "./api-schemas.ts";
@@ -122,26 +121,16 @@ test("analyze-reviews validates lengths and fills the scale", () => {
   );
 });
 
-test("generate-examples validates both strings and reports the field", () => {
-  assert.deepEqual(
-    generateExamplesRequestSchema.parse({
-      searchTerm: "カフェ",
-      evaluation: "電源がある",
-    }),
-    { searchTerm: "カフェ", evaluation: "電源がある" },
-  );
-  const result = generateExamplesRequestSchema.safeParse({
-    searchTerm: "",
-    evaluation: "x".repeat(201),
+test("invalid analysis input reports each affected field", () => {
+  const result = analyzeReviewsRequestSchema.safeParse({
+    reviews: [],
+    metric: "",
+    examples: "",
   });
   assert.equal(result.success, false);
   const message = formatIssues(result.error);
-  assert.match(message, /searchTerm/);
-  assert.match(message, /evaluation/);
-  assert.equal(
-    generateExamplesRequestSchema.safeParse({ searchTerm: "a" }).success,
-    false,
-  );
+  assert.match(message, /reviews/);
+  assert.match(message, /metric/);
 });
 
 test("chat request accepts UI messages with a viewport and applies limits", async () => {

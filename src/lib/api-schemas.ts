@@ -100,17 +100,6 @@ export const analyzeReviewsRequestSchema = z
 
 export type AnalyzeReviewsInput = z.infer<typeof analyzeReviewsRequestSchema>;
 
-export const generateExamplesRequestSchema = z
-  .object({
-    searchTerm: z.string().trim().min(1).max(MAX_TEXT_QUERY_LENGTH),
-    evaluation: z.string().trim().min(1).max(MAX_EVALUATION_LENGTH),
-  })
-  .strict();
-
-export type GenerateExamplesInput = z.infer<
-  typeof generateExamplesRequestSchema
->;
-
 // Map viewport as `map.getBounds().toJSON()` returns it. The server converts
 // it with `viewportToRectangle` before calling Places.
 export const viewportSchema = z

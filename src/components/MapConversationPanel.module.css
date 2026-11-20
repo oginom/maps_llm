@@ -440,41 +440,6 @@
   }
 }
 
-.manual {
-  margin: 16px 0;
-  font-size: 11px;
-  color: #537a62;
-}
-.manual summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-.manual > div {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-.manual label {
-  display: grid;
-  gap: 4px;
-  color: #657a6d;
-}
-.manual input {
-  width: 100%;
-  border: 1px solid #dce5db;
-  border-radius: 8px;
-  padding: 8px;
-  color: #243b35;
-  font-size: 16px;
-}
-.manual button {
-  justify-self: start;
-  border: 0;
-  border-radius: 8px;
-  background: #365f4e;
-  color: white;
-  padding: 8px 16px;
-}
 .comparisonResult p {
   color: #657a6d;
   line-height: 1.6;

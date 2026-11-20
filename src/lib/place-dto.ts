@@ -1,4 +1,4 @@
-// Data transfer objects shared by the Places route handlers and the browser.
+// Data transfer objects shared by the Places adapter and the browser.
 // Only these mapped fields ever leave the server; raw Places API (New)
 // responses are never forwarded.
 
@@ -34,17 +34,6 @@ export type PlaceDetail = PlaceSummary & {
   weekdayDescriptions?: string[];
   websiteUri?: string;
   reviews: Review[];
-};
-
-export type PlaceSearchResponse = { places: PlaceDetail[] };
-
-// Request body accepted by POST /api/places/search. The rectangle is the map
-// viewport; `low` is the south-west corner and `high` the north-east corner.
-export type PlaceSearchRequest = {
-  textQuery: string;
-  rectangle: { low: LatLngLiteral; high: LatLngLiteral };
-  openNow?: boolean;
-  pageSize?: number;
 };
 
 // Bounds on the numbered reviews sent to /api/analyze-reviews.
