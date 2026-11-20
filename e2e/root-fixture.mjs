@@ -99,7 +99,9 @@ export async function runSuite(scenarios) {
                 {
                   type: "tool-output-available",
                   toolCallId: run,
-                  output: { ...input, searchId: run, places },
+                  output: config.toolError
+                    ? { error: config.toolError }
+                    : { ...input, searchId: run, places },
                 },
                 { type: "finish-step" },
                 { type: "finish", finishReason: "stop" },

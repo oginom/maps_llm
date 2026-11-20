@@ -160,7 +160,7 @@ await runSuite({
     );
     assert.equal(requests("/api/chat").length, 1);
     await button(page, "地図に切替").click();
-    assert.ok(await page.locator("[data-manual-search-toggle]").isVisible());
+    assert.equal(await page.locator("[data-manual-search-toggle]").count(), 0);
     assert.match(
       await input(page).locator("xpath=ancestor::form").innerText(),
       /表示中の地図/,

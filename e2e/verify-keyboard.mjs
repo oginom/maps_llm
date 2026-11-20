@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { input, runSuite, send } from "./root-fixture.mjs";
+import { input, runSuite } from "./root-fixture.mjs";
 
 const geometry = (page) =>
   page.evaluate(() => ({
@@ -33,9 +33,12 @@ await runSuite({
     view,
     calls,
   }) {
-    await send(page, "電源があるカフェ");
-    await page.locator('[data-fetch-state="unknown"]').waitFor();
     const composer = input(page);
+    assert.equal(await composer.count(), 1);
+    await composer.fill("電源があるカフェ");
+    await composer.press("Enter");
+    await page.locator('[data-fetch-state="unknown"]').waitFor();
+    assert.equal(calls.filter(({ path }) => path === "/api/chat").length, 1);
     const handle = page.locator("[data-sheet-handle]");
     const sheet = page.locator("aside");
     if (view === "phone") {

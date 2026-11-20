@@ -3,11 +3,8 @@
   const state = (window.__mock = {
     config: { count: 12, fail: [], gateJson: false },
     positions: {},
-    searches: [],
-    searchRequests: [],
     fits: [],
     resizes: [],
-    details: [],
     analyses: [],
     aborts: [],
     fetchErrors: [],
@@ -308,26 +305,6 @@
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async (input, options) => {
     const path = new URL(String(input), location.href).pathname;
-    if (path === "/api/places/search") {
-      const body = JSON.parse(options.body);
-      const { low, high } = body.rectangle;
-      state.searches.push(body.textQuery);
-      state.searchRequests.push({
-        query: body.textQuery,
-        bounds: {
-          north: high.lat,
-          south: low.lat,
-          east: high.lng,
-          west: low.lng,
-        },
-        viewSize: { ...state.map.appliedSize },
-        zoom: state.map.getZoom(),
-        body,
-      });
-    } else if (path.startsWith("/api/places/")) {
-      const id = decodeURIComponent(path.split("/").at(-1));
-      state.details.push(id);
-    }
     if (path !== "/api/analyze-reviews") return nativeFetch(input, options);
     const id = JSON.parse(options.body).reviews[0].replace("REVIEW:", "");
     const gate = state.config.gateJson;

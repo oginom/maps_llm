@@ -1,37 +1,22 @@
 import assert from "node:assert/strict";
-import { analysisPath, button, input, row, runSuite } from "./root-fixture.mjs";
 import {
-  registerPlaces,
-  serverErrorMessage,
-  weekdayDescriptions,
-} from "./places-routes.mjs";
+  analysisPath,
+  button,
+  input,
+  row,
+  runSuite,
+  send,
+} from "./root-fixture.mjs";
+import { serverErrorMessage, weekdayDescriptions } from "./places-routes.mjs";
 
-const manual = (page) => page.locator("[data-manual-search-form]");
-async function openManual(page, config) {
-  const toggle = page.getByText("手動で検索", { exact: true });
-  await toggle.click();
-  config.handlers["/api/generate-examples"] = (route, body) =>
-    route.fulfill({
-      json: {
-        examples: "1 ... なし, 5 ... あり",
-        searchQuery: body.searchTerm,
-      },
-    });
-  await manual(page).getByLabel("検索ワード").fill("quota");
-  await manual(page).getByLabel("評価条件").fill("電源");
-}
 await runSuite({
-  async "manual search, fit bounds, pins, detail attribution and sheet"({
+  async "chat search, fit bounds, pins, detail attribution and sheet"({
     page,
     view,
     config,
     requests,
   }) {
-    await openManual(page, config);
-    config.handlers["/api/places/search"] = async (route, body) =>
-      route.fulfill({
-        json: { places: await registerPlaces(page, body.textQuery, 5) },
-      });
+    config.count = 5;
     const handle = page.locator("[data-sheet-handle]");
     if (view === "phone") {
       // Submit with the full sheet; fitting results uses the half sheet later.
@@ -43,20 +28,16 @@ await runSuite({
     const submitted = await page.evaluate(() =>
       window.__mock.map.getBounds().toJSON(),
     );
-    await manual(page)
-      .getByRole("button", { name: "検索", exact: true })
-      .click();
+    await send(page, "電源があるカフェ");
     await page.waitForFunction(
       () =>
         document.querySelectorAll('[data-fetch-state="evaluated"]').length ===
         4,
     );
     const state = await page.evaluate(() => ({
-      request: window.__mock.searchRequests.at(-1),
       fit: window.__mock.fits.at(-1),
       points: window.__mock.map.bounds.points,
     }));
-    assert.equal(state.request.query, "quota");
     assert.deepEqual(
       state.points,
       Array.from({ length: 5 }, (_, i) => ({
@@ -64,11 +45,11 @@ await runSuite({
         lng: 139.7 + i * 0.001,
       })),
     );
-    assert.deepEqual(state.request.bounds, submitted);
+    const [chat] = requests("/api/chat");
+    assert.deepEqual(chat.body.viewport, submitted);
     assert.ok(state.fit.height >= 350);
-    const run = requests("/api/generate-examples")[0].run;
-    assert.equal(requests("/api/places/search")[0].run, run);
-    assert.ok(requests(analysisPath).every((call) => call.run === run));
+    assert.equal(requests(analysisPath).length, 5);
+    assert.ok(requests(analysisPath).every((call) => call.run === chat.run));
     assert.equal(
       await page
         .locator('[data-place-id="quota-3"]')
@@ -169,45 +150,35 @@ await runSuite({
     );
     assert.equal(await page.evaluate(() => window.__mock.pans.length), pans);
   },
-  async "manual search quota, upstream error and session refusal"({
+  async "chat Places tool errors and pre-stream session refusal"({
     page,
     config,
     requests,
   }) {
-    await openManual(page, config);
-    for (const [status, code, message, expected] of [
+    for (const [code, message] of [
       [
-        429,
         "RESOURCE_EXHAUSTED",
-        "sentinel",
         "Google Places の検索上限に達しました。時間をおいて再検索してください。",
       ],
-      [502, "PLACES_UPSTREAM_ERROR", serverErrorMessage, serverErrorMessage],
-      [
-        429,
-        "BUDGET_SESSION_EXCEEDED",
-        "このセッションの検索上限です。",
-        "このセッションの検索上限です。",
-      ],
+      ["PLACES_UPSTREAM_ERROR", serverErrorMessage],
+      ["BUDGET_SESSION_EXCEEDED", "このセッションの検索上限です。"],
     ]) {
-      config.handlers["/api/places/search"] = (route) =>
-        route.fulfill({ status, json: { error: { code, message } } });
-      await manual(page)
-        .getByRole("button", { name: "検索", exact: true })
-        .click();
-      const alert = page.getByRole("alert").filter({ hasText: expected });
+      if (code === "BUDGET_SESSION_EXCEEDED") {
+        config.handlers["/api/chat"] = (route) =>
+          route.fulfill({ status: 429, json: { error: { code, message } } });
+      } else {
+        config.toolError = { code, message };
+      }
+      await send(page, "カフェを探して");
+      const alert = page.getByRole("alert").filter({ hasText: message });
       await alert.waitFor();
-      assert.equal(await alert.innerText(), expected);
+      assert.equal(await alert.innerText(), message);
     }
-    assert.ok(
-      await manual(page)
-        .getByRole("button", { name: "検索", exact: true })
-        .isDisabled(),
-    );
+    await input(page).fill("別の場所を探して");
+    assert.ok(await button(page, "送信").isDisabled());
+    await input(page).press("Enter");
+    assert.equal(requests("/api/chat").length, 3);
     assert.equal(requests(analysisPath).length, 0);
-    assert.equal(
-      new Set(requests("/api/places/search").map((c) => c.run)).size,
-      3,
-    );
+    assert.equal(new Set(requests("/api/chat").map((c) => c.run)).size, 3);
   },
 });

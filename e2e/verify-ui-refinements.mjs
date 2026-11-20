@@ -1,18 +1,14 @@
 import assert from "node:assert/strict";
 import { runSuite, send, button, row } from "./root-fixture.mjs";
 await runSuite({
-  async "distribution, markers and input sizing"({ page, view }) {
+  async "single chat composer, distribution and markers"({ page, view }) {
     assert.equal(await page.locator('img[alt="まちのコンパス"]').count(), 1);
-    await page.locator("[data-manual-search-toggle] summary").click();
-    for (const input of await page
-      .locator("[data-manual-search-form] input")
-      .all())
-      assert.ok(
-        parseFloat(
-          await input.evaluate((el) => getComputedStyle(el).fontSize),
-        ) >= 16,
-      );
-    await page.locator("[data-manual-search-toggle] summary").click();
+    assert.equal(
+      await page.getByText("手動で検索", { exact: true }).count(),
+      0,
+    );
+    assert.equal(await page.locator("[data-manual-search-form]").count(), 0);
+    assert.equal(await page.locator("form").count(), 1);
     await send(page, "電源があるカフェを探して");
     await page.locator('[data-fetch-state="unknown"]').waitFor();
     const distribution = page.locator("[data-histogram]");

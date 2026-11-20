@@ -95,44 +95,4 @@ await runSuite({
     await row(page, "second-1").waitFor();
     assert.deepEqual(requests("/api/chat")[1].body.viewport, submitted);
   },
-  async "manual Places rectangle survives camera changes during preparation"(
-    fixture,
-  ) {
-    const { page, config, requests, view } = fixture;
-    const first = await startInA(fixture);
-    await page.getByText("手動で検索", { exact: true }).click();
-    const form = page.locator("[data-manual-search-form]");
-    await form.getByLabel("検索ワード").fill("パン屋");
-    await form.getByLabel("評価条件").fill("静かさ");
-    let release;
-    const held = new Promise((resolve) => {
-      release = resolve;
-    });
-    config.handlers["/api/generate-examples"] = async (route) => {
-      await held;
-      await route.fulfill({
-        json: { examples: "1 ... なし, 5 ... あり", searchQuery: "パン屋" },
-      });
-    };
-    config.handlers["/api/places/search"] = (route) =>
-      route.fulfill({ json: { places: [] } });
-    const prepared = page.waitForRequest("**/api/generate-examples");
-    const submitted = await submitAndMove(
-      page,
-      form.getByRole("button", { name: "検索", exact: true }),
-    );
-    await prepared;
-    if (view === "phone") {
-      await page.locator("[data-sheet-handle]").press("ArrowDown");
-    }
-    const searched = page.waitForRequest("**/api/places/search");
-    release();
-    const request = await searched;
-    assert.ok(submitted.south > first.north);
-    assert.equal(requests("/api/chat").length, 1);
-    assert.deepEqual(request.postDataJSON().rectangle, {
-      low: { lat: submitted.south, lng: submitted.west },
-      high: { lat: submitted.north, lng: submitted.east },
-    });
-  },
 });
