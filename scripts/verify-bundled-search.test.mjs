@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate } from "node:timers/promises";
 import { frames, verify } from "./verify-bundled-search.mjs";
-import { MAX_REVIEWS_TEXT_LENGTH } from "../src/lib/place-dto.ts";
 
 const secret = "合成の非公開文字列☕";
 const bytes = (text, width = 1) => {
@@ -45,7 +44,7 @@ function mockChat() {
     googleMapsUri: "",
     reviews: [
       {
-        text: secret.repeat(5_000),
+        text: secret,
         rating: 5,
         publishTime: "",
         relativePublishTimeDescription: "",
@@ -53,6 +52,10 @@ function mockChat() {
       },
     ],
   };
+  place.reviews.push(
+    { ...place.reviews[0], text: "second", author: { name: "" } },
+    { ...place.reviews[0], text: "third" },
+  );
   const places = [
     place,
     ...Array.from({ length: 22 }, (_, i) => ({
@@ -83,9 +86,10 @@ function mockChat() {
     ),
   );
 }
-test("mock full run mirrors page requests, deduplicates, caps, matches and counts only", async () => {
+test("counts scored and unknown places separately from cited originals and their authors", async () => {
   let active = 0,
     peak = 0,
+    responses = 0,
     chat = 0;
   const ids = new Set();
   const stats = await verify({
@@ -97,13 +101,17 @@ test("mock full run mirrors page requests, deduplicates, caps, matches and count
       }
       const body = JSON.parse(options.body);
       assert.deepEqual(
-        [body.metric, body.examples, body.scale, body.reviews.length],
-        ["metric", "examples", "5", MAX_REVIEWS_TEXT_LENGTH],
+        [body.metric, body.examples, body.scale, body.reviews],
+        ["metric", "examples", "5", [secret, "second", "third"]],
       );
       peak = Math.max(peak, ++active);
       await setImmediate();
       active--;
-      return Response.json({ value: 5, related_review: secret });
+      return Response.json(
+        ++responses <= 15
+          ? { value: 5, reviewNumbers: [3, 2] }
+          : { value: null, reviewNumbers: [] },
+      );
     },
   });
   assert.deepEqual(
@@ -114,15 +122,44 @@ test("mock full run mirrors page requests, deduplicates, caps, matches and count
       stats.candidates,
       stats.attempts,
       stats.scores,
-      stats.matchedWithAuthor,
+      stats.unknown,
+      stats.scoreErrors,
+      stats.citedReviews,
+      stats.citedReviewsWithAuthor,
     ],
-    [1, 1, 5, 23, 19, 19, 19],
+    [1, 1, 5, 23, 19, 15, 4, 0, 30, 15],
   );
   assert.ok(
     stats.candidatesMs <= stats.fifthScoreMs &&
       stats.fifthScoreMs <= stats.lastScoreMs,
   );
   assert.ok(stats.streamComplete && !JSON.stringify(stats).includes(secret));
+});
+test("unknown and invalid evidence never set score milestones", async () => {
+  let index = 0;
+  const results = [
+    { value: 2, reviewNumbers: [1, 1] },
+    { value: 5, reviewNumbers: [4] },
+    { value: null, reviewNumbers: [1] },
+    { value: 1, reviewNumbers: [] },
+  ];
+  const stats = await verify({
+    request: (url) =>
+      url.endsWith("/chat")
+        ? mockChat()
+        : Response.json(results[index++] ?? { value: null, reviewNumbers: [] }),
+  });
+  assert.deepEqual(
+    [
+      stats.scores,
+      stats.unknown,
+      stats.scoreErrors,
+      stats.citedReviews,
+      stats.fifthScoreMs,
+      stats.lastScoreMs,
+    ],
+    [0, 15, 4, 0, null, null],
+  );
 });
 test("upstream exceptions, error events and budget bodies never escape; no later budget wave", async () => {
   for (const request of [

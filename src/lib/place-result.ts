@@ -1,7 +1,8 @@
 import type { PlaceDetail } from "./place-dto";
 
 export type SearchResult = PlaceDetail & {
-  value?: number;
+  value?: number | null;
+  reviewNumbers?: number[];
   analysis?: string;
   isAnalyzing: boolean;
   examples: string;
@@ -54,6 +55,7 @@ export const getRatingColor = (
 export function resultState(result: SearchResult) {
   if (result.analysisError) return "failed";
   if (result.isAnalyzing) return "analyzing";
+  if (result.reviewNumbers?.length === 0) return "unknown";
   if (result.value) return "evaluated";
   return result.reviews.length ? "unevaluated" : "no-reviews";
 }
@@ -61,6 +63,7 @@ export const stateLabels = {
   unevaluated: "未評価",
   analyzing: "評価中",
   evaluated: "評価済み",
+  unknown: "口コミからは判断できません",
   failed: "評価失敗",
   "no-reviews": "口コミなし・未評価",
 };

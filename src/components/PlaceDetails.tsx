@@ -1,4 +1,3 @@
-import { matchReview } from "@/lib/review-match";
 import { Avatar, Box, Button, Link, Typography } from "@mui/material";
 import {
   getRatingColor,
@@ -14,11 +13,14 @@ export function PlaceDetails({
   result: SearchResult;
   onClose: () => void;
 }) {
-  const matchedReview =
-    result.analysis && !result.analysisError
-      ? matchReview(result.analysis, result.reviews)
-      : undefined;
-  const authors = matchedReview ? [matchedReview] : result.reviews;
+  const state = resultState(result);
+  const selectedReviews =
+    state === "evaluated"
+      ? (result.reviewNumbers ?? []).map((number) => ({
+          number,
+          review: result.reviews[number - 1],
+        }))
+      : [];
   return (
     <Box
       component="section"
@@ -98,77 +100,88 @@ export function PlaceDetails({
           <Box
             component="strong"
             sx={{
-              borderBottom: result.value
-                ? `4px solid ${getRatingColor(result.value, true)}`
-                : undefined,
+              borderBottom:
+                state !== "unknown" && result.value
+                  ? `4px solid ${getRatingColor(result.value, true)}`
+                  : undefined,
             }}
           >
-            {result.value
+            {state !== "unknown" && result.value
               ? `${result.value}/5`
-              : stateLabels[resultState(result)]}
+              : stateLabels[state]}
           </Box>
         </Typography>
-        {result.analysis && (
+        {result.analysisError && result.analysis && (
           <>
             <Typography variant="subtitle2" sx={{ mt: 1.5 }}>
-              {result.analysisError ? "評価エラー" : "関連する口コミの抜粋"}
+              評価エラー
             </Typography>
             <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", my: 1 }}>
               {result.analysis}
             </Typography>
           </>
         )}
-        {result.analysis && !result.analysisError && (
+        {selectedReviews.length > 0 && (
           <Box>
-            <Typography variant="caption" color="text.secondary">
-              {matchedReview
-                ? "口コミの投稿者"
-                : "参照した口コミの投稿者（抜粋との対応は特定できません）"}
+            <Typography variant="subtitle2" sx={{ mt: 1.5 }}>
+              関連する口コミ
             </Typography>
-            {authors.map((review, index) => (
-              <Box
-                key={`${review.author.uri ?? review.author.name}-${index}`}
-                sx={{ display: "flex", alignItems: "center", gap: 1, my: 0.75 }}
-              >
-                <Avatar
-                  src={review.author.photoUri}
-                  alt={review.author.name || "投稿者"}
-                  sx={{ width: 28, height: 28 }}
-                />
-                <Box sx={{ minWidth: 0 }}>
-                  {review.author.uri ? (
-                    <Link
-                      href={review.author.uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      variant="body2"
-                    >
-                      {review.author.name || "投稿者プロフィール"}
-                    </Link>
-                  ) : (
-                    <Typography variant="body2">
-                      {review.author.name || "投稿者情報なし"}
-                    </Typography>
-                  )}
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block" }}
-                  >
-                    {review.relativePublishTimeDescription}
-                    {review.googleMapsUri && (
-                      <>
-                        {" · "}
-                        <Link
-                          href={review.googleMapsUri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Google マップで口コミを見る
-                        </Link>
-                      </>
+            {selectedReviews.map(({ number, review }) => (
+              <Box key={number} sx={{ my: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ whiteSpace: "pre-wrap", my: 1 }}
+                >
+                  {review.text}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    my: 0.75,
+                  }}
+                >
+                  <Avatar
+                    src={review.author.photoUri}
+                    alt={review.author.name || "投稿者"}
+                    sx={{ width: 28, height: 28 }}
+                  />
+                  <Box sx={{ minWidth: 0 }}>
+                    {review.author.uri ? (
+                      <Link
+                        href={review.author.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="body2"
+                      >
+                        {review.author.name || "投稿者プロフィール"}
+                      </Link>
+                    ) : (
+                      <Typography variant="body2">
+                        {review.author.name || "投稿者情報なし"}
+                      </Typography>
                     )}
-                  </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block" }}
+                    >
+                      {review.relativePublishTimeDescription}
+                      {review.googleMapsUri && (
+                        <>
+                          {" · "}
+                          <Link
+                            href={review.googleMapsUri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Google マップで口コミを見る
+                          </Link>
+                        </>
+                      )}
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             ))}

@@ -11,6 +11,24 @@ const place = (placeId, name = placeId) => ({
   googleMapsUri: `https://www.google.com/maps/place/?q=place_id:${placeId}`,
 });
 
+test("completed analysis without evidence is distinct from pending and failed", () => {
+  const { a } = createSearchResults([place("a")], {
+    evaluation: "電源",
+    examples: "1…5",
+  });
+  assert.equal(resultState(a), "unevaluated");
+  assert.equal(resultState({ ...a, isAnalyzing: true }), "analyzing");
+  assert.equal(resultState({ ...a, analysisError: true }), "failed");
+  assert.equal(
+    resultState({ ...a, value: null, reviewNumbers: [] }),
+    "unknown",
+  );
+  assert.equal(
+    resultState({ ...a, value: 1, reviewNumbers: [1] }),
+    "evaluated",
+  );
+});
+
 test("createSearchResults keeps order, drops duplicates and attaches the criteria", () => {
   const results = createSearchResults(
     [place("a"), place("b"), place("a", "again"), place("c")],

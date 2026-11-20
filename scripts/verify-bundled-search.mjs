@@ -2,8 +2,10 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { searchPlacesResultSchema } from "../src/lib/chat-contract.ts";
 import { evaluatePlaceBatches } from "../src/lib/place-detail-batch.ts";
-import { MAX_REVIEWS_TEXT_LENGTH } from "../src/lib/place-dto.ts";
-import { matchReview } from "../src/lib/review-match.ts";
+import {
+  prepareReviewTexts,
+  parseReviewAnalysis,
+} from "../src/lib/review-evidence.ts";
 import {
   OPENAI_RESERVE_MICROS,
   GOOGLE_LIST_PRICE_MICROS,
@@ -59,7 +61,9 @@ export async function verify({
     candidates: null,
     attempts: 0,
     scores: 0,
-    matchedWithAuthor: 0,
+    unknown: 0,
+    citedReviews: 0,
+    citedReviewsWithAuthor: 0,
     scoreErrors: 0,
     budgetStop: false,
     candidatesMs: null,
@@ -91,14 +95,13 @@ export async function verify({
         if (!reviews.length) return;
         stats.attempts++;
         try {
+          const texts = prepareReviewTexts(reviews);
+          const scale = 5;
           const response = await post("analyze-reviews", {
-            reviews: reviews
-              .map(({ text }) => text)
-              .join("\n\n---\n\n")
-              .slice(0, MAX_REVIEWS_TEXT_LENGTH),
+            reviews: texts,
             examples: output.examples,
             metric: output.evaluation,
-            scale: "5",
+            scale: String(scale),
           });
           const result = await response.json();
           if (!response.ok) {
@@ -110,17 +113,18 @@ export async function verify({
             }
             throw new Error();
           }
-          if (
-            !Number.isInteger(result.value) ||
-            result.value < 1 ||
-            result.value > 5 ||
-            typeof result.related_review !== "string"
-          )
-            throw new Error();
+          const analysis = parseReviewAnalysis(result, texts.length, scale);
+          if (analysis.value === null) {
+            stats.unknown++;
+            return;
+          }
           stats.lastScoreMs = elapsed();
           if (++stats.scores === 5) stats.fifthScoreMs = stats.lastScoreMs;
-          if (matchReview(result.related_review, reviews)?.author.name)
-            stats.matchedWithAuthor++;
+          for (const number of analysis.reviewNumbers) {
+            stats.citedReviews++;
+            if (reviews[number - 1].author.name.trim())
+              stats.citedReviewsWithAuthor++;
+          }
         } catch {
           stats.scoreErrors++;
         }
@@ -219,7 +223,8 @@ async function main() {
       googleListMicros: search * GOOGLE_LIST_PRICE_MICROS["places.search"],
     }),
   );
-  if (stats.failure || stats.scoreErrors || !stats.scores) process.exitCode = 1;
+  if (stats.failure || stats.scoreErrors || !(stats.scores + stats.unknown))
+    process.exitCode = 1;
 }
 
 if (import.meta.main)

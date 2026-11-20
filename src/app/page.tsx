@@ -22,11 +22,11 @@ import {
   getRatingColor,
   type SearchResult,
 } from "@/lib/place-result";
-import {
-  MAX_REVIEWS_TEXT_LENGTH,
-  type PlaceDetail,
-  type PlaceSearchRequest,
-  type PlaceSearchResponse,
+import { parseReviewAnalysis, prepareReviewTexts } from "@/lib/review-evidence";
+import type {
+  PlaceDetail,
+  PlaceSearchRequest,
+  PlaceSearchResponse,
 } from "@/lib/place-dto";
 import {
   isSearchPlacesFailure,
@@ -239,11 +239,12 @@ function MapContent() {
         session.candidates,
         () => isCurrent() && budgetRefusedRun.current !== session.controller,
         async (result) => {
-          const { placeId, reviews } = result;
-          if (reviews.length === 0) return;
+          const { placeId } = result;
+          if (result.reviews.length === 0) return;
           setEvaluationAttempts((count) => count + 1);
           updateResult(placeId, { isAnalyzing: true });
           try {
+            const reviews = prepareReviewTexts(result.reviews);
             const response = await fetch("/api/analyze-reviews", {
               method: "POST",
               headers: {
@@ -252,10 +253,7 @@ function MapContent() {
               },
               signal: session.controller.signal,
               body: JSON.stringify({
-                reviews: reviews
-                  .map((review) => review.text)
-                  .join("\n\n---\n\n")
-                  .slice(0, MAX_REVIEWS_TEXT_LENGTH),
+                reviews,
                 metric: session.evaluation,
                 examples: result.examples,
                 scale: "5",
@@ -270,8 +268,7 @@ function MapContent() {
               );
             const data = await response.json();
             updateResult(placeId, {
-              analysis: data.related_review,
-              value: data.value,
+              ...parseReviewAnalysis(data, reviews.length, 5),
               isAnalyzing: false,
             });
           } catch (error) {

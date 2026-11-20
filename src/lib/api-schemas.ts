@@ -1,7 +1,7 @@
 // Request validation for the API routes. Kept free of Next.js imports so the
 // unit tests can load it directly with `node --test`.
 import { z } from "zod";
-import { MAX_REVIEWS_TEXT_LENGTH } from "./place-dto.ts";
+import { MAX_REVIEW_COUNT, MAX_REVIEWS_TEXT_LENGTH } from "./place-dto.ts";
 
 export const MAX_TEXT_QUERY_LENGTH = 100;
 export const MAX_EVALUATION_LENGTH = 200;
@@ -54,7 +54,18 @@ export const placeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{10,512}$/, {
 
 export const analyzeReviewsRequestSchema = z
   .object({
-    reviews: z.string().min(1).max(MAX_REVIEWS_TEXT_LENGTH),
+    reviews: z
+      .array(z.string().refine((text) => text.trim().length > 0))
+      .min(1)
+      .max(MAX_REVIEW_COUNT)
+      .refine(
+        (texts) =>
+          texts.reduce((total, text) => total + text.length, 0) <=
+          MAX_REVIEWS_TEXT_LENGTH,
+        {
+          message: `口コミの合計は ${MAX_REVIEWS_TEXT_LENGTH} 文字以内でなければなりません。`,
+        },
+      ),
     metric: z.string().trim().min(1).max(MAX_EVALUATION_LENGTH),
     examples: z.string().max(MAX_EXAMPLES_LENGTH),
     scale: z.literal("5").default("5"),

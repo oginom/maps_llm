@@ -47,7 +47,8 @@ export type PlaceSearchRequest = {
   pageSize?: number;
 };
 
-// Upper bound of the joined review text sent to /api/analyze-reviews.
+// Bounds on the numbered reviews sent to /api/analyze-reviews.
+export const MAX_REVIEW_COUNT = 5;
 export const MAX_REVIEWS_TEXT_LENGTH = 8000;
 
 // Error body returned by every API route on failure.

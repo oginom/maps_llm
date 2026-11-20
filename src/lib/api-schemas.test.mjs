@@ -87,24 +87,33 @@ test("place id accepts Google ids and rejects paths or short strings", () => {
 
 test("analyze-reviews validates lengths and fills the scale", () => {
   const parsed = analyzeReviewsRequestSchema.parse({
-    reviews: "電源あり",
+    reviews: ["電源あり"],
     metric: "電源がある",
     examples: "1 ... なし, 5 ... 全席",
   });
   assert.equal(parsed.scale, "5");
   const rejects = (body) =>
     assert.equal(analyzeReviewsRequestSchema.safeParse(body).success, false);
-  rejects({ reviews: "", metric: "m", examples: "" });
-  rejects({ reviews: "x".repeat(8001), metric: "m", examples: "" });
-  rejects({ reviews: "x", metric: "", examples: "" });
-  rejects({ reviews: "x", metric: "m".repeat(201), examples: "" });
-  rejects({ reviews: "x", metric: "m", examples: "e".repeat(1001) });
-  rejects({ reviews: "x", metric: "m", examples: ["a"] });
-  rejects({ reviews: "x", metric: "m", examples: "", scale: "10" });
-  rejects({ reviews: "x", metric: "m", examples: "", model: "gpt" });
+  for (const reviews of [
+    "x",
+    [],
+    ["x", ""],
+    [" "],
+    [123],
+    Array(6).fill("x"),
+    ["x".repeat(8000), "y"],
+  ]) {
+    rejects({ reviews, metric: "m", examples: "" });
+  }
+  rejects({ reviews: ["x"], metric: "", examples: "" });
+  rejects({ reviews: ["x"], metric: "m".repeat(201), examples: "" });
+  rejects({ reviews: ["x"], metric: "m", examples: "e".repeat(1001) });
+  rejects({ reviews: ["x"], metric: "m", examples: ["a"] });
+  rejects({ reviews: ["x"], metric: "m", examples: "", scale: "10" });
+  rejects({ reviews: ["x"], metric: "m", examples: "", model: "gpt" });
   assert.equal(
     analyzeReviewsRequestSchema.safeParse({
-      reviews: "x".repeat(8000),
+      reviews: Array(5).fill("x".repeat(1600)),
       metric: "m",
       examples: "",
       scale: "5",
