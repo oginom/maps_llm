@@ -15,4 +15,4 @@
 
 [Google のグローバル料金表](https://developers.google.com/maps/billing-and-pricing/pricing)では、この SKU の月間無料枠は 1,000 回、最初の有料帯は **$40 / 1,000 検索（$0.040 / 検索）**。無料枠は請求先で共有される。たとえば 20 店取得しても Google 検索の定価参考額は $0.040。店舗ごとの OpenAI 採点と地図表示は別料金。[FieldMask と SKU](https://developers.google.com/maps/billing-and-pricing/sku-details/places)／[日次割当とアプリ上限](api-limits.md)
 
-一括検索版は実 Google / OpenAI API では未検証。従来の検索＋詳細取得でのローカル確認やモック結果は、現行 FieldMask の実応答・実請求の確認ではない。
+[一括検索の実 API 確認](verification-bundled-search.md)で現行の検索応答に口コミが含まれることを確認した。実請求額、採点完了までの時間は未確認。

@@ -23,6 +23,6 @@
 
 ## 検証と運用
 
-- 一括検索版は実 Google / OpenAI API では未検証。旧方式では 2026-09-21 に手動検索・詳細・評価をローカル確認し、本番リビジョン `mapsllm-00026-dtx` では検索 1 回の Firestore 台帳精算を確認した。ユーザーのローカルチャット確認も一括検索への変更前である。
+- 一括検索版はユーザーがローカルで操作を確認した。[実 API での確認結果](verification-bundled-search.md): 地名なしで検索し口コミ付き候補を取得。検証クライアントが途中停止したため採点時間・総費用は未測定。次は合成データでストリームの分割受信とエラー時に本文を出さないことを確認してから計測する。
 - 開発は Node 24.20.0 / pnpm。`pnpm lint`、`pnpm exec tsc --noEmit`、`node --test src/lib/*.test.mjs src/lib/budget/*.test.mjs`、`pnpm build`。[ブラウザ検証](../e2e/README.md)は外部 API をモックする。
 - Cloud Run のサービスは `mapsllm`（`asia-northeast1`）。本番では Firestore の既定データベース・`roles/datastore.user`・セッションの TTL を使用。main への push は文書のみでも再デプロイを起こす。操作アカウント・本番 URL は git 管理外の `CLAUDE.local.md`、キーはローカル環境変数と GitHub Secrets を参照する。
