@@ -12,9 +12,14 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { flushSync } from "react-dom";
 import { waitForMapLayout } from "@/lib/map-layout";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Box } from "@mui/material";
-import { ChatPanel } from "@/components/ChatPanel";
-import { SearchPanel } from "@/components/SearchPanel";
+import { MapConversationPanel } from "@/components/MapConversationPanel";
+import {
+  WALKING_ORIGIN_LABEL,
+  type ConversationScope,
+  type MapConversationProps,
+  type WalkingComparison,
+} from "@/lib/map-conversation";
+import { MAX_EVALUATION_LENGTH } from "@/lib/api-schemas";
 import { BottomSheet, type SheetHeight } from "@/components/BottomSheet";
 import { evaluatePlaceBatches } from "@/lib/place-detail-batch";
 import {
@@ -109,7 +114,23 @@ function MapContent() {
   const searchParams = useSearchParams();
   const map = useMap();
 
-  const [sheetHeight, setSheetHeight] = useState<SheetHeight>("collapsed");
+  const [sheetHeight, setSheetHeight] = useState<SheetHeight>("half");
+  const [scope, setScope] = useState<ConversationScope>("map");
+  const [clarification, setClarification] = useState<string | null>(null);
+  const [candidateMessages, setCandidateMessages] = useState<
+    MapConversationProps["messages"]
+  >([]);
+  const recordCandidateAction = (text: string) => {
+    const message = { id: crypto.randomUUID(), role: "user" as const, text };
+    setCandidateMessages((previous) => [...previous, message]);
+  };
+  const [comparison, setComparison] = useState<WalkingComparison | null>(null);
+  const walkingRequest = useRef<AbortController | null>(null);
+  const cancelComparison = () => {
+    walkingRequest.current?.abort();
+    walkingRequest.current = null;
+    setComparison(null);
+  };
   const [searchTerm, setSearchTerm] = useState("カフェ");
   const [evaluation, setEvaluation] = useState("電源がある");
   const [center, setCenter] = useState(defaultCenter);
@@ -217,6 +238,7 @@ function MapContent() {
     () => () => {
       searchController.current?.abort();
       layoutController.current?.abort();
+      walkingRequest.current?.abort();
     },
     [],
   );
@@ -302,6 +324,11 @@ function MapContent() {
   // Common start of a manual search or a chat message: abort the previous
   // run, reset the results and hand out the new controller and budget run id.
   const beginRun = () => {
+    cancelComparison();
+    setScope("map");
+    setClarification(null);
+    setChatError(null);
+    setCandidateMessages([]);
     placeQuestions.reset();
     searchInProgress.current = true;
     searchController.current?.abort();
@@ -368,6 +395,7 @@ function MapContent() {
     };
     activeSession.current = session;
     setSearchResults(results);
+    setScope(candidates.length ? "candidates" : "map");
     await prepareSearchMap(controller);
     if (!isCurrentRun(controller)) return;
     const bounds = new google.maps.LatLngBounds();
@@ -384,7 +412,13 @@ function MapContent() {
   };
 
   const handleSearch = async () => {
-    if (!map || searchInProgress.current || budgetStop) return;
+    if (
+      !map ||
+      searchInProgress.current ||
+      chatRunController.current ||
+      budgetStop
+    )
+      return;
     const { controller, runId } = beginRun();
     try {
       // Expand the searchable map before preparing the query. Observe again
@@ -455,6 +489,11 @@ function MapContent() {
   const chat = useChat<ChatUIMessage>({
     transport: chatTransport,
     onError: (error) => {
+      if (
+        !chatRunController.current ||
+        !isCurrentRun(chatRunController.current)
+      )
+        return;
       const { code, message } = parseChatErrorText(error.message);
       if (code === "CLIENT_ABORTED") return;
       if (code?.startsWith("BUDGET_"))
@@ -462,17 +501,18 @@ function MapContent() {
       if (code && BUDGET_STOP_CODES.has(code)) setBudgetStop(message);
       setChatError(message);
     },
-    onFinish: () => {
-      const controller = chatRunController.current;
-      chatRunController.current = null;
-      if (controller) endRun(controller);
-    },
   });
   const { sendMessage: sendChatMessage, stop: stopChat } = chat;
 
   const handleChatSend = async (text: string) => {
-    if (!map || searchInProgress.current || budgetStop) return;
-    const selectedPlaceId = selectedPlace;
+    if (
+      !text.trim() ||
+      !map ||
+      chatRunController.current ||
+      searchInProgress.current ||
+      budgetStop
+    )
+      return;
     const { controller, runId } = beginRun();
     chatRunController.current = controller;
     setChatError(null);
@@ -481,7 +521,11 @@ function MapContent() {
       if (!isCurrentRun(controller)) return;
       const viewport = map.getBounds()?.toJSON();
       if (!viewport) throw new Error("地図の表示範囲を取得できませんでした。");
-      chatTransport.setRequestContext({ runId, viewport, selectedPlaceId });
+      chatTransport.setRequestContext({
+        runId,
+        viewport,
+        selectedPlaceId: null,
+      });
       // Resolves when the stream ends; errors go to `onError`.
       await sendChatMessage({ text });
     } catch (error) {
@@ -489,13 +533,21 @@ function MapContent() {
         setChatError(
           error instanceof Error ? error.message : "送信に失敗しました。",
         );
+      }
+    } finally {
+      if (chatRunController.current === controller) {
+        chatRunController.current = null;
         endRun(controller);
       }
     }
   };
 
   const handleStopChat = () => {
-    const controller = chatRunController.current;
+    if (placeQuestions.questions.pendingQuestion) {
+      placeQuestions.cancel();
+      return;
+    }
+    const controller = searchController.current;
     if (controller && isCurrentRun(controller)) {
       endRun(controller);
       controller.abort();
@@ -516,7 +568,7 @@ function MapContent() {
         ),
       );
     }
-    void stopChat();
+    if (chatRunController.current) void stopChat();
   };
 
   // Tool results arrive through the transport outside React's event system;
@@ -571,12 +623,190 @@ function MapContent() {
   };
 
   const selectPlace = (placeId: string) => {
+    if (!searchResults[placeId]) return;
+    if (comparison) {
+      if (
+        !comparison.placeIds.includes(placeId) &&
+        comparison.placeIds.length >= 2
+      )
+        return;
+      walkingRequest.current?.abort();
+      walkingRequest.current = null;
+      setComparison({
+        ...comparison,
+        pending: false,
+        routes: null,
+        error: null,
+        placeIds: comparison.placeIds.includes(placeId)
+          ? comparison.placeIds.filter((id) => id !== placeId)
+          : [...comparison.placeIds, placeId],
+      });
+      return;
+    }
     if (placeId !== selectedPlace) placeQuestions.cancel();
+    setScope("branch");
+    setClarification(null);
     setSelectedPlace(placeId);
     void changeSheetHeight("full", placeId, true);
   };
 
   const results = Object.values(searchResults);
+  const candidates = results
+    .map((result, index) => ({ ...result, pinNumber: index + 1 }))
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  const changeScope = (next: ConversationScope) => {
+    if (
+      (next === "branch" && !selectedPlace) ||
+      (next === "candidates" && !results.length)
+    )
+      return;
+    placeQuestions.cancel();
+    layoutController.current?.abort();
+    cancelComparison();
+    setClarification(null);
+    setScope(next);
+    if (next !== "branch") setSelectedPlace(null);
+  };
+
+  const rerank = (input: string) => {
+    const criterion = input.trim();
+    if (!criterion || !results.length || searchInProgress.current || budgetStop)
+      return;
+    if (criterion.length > MAX_EVALUATION_LENGTH) {
+      setSearchError(
+        `評価条件は${MAX_EVALUATION_LENGTH}文字以内で入力してください。`,
+      );
+      return;
+    }
+    changeScope("candidates");
+    recordCandidateAction(`今の候補を「${criterion}」で再評価`);
+    searchController.current?.abort();
+    const controller = new AbortController();
+    searchController.current = controller;
+    budgetRefusedRun.current = null;
+    // Fresh copies of the original bundle, keeping only place data and new criteria.
+    const refreshed = results.map((result) => ({
+      ...result,
+      evaluation: criterion,
+      examples: "条件によく合う場合は5、合わない根拠がある場合は1。",
+      value: undefined,
+      reviewNumbers: undefined,
+      analysis: undefined,
+      analysisError: false,
+      isAnalyzing: false,
+    }));
+    const session = {
+      controller,
+      runId: newRunId(),
+      candidates: refreshed,
+      evaluation: criterion,
+    };
+    activeSession.current = session;
+    setSearchError(null);
+    setChatError(null);
+    setEvaluationAttempts(0);
+    setSearchResults(
+      Object.fromEntries(refreshed.map((result) => [result.placeId, result])),
+    );
+    void evaluateCandidates(session);
+  };
+
+  const startComparison = () => {
+    if (!map || budgetStop) return;
+    if (results.length < 2) {
+      setSearchError("徒歩時間を比べるには2件以上の候補が必要です。");
+      return;
+    }
+    const origin = map.getCenter()?.toJSON();
+    if (!origin) {
+      setSearchError("比較の出発地となる地図の中心を取得できませんでした。");
+      return;
+    }
+    changeScope("candidates");
+    setComparison({
+      origin,
+      placeIds: [],
+      pending: false,
+      error: null,
+      routes: null,
+    });
+    void changeSheetHeight("half", null);
+  };
+
+  const compare = async () => {
+    if (
+      !comparison ||
+      comparison.placeIds.length !== 2 ||
+      walkingRequest.current ||
+      budgetStop
+    )
+      return;
+    const { origin, placeIds } = comparison;
+    recordCandidateAction(
+      `${placeIds.map((id) => searchResults[id].name).join("と")}への徒歩時間を比較`,
+    );
+    const controller = new AbortController();
+    walkingRequest.current = controller;
+    setComparison({ ...comparison, pending: true, error: null, routes: null });
+    try {
+      const response = await fetch("/api/walking-comparison", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...budgetHeaders(newRunId()),
+        },
+        signal: controller.signal,
+        body: JSON.stringify({ origin, placeIds }),
+      });
+      if (!response.ok)
+        throw await readApiError(response, "徒歩時間を取得できませんでした。");
+      const { routes } = await response.json();
+      if (
+        !Array.isArray(routes) ||
+        routes.length !== 2 ||
+        !placeIds.every((id) =>
+          routes.some(
+            (route) =>
+              route?.placeId === id &&
+              (route.durationSeconds === null ||
+                (Number.isFinite(route.durationSeconds) &&
+                  route.durationSeconds >= 0)),
+          ),
+        )
+      ) {
+        throw new Error("徒歩時間の応答形式が不正です。");
+      }
+      if (!controller.signal.aborted)
+        setComparison({ ...comparison, pending: false, routes, error: null });
+    } catch (cause) {
+      if (controller.signal.aborted) return;
+      if (isBudgetStop(cause)) setBudgetStop(cause.message);
+      setComparison({
+        ...comparison,
+        pending: false,
+        routes: null,
+        error:
+          cause instanceof Error
+            ? cause.message
+            : "徒歩時間を取得できませんでした。",
+      });
+    } finally {
+      if (walkingRequest.current === controller) walkingRequest.current = null;
+    }
+  };
+
+  const send = (input: string) => {
+    const text = input.trim();
+    if (!text || budgetStop) return;
+    if (scope === "map") void handleChatSend(text);
+    else if (scope === "branch") placeQuestions.questions.ask(text);
+    else if (/(徒歩|歩いて).*(比較|比べ|時間)/u.test(text)) startComparison();
+    else if (/(?:地図|この辺|周辺|新しく|新たに|別の).*(?:探|検索)/u.test(text))
+      void handleChatSend(text);
+    else if (/再評価|評価し直|で評価|順に|を重視|重視で|で並べ/u.test(text))
+      rerank(text);
+    else setClarification(text);
+  };
   return (
     <BottomSheet
       height={sheetHeight}
@@ -607,6 +837,14 @@ function MapContent() {
           disableDefaultUI
           style={{ width: "100%", height: "100%" }}
         >
+          {comparison && (
+            <Marker
+              position={comparison.origin}
+              title={WALKING_ORIGIN_LABEL}
+              label={{ text: "発", color: "white" }}
+              zIndex={999}
+            />
+          )}
           {results.map((result, index) => (
             <Marker
               key={result.placeId}
@@ -620,9 +858,12 @@ function MapContent() {
                   ? getRatingColor(result.value, true)
                   : "#ffffff",
                 fillOpacity: 0.75,
-                strokeColor:
-                  selectedPlace === result.placeId ? "#152d45" : "#333333",
-                strokeWeight: selectedPlace === result.placeId ? 4 : 1,
+                strokeColor: "#152d45",
+                strokeWeight:
+                  selectedPlace === result.placeId ||
+                  comparison?.placeIds.includes(result.placeId)
+                    ? 4
+                    : 1,
                 scale: 20,
               }}
               label={{ text: String(index + 1), color: "black" }}
@@ -631,56 +872,49 @@ function MapContent() {
         </Map>
       }
     >
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-          height: "100%",
+      <MapConversationPanel
+        scope={scope}
+        candidates={candidates}
+        selected={
+          candidates.find((result) => result.placeId === selectedPlace) ?? null
+        }
+        criterion={results[0]?.evaluation ?? ""}
+        messages={chat.messages
+          .flatMap<MapConversationProps["messages"][number]>((message) => {
+            const text = message.parts
+              .flatMap((part) => (part.type === "text" ? [part.text] : []))
+              .join("");
+            return text && message.role !== "system"
+              ? [{ id: message.id, role: message.role, text }]
+              : [];
+          })
+          .concat(candidateMessages)}
+        questions={placeQuestions.questions}
+        comparison={comparison}
+        searching={isSearching}
+        evaluating={isEvaluating}
+        evaluationAttempts={evaluationAttempts}
+        disabled={!map || budgetStop !== null}
+        error={budgetStop ?? chatError ?? searchError}
+        manualSearch={{
+          searchTerm,
+          evaluation,
+          setSearchTerm,
+          setEvaluation,
+          submit: handleSearch,
         }}
-      >
-        <SearchPanel
-          chat={
-            <ChatPanel
-              messages={chat.messages}
-              status={chat.status}
-              error={chatError}
-              sendDisabled={!map || budgetStop !== null}
-              onSend={(text) => {
-                void handleChatSend(text);
-              }}
-              onStop={handleStopChat}
-              onInputFocus={() => {
-                void changeSheetHeight("full");
-              }}
-            />
-          }
-          hasChatMessages={chat.messages.length > 0}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          evaluation={evaluation}
-          setEvaluation={setEvaluation}
-          onSearch={handleSearch}
-          searchDisabled={isSearching || !map || budgetStop !== null}
-          isSearching={isSearching}
-          isEvaluating={isEvaluating}
-          evaluationAttempts={evaluationAttempts}
-          searchError={searchError}
-          budgetStop={budgetStop}
-          results={results}
-          selectedPlace={selectedPlace}
-          questions={placeQuestions.questions}
-          onSelect={selectPlace}
-          onClose={() => {
-            placeQuestions.cancel();
-            layoutController.current?.abort();
-            setSelectedPlace(null);
-          }}
-          onInputFocus={() => {
-            void changeSheetHeight("full");
-          }}
-        />
-      </Box>
+        clarification={clarification}
+        onScope={changeScope}
+        onSelect={selectPlace}
+        onSend={send}
+        onAreaSearch={handleChatSend}
+        onRerank={rerank}
+        onStartComparison={startComparison}
+        onCompare={compare}
+        onCancelComparison={cancelComparison}
+        onStop={handleStopChat}
+        onInputFocus={() => void changeSheetHeight("full")}
+      />
     </BottomSheet>
   );
 }
