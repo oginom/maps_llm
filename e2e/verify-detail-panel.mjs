@@ -78,13 +78,13 @@ await runSuite({
       await page
         .locator('[data-place-id="quota-3"]')
         .getAttribute("data-color"),
-      "#68756e",
+      "#45494c",
     );
     assert.notEqual(
       await page
         .locator('[data-place-id="quota-1"]')
         .getAttribute("data-color"),
-      "#68756e",
+      "#45494c",
     );
     if (view === "phone") {
       assert.equal(

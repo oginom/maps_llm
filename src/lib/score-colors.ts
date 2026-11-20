@@ -1,12 +1,12 @@
 // The same five bins are used for the map, candidate list and distribution.
 export const SCORE_COLORS = [
-  "#9b503e",
-  "#896444",
-  "#767044",
-  "#4c7968",
-  "#246b5b",
+  "#707070",
+  "#836d61",
+  "#956544",
+  "#aa5a29",
+  "#bc4d00",
 ] as const;
-export const UNSCORED_COLOR = "#68756e";
+export const UNSCORED_COLOR = "#45494c";
 
 export function scoreColor(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value) || value < 1 || value > 5)
