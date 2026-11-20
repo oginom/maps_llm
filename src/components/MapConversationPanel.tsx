@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import {
   WALKING_ORIGIN_LABEL,
   WALKING_ROUTE_NOTICE,
@@ -17,6 +16,19 @@ export function MapConversationPanel(props: MapConversationProps) {
   const [input, setInput] = useState("");
   const { candidates, selected, comparison, questions } = props;
   const busy = props.searching || !!questions.pendingQuestion;
+  const routeByPlaceId = new Map(
+    comparison?.routes?.map((route) => [
+      route.placeId,
+      route.durationSeconds,
+    ]) ?? [],
+  );
+  const displayedCandidates = comparison?.routes
+    ? [...candidates].sort((a, b) => {
+        const aTime = routeByPlaceId.get(a.placeId) ?? Infinity;
+        const bTime = routeByPlaceId.get(b.placeId) ?? Infinity;
+        return aTime - bTime;
+      })
+    : candidates;
   const scopeLabel =
     props.scope === "branch" && selected
       ? selected.name
@@ -113,7 +125,7 @@ export function MapConversationPanel(props: MapConversationProps) {
                 : `口コミを評価中 · ${props.evaluationAttempts}件試行`}
             </p>
           )}
-          {selected && !comparison ? (
+          {selected ? (
             <section className={styles.detail} data-place-details>
               <button
                 type="button"
@@ -259,36 +271,42 @@ export function MapConversationPanel(props: MapConversationProps) {
                 {comparison && (
                   <div className={styles.notice}>
                     <div className={styles.noticeHeading}>
-                      <strong>徒歩時間を比較</strong>
+                      <strong>
+                        {comparison.routes
+                          ? "徒歩時間が近い順"
+                          : "徒歩時間の比較"}
+                      </strong>
                       <button
                         type="button"
-                        onClick={props.onCancelComparison}
-                        aria-label="比較を閉じる"
+                        onClick={props.onDismissComparison}
+                        aria-label="徒歩比較を閉じる"
                       >
                         ×
                       </button>
                     </div>
-                    <p>
-                      {WALKING_ORIGIN_LABEL}から · 2店を選択{" "}
-                      {comparison.placeIds.length}/2
-                    </p>
+                    <p>{WALKING_ORIGIN_LABEL}から</p>
+                    <p>{WALKING_ROUTE_NOTICE}</p>
+                    {comparison.pending && (
+                      <p role="status">徒歩時間を確認中…</p>
+                    )}
+                    {comparison.error && (
+                      <p role="alert" className={styles.error}>
+                        {comparison.error}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className={styles.list} aria-label="候補一覧">
-                  {candidates.map((candidate) => {
+                  {displayedCandidates.map((candidate) => {
                     const state = resultState(candidate);
-                    const chosen =
-                      comparison?.placeIds.includes(candidate.placeId) ?? false;
+                    const duration = routeByPlaceId.get(candidate.placeId);
                     return (
                       <button
                         type="button"
                         key={candidate.placeId}
                         data-result-id={candidate.placeId}
                         data-fetch-state={state}
-                        aria-pressed={
-                          chosen || selected?.placeId === candidate.placeId
-                        }
-                        className={`${styles.card} ${chosen ? styles.chosen : ""}`}
+                        className={styles.card}
                         onClick={() => props.onSelect(candidate.placeId)}
                       >
                         <span className={styles.number}>
@@ -301,67 +319,34 @@ export function MapConversationPanel(props: MapConversationProps) {
                             {candidate.rating ?? "—"}
                           </span>
                         </span>
-                        <span
-                          className={styles.score}
-                          data-score={candidate.value ?? ""}
-                          style={{
-                            color: scoreColor(
-                              state === "evaluated" ? candidate.value : null,
-                            ),
-                          }}
-                        >
-                          <b>{state === "evaluated" ? candidate.value : "—"}</b>
-                          <small>適合度 / 5</small>
-                        </span>
-                        <span aria-hidden="true">
-                          {comparison ? (chosen ? "✓" : "+") : "›"}
-                        </span>
+                        {comparison?.routes ? (
+                          <span className={styles.walkingTime}>
+                            {duration == null
+                              ? "時間を取得できませんでした"
+                              : `約 ${Math.ceil(duration / 60)} 分`}
+                          </span>
+                        ) : (
+                          <span
+                            className={styles.score}
+                            data-score={candidate.value ?? ""}
+                            style={{
+                              color: scoreColor(
+                                state === "evaluated" ? candidate.value : null,
+                              ),
+                            }}
+                          >
+                            <b>
+                              {state === "evaluated" ? candidate.value : "—"}
+                            </b>
+                            <small>適合度 / 5</small>
+                          </span>
+                        )}
+                        <span aria-hidden="true">›</span>
                       </button>
                     );
                   })}
                 </div>
-                {comparison ? (
-                  <div>
-                    {comparison.routes ? (
-                      <div className={styles.comparisonResult}>
-                        <strong>徒歩時間</strong>
-                        <p>{WALKING_ROUTE_NOTICE}</p>
-                        {comparison.routes.map((route) => (
-                          <div key={route.placeId}>
-                            <span>
-                              {candidates.find(
-                                (c) => c.placeId === route.placeId,
-                              )?.name ?? route.placeId}
-                            </span>
-                            <b>
-                              {route.durationSeconds === null
-                                ? "取得できませんでした"
-                                : `約 ${Math.ceil(route.durationSeconds / 60)} 分`}
-                            </b>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <button
-                        className={styles.primary}
-                        type="button"
-                        disabled={
-                          comparison.placeIds.length !== 2 || comparison.pending
-                        }
-                        onClick={props.onCompare}
-                      >
-                        {comparison.pending
-                          ? "比較中…"
-                          : "選んだ2店を比較する →"}
-                      </button>
-                    )}
-                    {comparison.error && (
-                      <p role="alert" className={styles.error}>
-                        {comparison.error}
-                      </p>
-                    )}
-                  </div>
-                ) : (
+                {!comparison && (
                   <div className={styles.followups}>
                     <p>この候補について</p>
                     <div className={styles.chips}>
@@ -380,13 +365,6 @@ export function MapConversationPanel(props: MapConversationProps) {
                           ? "静かさで評価し直す"
                           : "電源で評価し直す"}{" "}
                         ↗
-                      </button>
-                      <button
-                        type="button"
-                        onClick={props.onStartComparison}
-                        disabled={candidates.length < 2 || props.disabled}
-                      >
-                        徒歩時間を比べる ↗
                       </button>
                     </div>
                   </div>
@@ -462,7 +440,7 @@ export function MapConversationPanel(props: MapConversationProps) {
               props.scope === "branch"
                 ? "このお店について質問する"
                 : props.scope === "candidates"
-                  ? "条件を変える、質問する..."
+                  ? "例：この中で徒歩が近い順に"
                   : "行きたい場所を聞いてみる..."
             }
             value={input}

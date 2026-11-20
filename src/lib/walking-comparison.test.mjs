@@ -8,6 +8,7 @@ import {
 import { LedgerUnavailableError } from "./budget/errors.ts";
 
 const input = { origin: { lat: 35, lng: 139 }, placeIds: ["first", "second"] };
+const twentyIds = Array.from({ length: 20 }, (_, index) => `place-${index}`);
 const good = {
   originIndex: 0,
   destinationIndex: 1,
@@ -45,24 +46,31 @@ test("release on cancellation during reservation; settle on upstream failure", a
   for (const cancel of [true, false]) {
     const controller = new AbortController();
     const events = [];
-    const reservation = { id: "test-reservation", count: 2 };
+    const reservation = { id: "test-reservation", count: 20 };
     await assert.rejects(
-      compareWithWalkingBudget(input, {}, controller.signal, "fake", {
-        reserve: async (_, type) => {
-          assert.equal(type, "routes.matrixElement");
-          events.push("reserve");
-          if (cancel) controller.abort();
-          return reservation;
+      compareWithWalkingBudget(
+        { ...input, placeIds: twentyIds },
+        {},
+        controller.signal,
+        "fake",
+        {
+          reserve: async (_, type, count) => {
+            assert.equal(type, "routes.matrixElement");
+            assert.equal(count, reservation.count);
+            events.push("reserve");
+            if (cancel) controller.abort();
+            return reservation;
+          },
+          settle: async (actual, outcome) => {
+            assert.equal(actual, reservation);
+            events.push(outcome.kind);
+          },
+          fetcher: async () => {
+            events.push("fetch");
+            throw new Error("offline");
+          },
         },
-        settle: async (actual, outcome) => {
-          assert.equal(actual, reservation);
-          events.push(outcome.kind);
-        },
-        fetcher: async () => {
-          events.push("fetch");
-          throw new Error("offline");
-        },
-      }),
+      ),
       cancel ? { name: "AbortError" } : { code: "ROUTES_UPSTREAM_ERROR" },
     );
     assert.deepEqual(
@@ -72,13 +80,15 @@ test("release on cancellation during reservation; settle on upstream failure", a
   }
 });
 
-test("requires exactly two distinct Place IDs and bounded numeric coordinates", () => {
-  assert.ok(walkingComparisonSchema.safeParse(input).success);
+test("requires 1–20 distinct Place IDs and bounded numeric coordinates", () => {
+  for (const placeIds of [["a"], input.placeIds, twentyIds])
+    assert.ok(
+      walkingComparisonSchema.safeParse({ ...input, placeIds }).success,
+    );
   for (const placeIds of [
     [],
-    ["a"],
-    ["a", "b", "c"],
-    ["same", "same"],
+    [...twentyIds, "extra"],
+    ["same", "other", "same"],
     ["", "b"],
     ["a", " a"],
   ])
@@ -97,45 +107,45 @@ test("requires exactly two distinct Place IDs and bounded numeric coordinates", 
     );
 });
 
-function call(body, httpStatus = 200) {
+function call(body, httpStatus = 200, placeIds = input.placeIds) {
   let sent = false;
   let fetched = false;
   const signal = new AbortController().signal;
-  return computeWalkingComparison(input, {
-    signal,
-    apiKey: "fake",
-    onRequestSent: () => {
-      assert.equal(sent, false);
-      sent = true;
-    },
-    fetcher: async (url, options) => {
-      assert.ok(sent);
-      assert.equal(fetched, false);
-      fetched = true;
-      assert.equal(options.signal, signal);
-      assert.equal(
-        url,
-        "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix",
-      );
-      assert.equal(options.headers["X-Goog-Api-Key"], "fake");
-      assert.ok(options.headers["X-Goog-FieldMask"].includes("status"));
-      assert.deepEqual(JSON.parse(options.body), {
-        origins: [
-          {
-            waypoint: {
-              location: { latLng: { latitude: 35, longitude: 139 } },
+  return computeWalkingComparison(
+    { ...input, placeIds },
+    {
+      signal,
+      apiKey: "fake",
+      onRequestSent: () => {
+        assert.equal(sent, false);
+        sent = true;
+      },
+      fetcher: async (url, options) => {
+        assert.ok(sent);
+        assert.equal(fetched, false);
+        fetched = true;
+        assert.equal(options.signal, signal);
+        assert.equal(
+          url,
+          "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix",
+        );
+        assert.equal(options.headers["X-Goog-Api-Key"], "fake");
+        assert.ok(options.headers["X-Goog-FieldMask"].includes("status"));
+        assert.deepEqual(JSON.parse(options.body), {
+          origins: [
+            {
+              waypoint: {
+                location: { latLng: { latitude: 35, longitude: 139 } },
+              },
             },
-          },
-        ],
-        destinations: [
-          { waypoint: { placeId: "first" } },
-          { waypoint: { placeId: "second" } },
-        ],
-        travelMode: "WALK",
-      });
-      return Response.json(body, { status: httpStatus });
+          ],
+          destinations: placeIds.map((placeId) => ({ waypoint: { placeId } })),
+          travelMode: "WALK",
+        });
+        return Response.json(body, { status: httpStatus });
+      },
     },
-  });
+  );
 }
 
 test("preserves order and marks only the unavailable route null", async () => {
@@ -150,6 +160,24 @@ test("preserves order and marks only the unavailable route null", async () => {
       .routes[0].durationSeconds,
     0,
   );
+});
+
+test("one matrix maps reversed mixed results to all 20 original destinations", async () => {
+  const body = twentyIds.map((_, destinationIndex) =>
+    destinationIndex % 2
+      ? { destinationIndex, status: { code: 5 } }
+      : { ...good, destinationIndex, duration: `${destinationIndex}s` },
+  );
+  assert.deepEqual(
+    (await call(body.reverse(), 200, twentyIds)).routes,
+    twentyIds.map((placeId, index) => ({
+      placeId,
+      durationSeconds: index % 2 ? null : index,
+    })),
+  );
+  assert.deepEqual((await call([unreachable], 200, ["only"])).routes, [
+    { placeId: "only", durationSeconds: null },
+  ]);
 });
 
 test("rejects truncated, duplicate, malformed or ambiguous results", async () => {

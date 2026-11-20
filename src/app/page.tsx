@@ -16,6 +16,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MapConversationPanel } from "@/components/MapConversationPanel";
 import {
   WALKING_ORIGIN_LABEL,
+  isWalkingComparisonRequest,
+  rankedWalkingRoutes,
+  walkingDestinationIds,
   type ConversationScope,
   type MapConversationProps,
   type WalkingComparison,
@@ -563,25 +566,6 @@ function MapContent() {
 
   const selectPlace = (placeId: string) => {
     if (!searchResults[placeId]) return;
-    if (comparison) {
-      if (
-        !comparison.placeIds.includes(placeId) &&
-        comparison.placeIds.length >= 2
-      )
-        return;
-      walkingRequest.current?.abort();
-      walkingRequest.current = null;
-      setComparison({
-        ...comparison,
-        pending: false,
-        routes: null,
-        error: null,
-        placeIds: comparison.placeIds.includes(placeId)
-          ? comparison.placeIds.filter((id) => id !== placeId)
-          : [...comparison.placeIds, placeId],
-      });
-      return;
-    }
     if (placeId !== selectedPlace) placeQuestions.cancel();
     setScope("branch");
     setClarification(null);
@@ -602,7 +586,6 @@ function MapContent() {
     pendingSend.current?.abort();
     placeQuestions.cancel();
     layoutController.current?.abort();
-    cancelComparison();
     setClarification(null);
     setScope(next);
     if (next !== "branch") setSelectedPlace(null);
@@ -651,43 +634,33 @@ function MapContent() {
     void evaluateCandidates(session);
   };
 
-  const startComparison = () => {
-    if (!map || budgetStop) return;
-    if (results.length < 2) {
-      setSearchError("徒歩時間を比べるには2件以上の候補が必要です。");
-      return;
-    }
-    const origin = map.getCenter()?.toJSON();
+  const compareWalkingTimes = async (text: string) => {
+    if (
+      scope !== "candidates" ||
+      walkingRequest.current ||
+      pendingSend.current ||
+      budgetStop
+    ) return;
+    const placeIds = walkingDestinationIds(results);
+    if (!placeIds.length) return;
+    const origin = map?.getCenter()?.toJSON();
     if (!origin) {
       setSearchError("比較の出発地となる地図の中心を取得できませんでした。");
       return;
     }
-    changeScope("candidates");
-    setComparison({
-      origin,
-      placeIds: [],
-      pending: false,
-      error: null,
-      routes: null,
-    });
-    void changeSheetHeight("half", null);
-  };
-
-  const compare = async () => {
+    setClarification(null);
+    recordCandidateAction(text);
+    // Until dismissed or replaced by a search, this result already covers
+    // the candidate set. Only an explicit request at a new origin needs Routes.
     if (
-      !comparison ||
-      comparison.placeIds.length !== 2 ||
-      walkingRequest.current ||
-      budgetStop
-    )
-      return;
-    const { origin, placeIds } = comparison;
-    recordCandidateAction(
-      `${placeIds.map((id) => searchResults[id].name).join("と")}への徒歩時間を比較`,
-    );
+      comparison?.routes &&
+      origin.lat === comparison.origin.lat &&
+      origin.lng === comparison.origin.lng
+    ) return;
     const controller = new AbortController();
     walkingRequest.current = controller;
-    setComparison({ ...comparison, pending: true, error: null, routes: null });
+    const snapshot = { origin, placeIds };
+    setComparison({ ...snapshot, pending: true, error: null, routes: null });
     try {
       const response = await fetch("/api/walking-comparison", {
         method: "POST",
@@ -699,30 +672,20 @@ function MapContent() {
         body: JSON.stringify({ origin, placeIds }),
       });
       if (!response.ok)
-        throw await readApiError(response, "徒歩時間を取得できませんでした。");
-      const { routes } = await response.json();
-      if (
-        !Array.isArray(routes) ||
-        routes.length !== 2 ||
-        !placeIds.every((id) =>
-          routes.some(
-            (route) =>
-              route?.placeId === id &&
-              (route.durationSeconds === null ||
-                (Number.isFinite(route.durationSeconds) &&
-                  route.durationSeconds >= 0)),
-          ),
-        )
-      ) {
-        throw new Error("徒歩時間の応答形式が不正です。");
-      }
+        throw await readApiError(
+          response,
+          response.status === 429
+            ? "徒歩経路サービスの利用上限に達しました。"
+            : "徒歩時間を取得できませんでした。",
+        );
+      const routes = rankedWalkingRoutes(await response.json(), placeIds);
       if (!controller.signal.aborted)
-        setComparison({ ...comparison, pending: false, routes, error: null });
+        setComparison({ ...snapshot, pending: false, routes, error: null });
     } catch (cause) {
       if (controller.signal.aborted) return;
       if (isBudgetStop(cause)) setBudgetStop(cause.message);
       setComparison({
-        ...comparison,
+        ...snapshot,
         pending: false,
         routes: null,
         error:
@@ -740,7 +703,7 @@ function MapContent() {
     if (!text || budgetStop) return;
     if (scope === "map") void handleChatSend(text);
     else if (scope === "branch") placeQuestions.questions.ask(text);
-    else if (/(徒歩|歩いて).*(比較|比べ|時間)/u.test(text)) startComparison();
+    else if (isWalkingComparisonRequest(text)) void compareWalkingTimes(text);
     else if (/(?:地図|この辺|周辺|新しく|新たに|別の).*(?:探|検索)/u.test(text))
       void handleChatSend(text);
     else if (/再評価|評価し直|で評価|順に|を重視|重視で|で並べ/u.test(text))
@@ -807,7 +770,6 @@ function MapContent() {
                 url: markerSvg({
                   value: resultState(result) === "evaluated" ? result.value : null,
                   selected: selectedPlace === result.placeId,
-                  compared: comparison?.placeIds.includes(result.placeId),
                 }),
                 scaledSize: new google.maps.Size(48, 54),
                 anchor: new google.maps.Point(24, 51),
@@ -854,9 +816,7 @@ function MapContent() {
         onSend={send}
         onAreaSearch={handleChatSend}
         onRerank={rerank}
-        onStartComparison={startComparison}
-        onCompare={compare}
-        onCancelComparison={cancelComparison}
+        onDismissComparison={cancelComparison}
         onStop={handleStopChat}
         onInputFocus={() => layoutController.current?.abort()}
       />

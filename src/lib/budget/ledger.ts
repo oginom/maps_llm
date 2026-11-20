@@ -391,8 +391,10 @@ export class Ledger {
   reserve(
     context: BudgetRequestContext,
     type: BudgetType,
+    matrixElements?: number,
   ): Promise<Reservation> {
     return this.withRetry("reserve", async () => {
+      const amount = reserveAmount(type, matrixElements);
       const now = this.now();
       const monthId = monthIdFor(now);
       const sessionId = sessionDocId(context.sessionId);
@@ -468,7 +470,6 @@ export class Ledger {
           `[budget] reserve for the previous run ${context.runId} after run ${session.run.runId} started; counted against session and month only`,
         );
 
-      const amount = reserveAmount(type);
       const currentMonth = monthState(monthId);
       const scopes: Array<[BudgetScope, Counters]> = [
         ["month", currentMonth],
@@ -647,9 +648,10 @@ export function getLedger(): Promise<Ledger> {
 export async function reserveBudget(
   context: BudgetRequestContext,
   type: BudgetType,
+  matrixElements?: number,
 ): Promise<Reservation> {
   const ledger = await getLedger();
-  return ledger.reserve(context, type);
+  return ledger.reserve(context, type, matrixElements);
 }
 
 // Settle failures are logged only: the pending sweep recovers the amount at

@@ -158,8 +158,7 @@
   color: var(--ink);
   padding: 15px 0;
 }
-.card:hover,
-.chosen {
+.card:hover {
   background: #f1f7ef;
 }
 .number {
@@ -208,8 +207,7 @@
   font-size: 10px;
   color: #849689;
 }
-.notice,
-.comparisonResult {
+.notice {
   background: #f1f6ef;
   border-radius: 12px;
   padding: 14px;
@@ -231,27 +229,12 @@
   font-size: 20px;
   line-height: 1;
 }
-.primary {
-  width: 100%;
-  background: #365f4e;
-  color: white;
-  border: 0;
-  border-radius: 10px;
-  padding: 13px;
+.walkingTime {
+  max-width: 110px;
+  color: #3b6c51;
   font-size: 12px;
   font-weight: 700;
-  margin-top: 14px;
-}
-.comparisonResult > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  border-top: 1px solid #dfe9df;
-  padding-top: 10px;
-  margin-top: 10px;
-}
-.comparisonResult b {
-  color: #3b6c51;
+  text-align: right;
 }
 .back {
   border: 0;
@@ -438,12 +421,6 @@
   .composer {
     padding: 10px 20px max(10px, env(safe-area-inset-bottom));
   }
-}
-
-.comparisonResult p {
-  color: #657a6d;
-  line-height: 1.6;
-  font-size: 11px;
 }
 
 .header img {

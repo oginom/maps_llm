@@ -43,23 +43,25 @@ export type ScopeCaps = {
 
 export type BudgetCaps = Record<BudgetScope, ScopeCaps>;
 
+export const MAX_WALKING_DESTINATIONS = 20;
+
 export const DEFAULT_BUDGET_CAPS: BudgetCaps = {
   month: {
-    "routes.matrixElement": 40,
+    "routes.matrixElement": 10_000,
     openaiMicros: 750_000,
     "places.search": 60,
     "places.details": 300,
     "openai.chat": 500,
   },
   session: {
-    "routes.matrixElement": 8,
+    "routes.matrixElement": 500,
     openaiMicros: 200_000,
     "places.search": 10,
     "places.details": 60,
     "openai.chat": 100,
   },
   run: {
-    "routes.matrixElement": 4,
+    "routes.matrixElement": MAX_WALKING_DESTINATIONS,
     openaiMicros: 50_000,
     "places.search": 2,
     "places.details": 20,
@@ -143,14 +145,30 @@ export function isGoogleType(
   );
 }
 
-// Amount reserved before a call of the given type: one unit, plus the
-// micro-USD estimate for OpenAI types.
-export function reserveAmount(type: BudgetType): {
+// Only matrix calls have variable units: one element per destination.
+export function reserveAmount(
+  type: BudgetType,
+  matrixElements?: number,
+): {
   count: number;
   micros: number;
 } {
+  if (type === "routes.matrixElement") {
+    if (
+      matrixElements === undefined ||
+      !Number.isInteger(matrixElements) ||
+      matrixElements < 1 ||
+      matrixElements > MAX_WALKING_DESTINATIONS
+    )
+      throw new RangeError(
+        `Expected 1–${MAX_WALKING_DESTINATIONS} matrix elements.`,
+      );
+    return { count: matrixElements, micros: 0 };
+  }
+  if (matrixElements !== undefined)
+    throw new TypeError("Only matrix reservations accept an element count.");
   return {
-    count: type === "routes.matrixElement" ? 2 : 1,
+    count: 1,
     micros: isOpenAiType(type) ? OPENAI_RESERVE_MICROS[type] : 0,
   };
 }

@@ -46,7 +46,7 @@ test("price constants match the design", () => {
   assert.equal(GOOGLE_LIST_PRICE_MICROS["places.details"], 25_000);
 });
 
-test("a matrix pair extends preexisting ledger documents without resetting counters or pending work", async () => {
+test("a variable matrix reservation preserves historical pairs and unrelated pending work", async () => {
   const { ledger, store } = createLedger();
   const context = { sessionId: SESSION, runId: RUN_A };
   const legacySearch = await ledger.reserve(context, "places.search");
@@ -54,34 +54,69 @@ test("a matrix pair extends preexisting ledger documents without resetting count
   const pending = await ledger.reserve(context, "openai.chat");
   const before = store.get(sessionDocId(SESSION)).data;
   assert.equal(before.counts["routes.matrixElement"], undefined);
-  const pair = await ledger.reserve(context, "routes.matrixElement");
-  assert.equal(pair.count, 2);
+  const historicalPair = await ledger.reserve(
+    context,
+    "routes.matrixElement",
+    2,
+  );
+  const batch = await ledger.reserve(context, "routes.matrixElement", 18);
+  assert.equal(batch.count, 18);
   const reserved = store.get(sessionDocId(SESSION)).data;
   assert.deepEqual(reserved.pending[pending.id], before.pending[pending.id]);
-  assert.equal(reserved.run.reservedCounts["routes.matrixElement"], 2);
-  await ledger.settle(pair, { kind: "settle" });
+  assert.equal(reserved.pending[historicalPair.id].count, 2);
+  assert.equal(reserved.run.reservedCounts["routes.matrixElement"], 20);
+  await ledger.settle(batch, { kind: "settle" });
   for (const scope of [
-    store.get(monthDocId(pair.monthId)).data,
+    store.get(monthDocId(batch.monthId)).data,
     store.get(sessionDocId(SESSION)).data,
     store.get(sessionDocId(SESSION)).data.run,
   ]) {
     assert.equal(scope.counts["places.search"], 1);
-    assert.equal(scope.counts["routes.matrixElement"], 2);
-    assert.equal(scope.reservedCounts["routes.matrixElement"], 0);
+    assert.equal(scope.counts["routes.matrixElement"], 18);
+    assert.equal(scope.reservedCounts["routes.matrixElement"], 2);
     assert.equal(scope.reservedMicros, pending.micros);
   }
-  assert.equal(store.get(monthDocId(pair.monthId)).data.listPriceMicros, 50000);
+  assert.equal(
+    store.get(monthDocId(batch.monthId)).data.listPriceMicros,
+    130_000,
+  );
+  await ledger.settle(historicalPair, { kind: "settle" });
+  assert.equal(
+    store.get(monthDocId(batch.monthId)).data.listPriceMicros,
+    140_000,
+  );
+});
+
+test("default matrix caps bound run, session, and calendar month independently", () => {
+  assert.deepEqual(
+    ["run", "session", "month"].map(
+      (scope) => DEFAULT_BUDGET_CAPS[scope]["routes.matrixElement"],
+    ),
+    [20, 500, 10_000],
+  );
+});
+
+test("rejects invalid matrix element counts before writing any reservation", async () => {
+  const { ledger, store } = createLedger();
+  const context = { sessionId: SESSION, runId: RUN_A };
+  for (const count of [undefined, 0, -1, 21, 1.5, NaN])
+    await assert.rejects(
+      ledger.reserve(context, "routes.matrixElement", count),
+      RangeError,
+    );
+  await assert.rejects(ledger.reserve(context, "places.search", 2), TypeError);
+  assert.equal(store.commitCount, 0);
 });
 
 for (const scope of ["run", "session", "month"])
-  test(`matrix pair reservation is all-or-nothing at the ${scope} cap`, async () => {
+  test(`matrix reservation is all-or-nothing at the ${scope} cap`, async () => {
     const { ledger, store } = createLedger({
-      caps: caps({ [scope]: { "routes.matrixElement": 3 } }),
+      caps: caps({ [scope]: { "routes.matrixElement": 19 } }),
     });
     const context = { sessionId: SESSION, runId: RUN_A };
     const reservations = await Promise.allSettled([
-      ledger.reserve(context, "routes.matrixElement"),
-      ledger.reserve(context, "routes.matrixElement"),
+      ledger.reserve(context, "routes.matrixElement", 13),
+      ledger.reserve(context, "routes.matrixElement", 7),
     ]);
     assert.equal(reservations[0].status, "fulfilled");
     assert.equal(
@@ -91,8 +126,8 @@ for (const scope of ["run", "session", "month"])
     assert.equal(store.commitCount, 1);
     await ledger.settle(reservations[0].value, { kind: "release" });
     assert.equal(
-      (await ledger.reserve(context, "routes.matrixElement")).count,
-      2,
+      (await ledger.reserve(context, "routes.matrixElement", 19)).count,
+      19,
     );
   });
 

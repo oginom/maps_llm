@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_WALKING_DESTINATIONS } from "./budget/config.ts";
 import {
   reserveBudget,
   settleReservation,
@@ -16,10 +17,12 @@ export const walkingComparisonSchema = z
       })
       .strict(),
     placeIds: z
-      .tuple([placeIdSchema, placeIdSchema])
+      .array(placeIdSchema)
+      .min(1)
+      .max(MAX_WALKING_DESTINATIONS)
       .refine(
-        ([first, second]) => first !== second,
-        "異なる2店舗を選択してください。",
+        (ids) => new Set(ids).size === ids.length,
+        "同じ店舗は複数回選択できません。",
       ),
   })
   .strict();
@@ -64,18 +67,16 @@ function upstreamError(status: number) {
   );
 }
 
-const matrixSchema = z
-  .array(
-    z.object({
-      // Protocol Buffers JSON can omit scalar fields with value zero.
-      originIndex: z.literal(0).default(0),
-      destinationIndex: z.union([z.literal(0), z.literal(1)]).default(0),
-      status: z.object({ code: z.number().int().nonnegative().default(0) }),
-      condition: z.string().optional(),
-      duration: z.string().optional(),
-    }),
-  )
-  .length(2);
+const matrixSchema = z.array(
+  z.object({
+    // Protocol Buffers JSON can omit scalar fields with value zero.
+    originIndex: z.literal(0).default(0),
+    destinationIndex: z.number().int().nonnegative().default(0),
+    status: z.object({ code: z.number().int().nonnegative().default(0) }),
+    condition: z.string().optional(),
+    duration: z.string().optional(),
+  }),
+);
 
 export async function computeWalkingComparison(
   { origin, placeIds }: WalkingComparison,
@@ -123,13 +124,14 @@ export async function computeWalkingComparison(
     throw upstreamError(502);
   }
   if (!response.ok) throw upstreamError(response.status);
-  const parsed = matrixSchema.safeParse(
-    await response.json().catch(() => null),
-  );
+  const parsed = matrixSchema
+    .length(placeIds.length)
+    .safeParse(await response.json().catch(() => null));
   if (!parsed.success) throw invalidMatrix();
   const durations = new Map<number, number | null>();
   for (const { destinationIndex, status, condition, duration } of parsed.data) {
-    if (durations.has(destinationIndex)) throw invalidMatrix();
+    if (destinationIndex >= placeIds.length || durations.has(destinationIndex))
+      throw invalidMatrix();
     if (status.code === 8) throw upstreamError(429);
     if (status.code === 7 || status.code === 16) throw upstreamError(403);
     if (status.code !== 0 && status.code !== 5) throw upstreamError(502);
@@ -167,7 +169,11 @@ export async function compareWithWalkingBudget(
       "ROUTES_UNAVAILABLE",
       "徒歩経路サービスが未設定のため、徒歩時間を比較できません。",
     );
-  const reservation = await reserve(context, "routes.matrixElement");
+  const reservation = await reserve(
+    context,
+    "routes.matrixElement",
+    input.placeIds.length,
+  );
   let outcome: SettleOutcome = { kind: "release" };
   try {
     return await computeWalkingComparison(input, {

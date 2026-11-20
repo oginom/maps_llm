@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       request.signal,
       process.env.GOOGLE_ROUTES_SERVER_API_KEY,
     );
-    logRoute(ROUTE, 200, startedAt, "elements=2");
+    logRoute(ROUTE, 200, startedAt, `elements=${parsed.data.placeIds.length}`);
     return Response.json(result);
   } catch (error) {
     if (request.signal.aborted) return clientAbortedResponse(ROUTE, startedAt);
