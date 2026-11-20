@@ -2,6 +2,11 @@
 // unit tests can load it directly with `node --test`.
 import { z } from "zod";
 import { MAX_REVIEW_COUNT, MAX_REVIEWS_TEXT_LENGTH } from "./place-dto.ts";
+import {
+  MAX_PLACE_ANSWER_LENGTH,
+  MAX_PLACE_QUESTION_HISTORY,
+  MAX_PLACE_QUESTION_LENGTH,
+} from "./place-question.ts";
 
 export const MAX_TEXT_QUERY_LENGTH = 100;
 export const MAX_EVALUATION_LENGTH = 200;
@@ -52,20 +57,41 @@ export const placeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{10,512}$/, {
   message: "placeId の形式が不正です。",
 });
 
+const reviewTextsSchema = z
+  .array(z.string().refine((text) => text.trim().length > 0))
+  .max(MAX_REVIEW_COUNT)
+  .refine(
+    (texts) =>
+      texts.reduce((total, text) => total + text.length, 0) <=
+      MAX_REVIEWS_TEXT_LENGTH,
+    {
+      message: `口コミの合計は ${MAX_REVIEWS_TEXT_LENGTH} 文字以内でなければなりません。`,
+    },
+  );
+
+const questionSchema = z.string().trim().min(1).max(MAX_PLACE_QUESTION_LENGTH);
+export const placeQuestionRequestSchema = z
+  .object({
+    placeId: placeIdSchema,
+    placeName: z.string().trim().min(1).max(512),
+    question: questionSchema,
+    reviews: reviewTextsSchema,
+    history: z
+      .array(
+        z
+          .object({
+            question: questionSchema,
+            answer: z.string().trim().min(1).max(MAX_PLACE_ANSWER_LENGTH),
+          })
+          .strict(),
+      )
+      .max(MAX_PLACE_QUESTION_HISTORY),
+  })
+  .strict();
+
 export const analyzeReviewsRequestSchema = z
   .object({
-    reviews: z
-      .array(z.string().refine((text) => text.trim().length > 0))
-      .min(1)
-      .max(MAX_REVIEW_COUNT)
-      .refine(
-        (texts) =>
-          texts.reduce((total, text) => total + text.length, 0) <=
-          MAX_REVIEWS_TEXT_LENGTH,
-        {
-          message: `口コミの合計は ${MAX_REVIEWS_TEXT_LENGTH} 文字以内でなければなりません。`,
-        },
-      ),
+    reviews: reviewTextsSchema.min(1),
     metric: z.string().trim().min(1).max(MAX_EVALUATION_LENGTH),
     examples: z.string().max(MAX_EXAMPLES_LENGTH),
     scale: z.literal("5").default("5"),
