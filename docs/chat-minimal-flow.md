@@ -21,11 +21,11 @@
 
 質問は 300 字まで、送信する履歴は同じ店舗の直近 3 往復。各質問は独立した実行 ID を持つ。口コミ 0 件なら外部呼び出しなし、それ以外は `openai.chat` 1 回を予約する。ローカルで架空の口コミ 2 件を使った実モデル確認では、窓側の電源について述べた 1 番だけが回答の根拠に選ばれた。
 
-## 候補 2 店への徒歩時間を比べる
+## 今の候補すべてへの徒歩時間を聞く
 
-出発したい場所に地図の中心を合わせて比較を開始し、候補 2 店を指定する。出発地は開始時点で固定され、その後で地図を動かしても変わらない。比較は店から店の移動ではなく、同じ出発地から各店への徒歩時間を Google Routes の Compute Route Matrix（`WALK`）で求める。1 出発地 × 2 目的地なので台帳は `routes.matrixElement` を 2 要素予約する。
+出発したい場所に地図の中心を合わせ、チャットで「今の候補まで徒歩で何分？」と送る。徒歩について明示した依頼だけが計算の入口で、検索や店舗選択だけでは実行しない。出発地は送信時点の地図中心に固定する。目的地は重複を除く今の候補すべて（1〜20 店）で、個別に選ぶ操作はない。Google Routes の Compute Route Matrix（`WALK`）は各店までの時間を同じ出発地から求める。台帳の予約は 1 出発地 × N 目的地 = `routes.matrixElement` N 要素。
 
-`POST /api/walking-comparison` に固定した `origin: { lat, lng }` と異なる 2 件の `placeIds` を送る。サーバー専用の `GOOGLE_ROUTES_SERVER_API_KEY` がなければ 503 `ROUTES_UNAVAILABLE`。経路なしは該当店の `durationSeconds: null`、上流エラーはエラーとして返し、Places キーや直線距離からの時間推定で代用しない。
+`POST /api/walking-comparison` に固定した `origin: { lat, lng }` と N 件の `placeIds` を送る。サーバー専用の `GOOGLE_ROUTES_SERVER_API_KEY` がなければ 503 `ROUTES_UNAVAILABLE`。経路なしは該当店の `durationSeconds: null`、上流エラーはエラーとして返し、Places キーや直線距離からの時間推定で代用しない。
 
 ## モデル・予算・エラー
 

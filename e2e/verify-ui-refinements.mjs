@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
-import { runSuite, send, button, row } from "./root-fixture.mjs";
+import {
+  runSuite,
+  send,
+  button,
+  row,
+  input,
+  walkingPath,
+} from "./root-fixture.mjs";
 await runSuite({
-  async "single chat composer, distribution and markers"({ page, view }) {
+  async "single chat composer, distribution and markers"({
+    page,
+    view,
+    requests,
+  }) {
     assert.equal(await page.locator('img[alt="まちのコンパス"]').count(), 1);
     assert.equal(
       await page.getByText("手動で検索", { exact: true }).count(),
@@ -34,11 +45,12 @@ await runSuite({
         .evaluate((el) => el.scrollIntoView());
     await distribution.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `/private/tmp/maps-ui-${view}.png` });
-    await button(page, /徒歩時間を比べる/).click();
     await row(page, "quota-1").click();
-    assert.equal(
-      await row(page, "quota-1").getAttribute("aria-pressed"),
-      "true",
+    assert.match(
+      await input(page).locator("xpath=ancestor::form").innerText(),
+      /送信先[\s\S]*quota-1/,
     );
+    await button(page, /候補一覧へ/).click();
+    assert.equal(requests(walkingPath).length, 0);
   },
 });

@@ -11,13 +11,15 @@
 | Places New の Text Search           |    20 回 | `places.googleapis.com/SearchTextRequest`             |
 | Places New の Place Details         |   100 回 | `places.googleapis.com/GetPlaceRequest`               |
 | Routes の経路計算                   |    20 回 | `routes.googleapis.com/compute_routes_requests`       |
-| Routes の比較                       |  30 要素 | `routes.googleapis.com/compute_route_matrix_elements` |
+| Routes の比較                       | 500 要素 | `routes.googleapis.com/compute_route_matrix_elements` |
 
-すべて `1/d/{project}` の割当。利用者・ブラウザ・API キー別ではなくプロジェクト共通。徒歩比較は開始時の地図中心 1 点 × 候補 2 店で 2 要素。比較だけで日次 30 要素を使う場合、最大 15 回分になる。
+すべて `1/d/{project}` の割当。利用者・ブラウザ・API キー別ではなくプロジェクト共通。徒歩比較はチャットで明示的に求めたときだけ行う。送信時の地図中心 1 点 × 重複を除く候補全 N 店（1〜20 店）で N 要素。毎回 20 店なら 500 要素は 25 回分になる。
 
-適用後、6 項目それぞれの `effectiveLimit` が表の値になったことを Service Usage API で確認した。
+当初の適用後には、Service Usage API で 6 項目の `effectiveLimit` を確認した（当時の Route Matrix は 30 要素 / 日）。
 
-2026-11-21 に Routes API を有効化し、Routes のみに制限したサーバーキーを `.env.local` と GitHub Actions Secret `GOOGLE_ROUTES_SERVER_API_KEY` に設定した。既存の汎用キーからは Routes の許可だけを削除し、残り 26 件の許可・制限は変更していない。Route Matrix の実効上限は引き続き 30 要素 / 日。
+2026-11-21 に Routes API を有効化し、Routes のみに制限したサーバーキーを `.env.local` と GitHub Actions Secret `GOOGLE_ROUTES_SERVER_API_KEY` に設定した。既存の汎用キーからは Routes の許可だけを削除し、残り 26 件の許可・制限は変更していない。その時点で Route Matrix の実効上限は 30 要素 / 日だった。
+
+その後、Routes の行列要素の割当上書きだけを 500 要素 / 日に変更した。変更操作とは別の読み取り専用の Service Usage API 照会で `effectiveLimit` = 500 を確認した。有料 API を使った徒歩比較の動作確認は未実施。
 
 検索は Places API (New) を使用する。検索 20 回 / 日と詳細 100 回 / 日は独立した枠。Legacy の 100 回は New に加算されない。徒歩比較は Routes の Compute Route Matrix（`WALK`）を使用し、Compute Routes の経路計算枠は使わない。日次割当は月額料金や無料枠を保証しない。
 
@@ -36,9 +38,11 @@
 
 | 範囲 | OpenAI（micro-USD） | Places 検索 | Routes 比較 |
 | --- | ---: | ---: | ---: |
-| 月（UTC の暦月） | 750,000（$0.75） | 60 回 | 40 要素 |
-| セッション（ブラウザのタブ） | 200,000（$0.20） | 10 回 | 8 要素 |
-| 実行 | 50,000（$0.05） | 2 回 | 4 要素 |
+| 月（UTC の暦月） | 750,000（$0.75） | 60 回 | 10,000 要素 |
+| セッション（ブラウザのタブ） | 200,000（$0.20） | 10 回 | 500 要素 |
+| 実行 | 50,000（$0.05） | 2 回 | 20 要素 |
+
+Compute Route Matrix Essentials の標準月間無料枠は 10,000 要素。同じ請求先アカウントの全プロジェクトでこの SKU の利用を合算するので、上表のアプリ上限は無料利用を保証しない。[Google Maps Platform の料金表](https://developers.google.com/maps/billing-and-pricing/pricing)
 
 OpenAI は `usage` から算出した額（Luna: 入力 $0.20 / 1M、出力 $1.20 / 1M）を加算し、予約額は評価 $0.0028、検索準備 $0.00156。Google は `places.search` の回数で強制し、月の参考額に検索あたり $0.040 を加える。これは Text Search Enterprise + Atmosphere の最初の有料帯（$40 / 1,000 検索）による推計で、請求先で共有する無料枠・割引適用後の請求額ではない。詳細の台帳利用はない。
 

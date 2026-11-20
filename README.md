@@ -8,7 +8,7 @@ Open `/`, move the Google map to the area you want to explore, and start your se
 - **Current candidates:** Change the criterion to `静かに読書できる` (quiet enough to read). The app ranks the same places using the reviews already fetched, without another Places search.
 - **Selected branch:** Ask `電源はどの席にある？` (which seats have power outlets?). Open the sources to read the branch reviews behind the answer.
 
-To compare walking times, position the map center at your starting point, start a comparison, and select two candidates. Google Routes uses that fixed origin for both walks. Walking comparison requires the optional server-only `GOOGLE_ROUTES_SERVER_API_KEY`; unavailable routes or configuration errors do not produce estimated times.
+To see walking times, center the map at your starting point and ask in chat: 「今の候補まで徒歩で何分？」. Only an explicit walking request starts the calculation. Google Routes uses the map center at submission as one fixed origin and every distinct current candidate as a destination (1–20 places). Walking comparison requires the optional server-only `GOOGLE_ROUTES_SERVER_API_KEY`; unavailable routes or configuration errors do not produce estimated times.
 
 ## Development and handoff
 
