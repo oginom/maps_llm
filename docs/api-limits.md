@@ -17,7 +17,7 @@
 
 適用後、6 項目それぞれの `effectiveLimit` が表の値になったことを Service Usage API で確認した。
 
-2026-11-20 のリリース時点で Routes API は未有効化。専用サーバーキーも未設定のため、本番の徒歩比較は分数を返さない。有効化前に、別の既存キーが持つ Routes 許可を残すか確認する。今回、既存キー・日次上限は変更していない。
+2026-11-21 に Routes API を有効化し、Routes のみに制限したサーバーキーを `.env.local` と GitHub Actions Secret `GOOGLE_ROUTES_SERVER_API_KEY` に設定した。既存の汎用キーからは Routes の許可だけを削除し、残り 26 件の許可・制限は変更していない。Route Matrix の実効上限は引き続き 30 要素 / 日。
 
 検索は Places API (New) を使用する。検索 20 回 / 日と詳細 100 回 / 日は独立した枠。Legacy の 100 回は New に加算されない。徒歩比較は Routes の Compute Route Matrix（`WALK`）を使用し、Compute Routes の経路計算枠は使わない。日次割当は月額料金や無料枠を保証しない。
 
